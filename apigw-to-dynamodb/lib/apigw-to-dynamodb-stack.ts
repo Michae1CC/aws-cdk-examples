@@ -2,6 +2,8 @@ import * as cdk from "aws-cdk-lib";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import { RemovalPolicy } from "aws-cdk-lib";
 import { Cors, PassthroughBehavior } from "aws-cdk-lib/aws-apigateway";
 import { Table, BillingMode } from "aws-cdk-lib/aws-dynamodb";
@@ -31,6 +33,14 @@ export class ApigwToDynamodbStack extends cdk.Stack {
       stream: dynamodb.StreamViewType.NEW_IMAGE,
     });
 
+    const snsTopic = new sns.Topic(this, projectName + "-sns");
+    snsTopic.addSubscription(new subscriptions.SmsSubscription("+619999999"));
+
+    const snsTopicPolicy = new iam.PolicyStatement({
+      actions: ["sns:publish"],
+      resources: ["*"],
+    });
+
     /**
      * Lambda dynamo stream subscriber
      */
@@ -39,11 +49,11 @@ export class ApigwToDynamodbStack extends cdk.Stack {
       "dynamoStreamHandler",
       {
         // Runtime environment
-        runtime: lambda.Runtime.NODEJS_18_X,
-        code: lambda.Code.fromAsset("lambda/subscribe"),
+        runtime: lambda.Runtime.PYTHON_3_9,
+        code: lambda.Code.fromAsset("lambda"),
         // file is "lambda", function is "handler"
         handler: "lambda.handler",
-        environment: {},
+        environment: { SNS_ARN: snsTopic.topicArn },
       }
     );
 
@@ -53,6 +63,8 @@ export class ApigwToDynamodbStack extends cdk.Stack {
         startingPosition: lambda.StartingPosition.LATEST,
       })
     );
+
+    dynamoStreamSubscriberLambda.addToRolePolicy(snsTopicPolicy);
 
     /**
      * API Gateway creation
