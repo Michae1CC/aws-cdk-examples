@@ -3,7 +3,7 @@
 curl -i -X POST \
    -H "Content-Type:application/json" \
    -d \
-'{"flavour": "HazelNut", "cost": "2.00"}' \
+'{"flavour": "Pistachio", "cost": "2.00"}' \
  'https://wiw2vvtvk1.execute-api.us-east-1.amazonaws.com/prod/ice-cream-flavours'
 
 # curl -i -X GET \
