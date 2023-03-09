@@ -1,7 +1,8 @@
 import { Stack, StackProps, CfnOutput } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { DockerImageFunction, DockerImageCode } from "aws-cdk-lib/aws-lambda";
-import { LambdaRestApi } from "aws-cdk-lib/aws-apigateway";
+import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { join } from "path";
 
 export class LambdaStack extends Stack {
@@ -13,12 +14,15 @@ export class LambdaStack extends Stack {
       code: DockerImageCode.fromImageAsset(join(__dirname, "../server/lambda")),
     });
 
-    const api = new LambdaRestApi(this, "LambdaAPI", {
-      restApiName: "ApigwLambda",
-      description: "Integration between apigw and Lambda Service",
-      handler: myLambda,
+    const api = new HttpApi(this, "LambdaAPI");
+    const getLambdaIntegration = new HttpLambdaIntegration("getLambdaProxy", myLambda);
+    
+    api.addRoutes({
+      path: '/{proxy+}', // Adding {proxy+} catches all paths
+      methods: [HttpMethod.GET],
+      integration: getLambdaIntegration
     });
-
+    
     new CfnOutput(this, "LambdaAPIGatewayUrl", {
       description: "API Gateway URL for lambda",
       value: api.url!,

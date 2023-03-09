@@ -26,7 +26,7 @@ export class ApigwToDynamodbStack extends cdk.Stack {
         type: dynamodb.AttributeType.STRING,
       },
       billingMode: BillingMode.PAY_PER_REQUEST,
-      // When the resouce is removed, it will be destoryed
+      // When the resource is removed, it will be destroyed
       removalPolicy: RemovalPolicy.DESTROY,
       tableName: projectName,
       // Only send images of the record post modification
@@ -34,12 +34,7 @@ export class ApigwToDynamodbStack extends cdk.Stack {
     });
 
     const snsTopic = new sns.Topic(this, projectName + "-sns");
-    snsTopic.addSubscription(new subscriptions.SmsSubscription("+619999999"));
-
-    const snsTopicPolicy = new iam.PolicyStatement({
-      actions: ["sns:publish"],
-      resources: ["*"],
-    });
+    snsTopic.addSubscription(new subscriptions.SmsSubscription("<YOUR NUMBER HERE>"));
 
     /**
      * Lambda dynamo stream subscriber
@@ -64,6 +59,11 @@ export class ApigwToDynamodbStack extends cdk.Stack {
       })
     );
 
+    const snsTopicPolicy = new iam.PolicyStatement({
+      actions: ["sns:publish"],
+      resources: ["*"],
+    });
+
     dynamoStreamSubscriberLambda.addToRolePolicy(snsTopicPolicy);
 
     /**
@@ -72,9 +72,9 @@ export class ApigwToDynamodbStack extends cdk.Stack {
     let restApi = new cdk.aws_apigateway.RestApi(this, "DynamoStreamerAPI", {
       deployOptions: {
         metricsEnabled: true,
-        loggingLevel: cdk.aws_apigateway.MethodLoggingLevel.INFO,
         dataTraceEnabled: true,
         stageName: "prod",
+        loggingLevel: cdk.aws_apigateway.MethodLoggingLevel.INFO,
       },
       defaultCorsPreflightOptions: {
         allowOrigins: Cors.ALL_ORIGINS,
@@ -259,7 +259,7 @@ export class ApigwToDynamodbStack extends cdk.Stack {
       ],
     };
 
-    // Create an endpoint to insert data into the tabel
+    // Create an endpoint to insert data into the table
     allResources.addMethod("POST", createIntegration, methodOptions);
 
     singleResource.addMethod("GET", getIntegration, methodOptions);
