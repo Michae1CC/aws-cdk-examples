@@ -60,6 +60,11 @@ def handler(event, context):
     logger.setLevel(logging.INFO)
     logger.info("request: " + json.dumps(event))
 
+    if not TABLE_NAME:
+        message = "Could not find table name from environemnt."
+        logger.error(message)
+        return {"statusCode": 500, "body": message}
+
     try:
         for record in event["Records"]:
             # Get the S3 bucket object info
