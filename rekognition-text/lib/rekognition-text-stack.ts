@@ -1,7 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { Table, BillingMode, AttributeType } from "aws-cdk-lib/aws-dynamodb";
-import { Bucket, EventType, HttpMethods } from "aws-cdk-lib/aws-s3";
+import { Bucket, EventType} from "aws-cdk-lib/aws-s3";
 import { Function, Runtime, Code } from "aws-cdk-lib/aws-lambda";
 import { PolicyStatement, Effect } from "aws-cdk-lib/aws-iam";
 import * as path from "path";
