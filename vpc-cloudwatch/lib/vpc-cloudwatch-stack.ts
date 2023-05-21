@@ -23,6 +23,7 @@ import {
   FlowLogResourceType,
   FlowLogDestination,
   FlowLogTrafficType,
+  FlowLogMaxAggregationInterval,
 } from "aws-cdk-lib/aws-ec2";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 
@@ -106,6 +107,7 @@ export class VpcCloudwatchStack extends cdk.Stack {
         cloudWatchLogGroup,
         cloudwatchPublishRole
       ),
+      maxAggregationInterval: FlowLogMaxAggregationInterval.ONE_MINUTE,
       trafficType: FlowLogTrafficType.ACCEPT,
     });
 
