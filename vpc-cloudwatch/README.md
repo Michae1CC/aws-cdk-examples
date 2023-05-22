@@ -1,6 +1,6 @@
 # VPC Cloudwatch
 
-This example we look at how to cdk-ify on of aws official vpc tutorials. Within the tutorial, a simple vpc is created where traffic is recorded in flow logs. Here we shall recreate the environment from the aws tutorial, but also add in a ec2 instance which we will setup to allow incoming pings.
+This example we look at how to cdk-ify one of aws official vpc tutorials. Within the tutorial, a simple vpc is created where traffic is recorded in flow logs. Here we shall recreate the environment from the aws tutorial, but also add in a ec2 instance which we will setup to allow incoming pings.
 
 ## IAM
 
@@ -38,11 +38,11 @@ const vpc = new Vpc(this, "Vpc", {
     natGateways: 0,
     maxAzs: 2,
     subnetConfiguration: [
-    {
-        name: "public-subnet",
-        subnetType: SubnetType.PUBLIC,
-        cidrMask: 24,
-    },
+        {
+            name: "public-subnet",
+            subnetType: SubnetType.PUBLIC,
+            cidrMask: 24,
+        },
     ],
 });
 ```
@@ -69,7 +69,7 @@ securityGroup.addIngressRule(
 );
 ```
 
-Finally its time to create the ec2 instance that we will use to ping. Choosing a t2.micro type allows us to deploy our architecture within a free-tier account (not that we really need anything more meaty considering we are only going to ping this).
+Finally its time to create the ec2 instance that we will use to ping. Choosing a t2.micro type allows us to deploy our architecture within a free-tier account (not that we really don't need anything more meaty considering we are only going to ping it).
 
 ```typescript
 const instance = new Instance(this, "Instance", {
@@ -85,7 +85,7 @@ const instance = new Instance(this, "Instance", {
 
 ## FlowLog
 
-Setting up our flow logs is fairly straight forward. To start, we need to create a new log group to capture and store traffic data. After we create a flow log itself, providing it with the vpc to monitor, the role for cloud watch permissions, and a log group to point to. I've also set the traffic type to `ACCEPT` only to make it a little easier to find our pings and the max aggregation interval to one minute so we are not waiting as long for our logs to appear.
+Setting up our flow logs is fairly straight forward. To start, we need to create a new log group to capture and store traffic data. After we create a flow log itself, providing it with the vpc to monitor, the role for cloud watch permissions, and a log group to point to. I've also set the traffic type to `ACCEPT` so that it's a little easier to find our pings. The max aggregation interval to lowered to one minute from a default value of 10 minutes so we are not waiting as long for our logs to appear.
 
 ```typescript
 const cloudWatchLogGroup = new LogGroup(this, "CloudWatchLogGroup");
@@ -175,13 +175,13 @@ If you navigate to CloudWatch stream created for the flow logs you should seen e
 > 2 <accountid> <interface-id> <subnet-instance-ip> <desk-machine-ip> 0 0 1 7 588 1684675987 1684676042 ACCEPT OK
 ```
 
-For reference, the logs have the following default format
+For reference, the logs have the following default format:
 
 ```
 [version, accountid, interfaceid, srcaddr, dstaddr, srcport, dstport, protocol, packets, bytes, start, end, action, logstatus]
 ```
 
-As we can see, the logs align exactly with the pings we made in the terminal. Finally, run the following command to relinquish all the resources allocated in this tutorial.
+As we can see, the logs align exactly with the pings we made in the terminal. Finally, run the following command to destroy the stack and relinquish all the resources allocated in this tutorial.
 
 ```
 cdk destroy
@@ -190,6 +190,6 @@ cdk destroy
 ## References
 
 * Special thanks to [Paul Foo](https://www.linkedin.com/in/paul-foo?miniProfileUrn=urn%3Ali%3Afs_miniProfile%3AACoAAB3ApeMB0vFLnjbxnS0wYvi5z-Bjod6gy78&lipi=urn%3Ali%3Apage%3Ad_flagship3_search_srp_all%3BGZPwz0UGTZO%2FynTruzx9TA%3D%3Ds) for providing advice on security group set up.
-* https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-cwl.html
-* https://dev.to/emmanuelnk/part-3-simple-ec2-instance-awesome-aws-cdk-37ia 
-* https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ec2.FlowLog.html#maxaggregationinterval
+* <https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-cwl.html>
+* <https://dev.to/emmanuelnk/part-3-simple-ec2-instance-awesome-aws-cdk-37ia> 
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ec2.FlowLog.html#maxaggregationinterval>

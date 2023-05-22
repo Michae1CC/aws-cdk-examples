@@ -192,13 +192,17 @@ We can upload the image using the following [aws cli](https://aws.amazon.com/cli
 aws s3 cp ./img/example_license.png s3://<bucket-name>
 ```
 
-Within your aws console, you can navigate to `Lambda > <lambda-name> > Monitor > Logs > Recent invocations` to confirm your lambda function wass triggered. You should also see the following entry within the newly created dynamodb.
+Within your aws console, you can navigate to `Lambda > <lambda-name> > Monitor > Logs > Recent invocations` to confirm your lambda function was triggered. You should also see the following entry within the newly created dynamodb. Run the following to clean up any resources produced by this service
+
+```bash
+cdk destroy --all
+```
 
 ![dynamodb-table](./img/dynamodb-table.png)
 
-# References
+## References
 
-- https://serverlessland.com/patterns/s3-lambda-transcribe-cdk
-- https://github.com/dan-mba/aws-cdk-rekognition
-- https://docs.aws.amazon.com/rekognition/latest/dg/text-detecting-text-procedure.html
-- https://github.com/aws-samples/aws-cdk-examples/tree/master/python/image-content-search
+- <https://serverlessland.com/patterns/s3-lambda-transcribe-cdk>
+- <https://github.com/dan-mba/aws-cdk-rekognition>
+- <https://docs.aws.amazon.com/rekognition/latest/dg/text-detecting-text-procedure.html>
+- <https://github.com/aws-samples/aws-cdk-examples/tree/master/python/image-content-search>

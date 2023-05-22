@@ -200,7 +200,7 @@ Run the following to clean up any resources produced by this service
 cdk destroy --all
 ```
 
-## References:
+## References
 
 - https://www.youtube.com/watch?v=tHD3i06Z6gU&t=5s
 - https://github.com/cdk-patterns/serverless/tree/main/the-lambda-trilogy
