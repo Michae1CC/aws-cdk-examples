@@ -27,6 +27,8 @@ def handler(event: Any, context: Any) -> dict[str, dict[str, str]] | None:
         case "Create" | "Update":
             logging.info("Generating a new random string.")
             return {"Data": {"Value": generate_random_string(string_length)}}
+        case "Delete":
+            logging.info("Deleting Resource")
         case _:
             raise ValueError(f"Unexpected request type received: {request_type}")
 
