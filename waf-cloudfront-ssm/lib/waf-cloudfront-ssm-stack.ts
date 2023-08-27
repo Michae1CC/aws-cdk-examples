@@ -34,14 +34,47 @@ export class WafCloudfrontSsmStack extends cdk.Stack {
       scope: "REGIONAL",
       description: "Verify Origin Check WAF",
       defaultAction: {
-        allow: {},
+        block: {},
       },
       visibilityConfig: {
         metricName: "demo-APIWebACL",
         cloudWatchMetricsEnabled: false,
         sampledRequestsEnabled: false,
       },
-      rules: [],
+      // Create a single rule to match our token in our custom header
+      rules: [
+        {
+          action: { allow: {} },
+          name: "AllowVerifyString",
+          priority: 0,
+          statement: {
+            byteMatchStatement: {
+              fieldToMatch: {
+                headers: {
+                  matchPattern: {
+                    includedHeaders: ["X-Amzn-Waf-Verify-Origin"],
+                  },
+                  matchScope: "ALL",
+                  oversizeHandling: "NO_MATCH",
+                },
+              },
+              positionalConstraint: "EXACTLY",
+              searchString: tokenParameterStore.stringValue,
+              textTransformations: [
+                {
+                  priority: 0,
+                  type: "NONE",
+                },
+              ],
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: false,
+            metricName: "AlbACLMeterics",
+            sampledRequestsEnabled: false,
+          },
+        },
+      ],
     });
 
     // EC2
@@ -79,11 +112,13 @@ export class WafCloudfrontSsmStack extends cdk.Stack {
       }
     );
 
+    // Attach our Alb ACL to the loadbalancer created by fargate
     new wafv2.CfnWebACLAssociation(this, "FargateWebACLAss", {
       webAclArn: albACL.attrArn,
       resourceArn: fargate.loadBalancer.loadBalancerArn,
     });
 
+    // Create the ACL for cloudfront
     const cloudfrontACL = new wafv2.CfnWebACL(this, "CloudfrontACL", {
       // Since we're using a cloudfront scope, resources must be created in
       // the us-east-1 region
@@ -98,7 +133,7 @@ export class WafCloudfrontSsmStack extends cdk.Stack {
                 // Note that AWS WAF will append "X-Amzn-Waf-"
                 // to the provided name, meaning that full name used
                 // will be "X-Amzn-Waf-Verify-Origin"
-                name: "Tropofy-Verify-Origin",
+                name: "Verify-Origin",
                 value: tokenParameterStore.stringValue,
               },
             ],
@@ -107,14 +142,7 @@ export class WafCloudfrontSsmStack extends cdk.Stack {
       },
       visibilityConfig: {
         metricName: "verify-origin",
-        // CloudWatchMetricsEnabled is used to capture information on
-        // the requests coming through the WAF, see: https://docs.aws.amazon.com/waf/latest/developerguide/monitoring-cloudwatch.html#waf-metrics
-        // Capturing these metrics will incur additional costs, and we
-        // don't need to use them for this use case.
         cloudWatchMetricsEnabled: false,
-        // The sampledRequestsEnabled just stores a sample of the
-        // requests that pass all the rules (we have no rules so this
-        // is redundant), see: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-wafv2-webacl-visibilityconfig.html#cfn-wafv2-webacl-visibilityconfig-sampledrequestsenabled
         sampledRequestsEnabled: false,
       },
       // Leave this empty.
@@ -130,7 +158,7 @@ export class WafCloudfrontSsmStack extends cdk.Stack {
         }),
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
       },
-      // webAclId: cloudfrontACL.attrArn,
+      webAclId: cloudfrontACL.attrArn,
     });
 
     new cdk.CfnOutput(this, "verifyOriginToken", {

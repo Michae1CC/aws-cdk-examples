@@ -21,5 +21,5 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://github.com/aws-samples/serverless-patterns/blob/main/cloudfront-waf-s3-cdk/src/CdkStack.cs>
 * <https://github.com/aws-samples/serverless-patterns/tree/main/cloudfront-lambda-edge-cdk-python>
 * <https://github.com/aws-samples/serverless-patterns/tree/main/apig-waf/src>
-* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_wafv2.CfnWebACL.CustomHTTPHeaderProperty.html>
 * <https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/restrict-access-to-load-balancer.html>
+* <https://awstut.com/en/2023/04/29/aws-waf-string-inspection-headers-querystring-body-cookies-en/>
