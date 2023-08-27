@@ -133,8 +133,12 @@ export class WafCloudfrontSsmStack extends cdk.Stack {
       // webAclId: cloudfrontACL.attrArn,
     });
 
-    new cdk.CfnOutput(this, "header-token-output", {
+    new cdk.CfnOutput(this, "verifyOriginToken", {
       value: tokenParameterStore.stringValue,
+    });
+
+    new cdk.CfnOutput(this, "cloudfrontDistributionName", {
+      value: myDistribution.domainName,
     });
   }
 }
