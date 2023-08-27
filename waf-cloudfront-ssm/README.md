@@ -16,3 +16,10 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## Resources
 
 * <https://aws.amazon.com/blogs/security/how-to-enhance-amazon-cloudfront-origin-security-with-aws-waf-and-aws-secrets-manager/>
+* <https://stackoverflow.com/questions/71982850/aws-cdk-cant-access-alb-through-cloudfront-domain>
+* <https://repost.aws/questions/QUi6e8FXZkQyCHd3g_on5CRQ/cdk-cloudfront-distribution-pointing-to-a-private-loadbalancer-on-a-vpc>
+* <https://github.com/aws-samples/serverless-patterns/blob/main/cloudfront-waf-s3-cdk/src/CdkStack.cs>
+* <https://github.com/aws-samples/serverless-patterns/tree/main/cloudfront-lambda-edge-cdk-python>
+* <https://github.com/aws-samples/serverless-patterns/tree/main/apig-waf/src>
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_wafv2.CfnWebACL.CustomHTTPHeaderProperty.html>
+* <https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/restrict-access-to-load-balancer.html>
