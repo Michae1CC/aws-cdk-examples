@@ -6,6 +6,6 @@ COPY . .
 EXPOSE 80
 ENV LANG=C.UTF-8
 ENV FLASK_ENV=development
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.in
 
 CMD ["python3", "index.py"]

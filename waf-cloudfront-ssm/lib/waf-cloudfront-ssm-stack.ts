@@ -30,7 +30,7 @@ export class WafCloudfrontSsmStack extends cdk.Stack {
     );
 
     // Create our alb ACL
-    let albACL = new wafv2.CfnWebACL(this, "AlbACL", {
+    const albACL = new wafv2.CfnWebACL(this, "AlbACL", {
       scope: "REGIONAL",
       description: "Verify Origin Check WAF",
       defaultAction: {
@@ -123,8 +123,7 @@ export class WafCloudfrontSsmStack extends cdk.Stack {
       // Since we're using a cloudfront scope, resources must be created in
       // the us-east-1 region
       scope: "CLOUDFRONT",
-      description:
-        "Attaches custom headers to requests made within the corporate vpn that contain an admin page access value.",
+      description: "Attaches custom headers to requests made to Cloudfront.",
       defaultAction: {
         allow: {
           customRequestHandling: {

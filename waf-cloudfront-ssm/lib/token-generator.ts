@@ -61,7 +61,7 @@ export class TokenGenerator extends Construct {
   }
 
   private createProvider(): cdk.custom_resources.Provider {
-    const handler = new Function(this, "TokenGeneratorGenerator", {
+    const handler = new Function(this, "TokenGeneratorLambda", {
       runtime: Runtime.PYTHON_3_11,
       handler: "index.handler",
       memorySize: 256,
