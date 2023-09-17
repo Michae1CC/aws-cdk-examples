@@ -9,5 +9,9 @@ import { Construct } from "constructs";
 export class StepFunctionMapIoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    const itemIterator = new sfn.Map(this, "ItemIterator", {
+      maxConcurrency: 5,
+    });
   }
 }
