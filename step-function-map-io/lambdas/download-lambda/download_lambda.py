@@ -69,6 +69,7 @@ async def download_one(
         await asyncio.to_thread(save_item, image, filename)
         status = DownloadStatus.OK
         message = f"Successfully downloaded: {base_url}/{item}"
+
     return CompletedTask(status=status, message=message)
 
 

@@ -28,7 +28,7 @@ def partition(iterable: Iterable[T], size: int) -> list[list[T]]:
     return [lst[index : index + size] for index in range(0, len(lst), size)]
 
 
-def handler(payload: InputPayload, context: Any) -> OutputPayload:
+def handler(payload: InputPayload, context: Any) -> list[OutputPayload]:
     return [
         {
             "Items": items,
