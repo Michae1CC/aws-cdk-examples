@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from typing import TypeVar, Iterable, TypedDict, Any
 
@@ -21,6 +22,10 @@ class OutputPayload(TypedDict):
     BatchInput: BatchPayload
 
 
+class Event(TypedDict):
+    Payload: InputPayload
+
+
 T = TypeVar("T")
 
 
@@ -29,18 +34,19 @@ def partition(iterable: Iterable[T], size: int) -> list[list[T]]:
     return [lst[index : index + size] for index in range(0, len(lst), size)]
 
 
-def handler(payload: InputPayload, context: Any) -> list[OutputPayload]:
+def handler(event: Event, context: Any) -> OutputPayload:
     logger: logging.Logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
+    logger.info("Payload:")
+    logger.info(json.dumps(payload))
 
-    return [
-        {
-            "Items": items,
-            "BatchInput": {
-                "FileExtension": payload["FileExtension"],
-                "BaseUrl": payload["BaseUrl"],
-                "LambdaConcur": payload["LambdaConcur"],
-            },
-        }
-        for items in partition(payload["Items"], MAX_CONCURRENCY)
-    ]
+    payload = event["Payload"]
+
+    return {
+        "Items": partition(payload["Items"], MAX_CONCURRENCY),
+        "BatchInput": {
+            "FileExtension": payload["FileExtension"],
+            "BaseUrl": payload["BaseUrl"],
+            "LambdaConcur": payload["LambdaConcur"],
+        },
+    }

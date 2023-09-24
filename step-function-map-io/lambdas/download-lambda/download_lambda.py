@@ -44,8 +44,13 @@ class CompletedTask(NamedTuple):
     message: str
 
 
+class Event(TypedDict):
+    Payload: InputPayload
+
+
 def save_item(img: bytes, filename: str) -> None:
-    (DEST_DIR / filename).write_bytes(img)
+    # (DEST_DIR / filename).write_bytes(img)
+    print("Saving: " + filename)
 
 
 async def get_item(client: httpx.AsyncClient, base_url: str, item: str) -> bytes:
@@ -138,10 +143,13 @@ def download_images(
     )
 
 
-def handler(payload: InputPayload, context: Any) -> dict[str, Any]:
+def handler(event: Event, context: Any) -> dict[str, Any]:
     logger: logging.Logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
+    logger.info("Payload:")
+    logger.info(json.dumps(payload))
 
+    payload = event["Payload"]
     completed_tasks = download_images(
         download_many,
         DEFAULT_CONCUR_REQ,
@@ -151,7 +159,6 @@ def handler(payload: InputPayload, context: Any) -> dict[str, Any]:
         payload["BatchInput"]["FileExtension"],
     )
     logger.info(json.dumps(completed_tasks))
-    print(json.dumps(completed_tasks))
 
     status_code = (
         200

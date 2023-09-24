@@ -30,8 +30,9 @@ export class StepFunctionMapIoStack extends cdk.Stack {
 
     const batchLambdaTask = new tasks.LambdaInvoke(this, "batchLambdaTask", {
       lambdaFunction: batchLambda,
-      inputPath: "$.",
-      resultPath: "$.",
+      payload: sfn.TaskInput.fromObject({
+        "Payload.$": "$",
+      }),
       payloadResponseOnly: true,
       taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(2)),
     });
@@ -39,6 +40,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
     // Download lambda
     const itemIterator = new sfn.Map(this, "ItemIterator", {
       maxConcurrency: 5,
+      itemsPath: "$.Items",
     });
 
     const downloadLambda = new lambda.Function(this, "downloadLambda", {
@@ -64,8 +66,9 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       "downloadLambdaTask",
       {
         lambdaFunction: downloadLambda,
-        inputPath: "$.",
-        resultPath: "$.",
+        payload: sfn.TaskInput.fromObject({
+          "Payload.$": "$",
+        }),
         payloadResponseOnly: true,
         taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(3)),
       }
