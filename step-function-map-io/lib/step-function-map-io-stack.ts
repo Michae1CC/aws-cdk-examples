@@ -14,6 +14,9 @@ export class StepFunctionMapIoStack extends cdk.Stack {
     super(scope, id, props);
 
     // Global environment variables
+
+    // Defines the maximum number of lambdas we would like concurrently
+    // executing
     const maxLambdaConcurrency = 5 as const;
 
     // Batch Lambda
@@ -30,17 +33,16 @@ export class StepFunctionMapIoStack extends cdk.Stack {
 
     const batchLambdaTask = new tasks.LambdaInvoke(this, "batchLambdaTask", {
       lambdaFunction: batchLambda,
-      payload: sfn.TaskInput.fromObject({
-        "Payload.$": "$",
-      }),
+      inputPath: "$",
+      resultPath: "$",
       payloadResponseOnly: true,
       taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(2)),
     });
 
     // Download lambda
     const itemIterator = new sfn.Map(this, "ItemIterator", {
-      maxConcurrency: 5,
-      itemsPath: "$.Items",
+      maxConcurrency: maxLambdaConcurrency,
+      itemsPath: "$.Tasks",
     });
 
     const downloadLambda = new lambda.Function(this, "downloadLambda", {
@@ -66,9 +68,8 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       "downloadLambdaTask",
       {
         lambdaFunction: downloadLambda,
-        payload: sfn.TaskInput.fromObject({
-          "Payload.$": "$",
-        }),
+        inputPath: "$",
+        resultPath: "$",
         payloadResponseOnly: true,
         taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(3)),
       }

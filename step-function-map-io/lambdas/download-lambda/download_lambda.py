@@ -11,12 +11,13 @@ from typing import Any, Callable, NamedTuple, TypedDict
 import httpx
 
 
-POP20_CC = ("CN IN US ID BR PK NG BD RU JP MX PH VN ET EG DE IR TR CD FR").split()
+POP20_CC = (
+    ("CN IN US ID BR PK NG BD RU JP MX PH VN ET EG DE IR TR CD FR").lower().split()
+)
 
 BASE_URL = "https://www.fluentpython.com/data/flags"
-DEST_DIR = Path("downloaded")
 
-# low concurrency default to avoid errors from remote site,
+# Low concurrency default to avoid errors from remote site,
 # such as 503 - Service Temporarily Unavailable
 DEFAULT_CONCUR_REQ = 5
 MAX_CONCUR_REQ = 1000
@@ -49,12 +50,12 @@ class Event(TypedDict):
 
 
 def save_item(img: bytes, filename: str) -> None:
-    # (DEST_DIR / filename).write_bytes(img)
     print("Saving: " + filename)
 
 
 async def get_item(client: httpx.AsyncClient, base_url: str, item: str) -> bytes:
-    url = f"{base_url}/{item}/{item}.gif".lower()
+    # Change so that we use the end part of the URL
+    url = f"{base_url}/{item}/{item}.gif"
     resp = await client.get(url, timeout=3.1, follow_redirects=True)
     resp.raise_for_status()
     return resp.content
@@ -133,7 +134,6 @@ def download_images(
     logger: logging.Logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
-    DEST_DIR.mkdir(exist_ok=True)
     actual_concur_req = min(default_concur_req, max_concur_req)
     return downloader(
         items,
@@ -143,13 +143,12 @@ def download_images(
     )
 
 
-def handler(event: Event, context: Any) -> dict[str, Any]:
+def handler(payload: InputPayload, _: Any) -> dict[str, Any]:
     logger: logging.Logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.info("Payload:")
     logger.info(json.dumps(payload))
 
-    payload = event["Payload"]
     completed_tasks = download_images(
         download_many,
         DEFAULT_CONCUR_REQ,

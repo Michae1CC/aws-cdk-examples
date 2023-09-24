@@ -17,13 +17,13 @@ class InputPayload(BatchPayload):
     Items: list[str]
 
 
-class OutputPayload(TypedDict):
+class BatchItems(TypedDict):
     Items: list[str]
     BatchInput: BatchPayload
 
 
-class Event(TypedDict):
-    Payload: InputPayload
+class OutputPayload(TypedDict):
+    Tasks: list[BatchItems]
 
 
 T = TypeVar("T")
@@ -34,19 +34,22 @@ def partition(iterable: Iterable[T], size: int) -> list[list[T]]:
     return [lst[index : index + size] for index in range(0, len(lst), size)]
 
 
-def handler(event: Event, context: Any) -> OutputPayload:
+def handler(payload: InputPayload, _: Any) -> OutputPayload:
     logger: logging.Logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.info("Payload:")
     logger.info(json.dumps(payload))
 
-    payload = event["Payload"]
-
     return {
-        "Items": partition(payload["Items"], MAX_CONCURRENCY),
-        "BatchInput": {
-            "FileExtension": payload["FileExtension"],
-            "BaseUrl": payload["BaseUrl"],
-            "LambdaConcur": payload["LambdaConcur"],
-        },
+        "Tasks": [
+            {
+                "Items": item_partition,
+                "BatchInput": {
+                    "FileExtension": payload["FileExtension"],
+                    "BaseUrl": payload["BaseUrl"],
+                    "LambdaConcur": payload["LambdaConcur"],
+                },
+            }
+            for item_partition in partition(payload["Items"], MAX_CONCURRENCY)
+        ]
     }
