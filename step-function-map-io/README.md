@@ -19,4 +19,6 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/step-functions/latest/dg/tutorial-itembatcher-param-task.html>
 * <https://github.com/cdk-patterns/serverless/tree/main/the-state-machine>
 * <https://github.com/aws-samples/serverless-patterns/tree/main/stepfunction-polly-s3-cdk>
+* <https://github.com/aws-samples/serverless-patterns/blob/main/stepfunction-ses-cdk/lib/stepfunction-ses-cdk-stack.ts>
 * <https://github.com/fluentpython/example-code-2e>
+* <https://docs.aws.amazon.com/lambda/latest/dg/API_Operations.html>

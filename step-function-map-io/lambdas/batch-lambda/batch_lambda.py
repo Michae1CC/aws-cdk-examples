@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import TypeVar, Iterable, TypedDict, Any
 
 DEFAULT_MAX_CONCURRENCY = 5
@@ -29,6 +30,9 @@ def partition(iterable: Iterable[T], size: int) -> list[list[T]]:
 
 
 def handler(payload: InputPayload, context: Any) -> list[OutputPayload]:
+    logger: logging.Logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
     return [
         {
             "Items": items,
