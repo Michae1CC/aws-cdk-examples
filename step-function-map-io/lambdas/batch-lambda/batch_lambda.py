@@ -14,16 +14,16 @@ class BatchPayload(TypedDict):
 
 
 class InputPayload(BatchPayload):
-    Items: list[str]
+    Resources: list[str]
 
 
-class BatchItems(TypedDict):
-    Items: list[str]
+class BatchResources(TypedDict):
+    ResourcePaths: list[str]
     BatchInput: BatchPayload
 
 
 class OutputPayload(TypedDict):
-    Tasks: list[BatchItems]
+    Tasks: list[BatchResources]
 
 
 T = TypeVar("T")
@@ -43,13 +43,13 @@ def handler(payload: InputPayload, _: Any) -> OutputPayload:
     return {
         "Tasks": [
             {
-                "Items": item_partition,
+                "ResourcePaths": resource_partition,
                 "BatchInput": {
                     "FileExtension": payload["FileExtension"],
                     "BaseUrl": payload["BaseUrl"],
                     "LambdaConcur": payload["LambdaConcur"],
                 },
             }
-            for item_partition in partition(payload["Items"], MAX_CONCURRENCY)
+            for resource_partition in partition(payload["Resources"], MAX_CONCURRENCY)
         ]
     }
