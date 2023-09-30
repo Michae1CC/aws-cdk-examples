@@ -3,10 +3,7 @@ import asyncio
 import logging
 import json
 import urllib
-from collections import Counter
 from http import HTTPStatus
-from enum import Enum
-from pathlib import Path
 from typing import Any, Callable, NamedTuple, TypedDict
 
 import httpx
@@ -15,7 +12,9 @@ import httpx
 POP20_CC = list(
     map(
         lambda cc: f"{cc}/{cc}.gif",
-        ("CN IN US ID BR PK NG BD RU JP MX PH VN ET EG DE IR TR CD FR").lower().split(),
+        ("CN IN US ID BR PK NG BD RU JP MX PH VN ET EG DE IR TR CD FR ZZ")
+        .lower()
+        .split(),
     )
 )
 
@@ -26,10 +25,11 @@ BASE_URL = "https://www.fluentpython.com/data/flags"
 DEFAULT_CONCUR_REQ = 5
 MAX_CONCUR_REQ = 1000
 
+IMAGES_BUCKET_NAME = os.getenv("IMAGES_BUCKET_NAME")
+
 
 class BatchPayload(TypedDict):
     BaseUrl: str
-    FileExtension: str
     LambdaConcur: str
 
 
@@ -38,15 +38,19 @@ class InputPayload(TypedDict):
     BatchInput: BatchPayload
 
 
-class DownloadStatus(str, Enum):
-    OK = "OK"
-    NOT_FOUND = "NOT FOUND"
-    ERROR = "ERROR"
-
-
-class CompletedTask(NamedTuple):
-    status: DownloadStatus
+class CompletedTaskError(NamedTuple):
+    url: str
+    status_code: int
     message: str
+
+
+class CompletedTaskSuccess(NamedTuple):
+    url: str
+    status_code: int
+    filename: str
+
+
+CompletedTask = CompletedTaskError | CompletedTaskSuccess
 
 
 class Event(TypedDict):
@@ -76,7 +80,6 @@ async def download_one(
     resource: str,
     base_url: str,
     semaphore: asyncio.Semaphore,
-    file_extension: str,
 ) -> CompletedTask:
     url = f"{base_url}/{resource}"
     try:
@@ -84,35 +87,34 @@ async def download_one(
             image = await get_resource(client, url)
     except httpx.HTTPStatusError as exc:
         response = exc.response
-        match response.status_code:
+        status_code = response.status_code
+        match status_code:
             case HTTPStatus.NOT_FOUND:
-                status = DownloadStatus.NOT_FOUND
                 message = f"Could not find: {response.url}"
             case _:
-                status = DownloadStatus.ERROR
                 message = (
                     f"HTTP error {response.status_code} - {response.reason_phrase}"
                 )
     except httpx.RequestError as exc:
-        status = DownloadStatus.ERROR
+        status_code = 400
         message = f"{exc} {type(exc)}".strip()
     else:
         filename = filename_from_url(url)
         await asyncio.to_thread(save_resource, image, filename)
-        status = DownloadStatus.OK
-        message = f"Successfully downloaded: {base_url}/{resource}"
+        status_code = int(HTTPStatus.OK)
+        return CompletedTaskSuccess(url=url, status_code=status_code, filename=filename)
 
-    return CompletedTask(status=status, message=message)
+    return CompletedTaskError(url=url, status_code=int(status_code), message=message)
 
 
 async def supervisor(
-    resource_list: list[str], base_url: str, concur_req: int, file_extension: str
+    resource_list: list[str], base_url: str, concur_req: int
 ) -> list[CompletedTask]:
     completed_tasks: list[CompletedTask] = []
     semaphore = asyncio.Semaphore(concur_req)
     async with httpx.AsyncClient() as client:
         to_do = [
-            download_one(client, resource, base_url, semaphore, file_extension)
+            download_one(client, resource, base_url, semaphore)
             for resource in sorted(resource_list)
         ]
         for corountine in asyncio.as_completed(to_do):
@@ -126,21 +128,19 @@ def download_many(
     resource_list: list[str],
     base_url: str,
     concur_req: int,
-    file_extension: str,
 ) -> list[CompletedTask]:
-    corountine = supervisor(resource_list, base_url, concur_req, file_extension)
+    corountine = supervisor(resource_list, base_url, concur_req)
     completed_tasks: list[CompletedTask] = asyncio.run(corountine)
 
     return completed_tasks
 
 
 def download_images(
-    downloader: Callable[[list[str], str, int, str], list[CompletedTask]],
+    downloader: Callable[[list[str], str, int], list[CompletedTask]],
     default_concur_req: int,
     max_concur_req: int,
     resources: list[str],
     base_url: str,
-    file_extension: str,
 ) -> list[CompletedTask]:
     logger: logging.Logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -150,13 +150,16 @@ def download_images(
         resources,
         base_url,
         actual_concur_req,
-        file_extension,
     )
 
 
-def handler(payload: InputPayload, _: Any) -> dict[str, Any]:
+def handler(payload: InputPayload, _: Any) -> list[dict[str, Any]]:
     logger: logging.Logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
+    # if not IMAGES_BUCKET_NAME:
+    #     error_message = "No IMAGES_BUCKET_NAME set"
+    #     logger.error(error_message)
+    #     return [{"StatusCode": 500, "Message": error_message}]
     logger.info("Payload:")
     logger.info(json.dumps(payload))
 
@@ -166,22 +169,10 @@ def handler(payload: InputPayload, _: Any) -> dict[str, Any]:
         int(payload["BatchInput"]["LambdaConcur"] or MAX_CONCUR_REQ),
         payload["ResourcePaths"],
         payload["BatchInput"]["BaseUrl"],
-        payload["BatchInput"]["FileExtension"],
     )
     logger.info(json.dumps(completed_tasks))
 
-    status_code = (
-        200
-        if all(task.status == DownloadStatus.OK for task in completed_tasks)
-        else 503
-    )
-    errors = {
-        "errors": [
-            task.message for task in completed_tasks if task.status != DownloadStatus.OK
-        ]
-    }
-
-    return {"statusCode": status_code, **({} if status_code == 200 else errors)}
+    return [task._asdict() for task in completed_tasks]
 
 
 if __name__ == "__main__":
@@ -189,8 +180,11 @@ if __name__ == "__main__":
         "ResourcePaths": POP20_CC,
         "BatchInput": {
             "BaseUrl": BASE_URL,
-            "FileExtension": "gif",
             "LambdaConcur": "5",
         },
     }
+    print(POP20_CC)
     result = handler(mock_input, None)
+    from pprint import pprint
+
+    pprint(result)

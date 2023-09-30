@@ -22,3 +22,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://github.com/aws-samples/serverless-patterns/blob/main/stepfunction-ses-cdk/lib/stepfunction-ses-cdk-stack.ts>
 * <https://github.com/fluentpython/example-code-2e>
 * <https://docs.aws.amazon.com/lambda/latest/dg/API_Operations.html>
+* <https://docs.aws.amazon.com/step-functions/latest/dg/concepts-input-output-filtering.html>

@@ -9,12 +9,11 @@ MAX_CONCURRENCY = int(os.getenv("MAX_CONCURRENCY") or DEFAULT_MAX_CONCURRENCY)
 
 class BatchPayload(TypedDict):
     BaseUrl: str
-    FileExtension: str
     LambdaConcur: str
 
 
 class InputPayload(BatchPayload):
-    Resources: list[str]
+    ResourcePaths: list[str]
 
 
 class BatchResources(TypedDict):
@@ -45,11 +44,12 @@ def handler(payload: InputPayload, _: Any) -> OutputPayload:
             {
                 "ResourcePaths": resource_partition,
                 "BatchInput": {
-                    "FileExtension": payload["FileExtension"],
                     "BaseUrl": payload["BaseUrl"],
                     "LambdaConcur": payload["LambdaConcur"],
                 },
             }
-            for resource_partition in partition(payload["Resources"], MAX_CONCURRENCY)
+            for resource_partition in partition(
+                payload["ResourcePaths"], MAX_CONCURRENCY
+            )
         ]
     }
