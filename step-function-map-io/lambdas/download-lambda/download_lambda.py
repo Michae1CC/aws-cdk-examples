@@ -4,8 +4,9 @@ import logging
 import json
 import urllib
 from http import HTTPStatus
-from typing import Any, Callable, NamedTuple, TypedDict
+from typing import Any, Callable, NamedTuple, Final, TypedDict
 
+import boto3
 import httpx
 
 
@@ -25,6 +26,7 @@ BASE_URL = "https://www.fluentpython.com/data/flags"
 DEFAULT_CONCUR_REQ = 5
 MAX_CONCUR_REQ = 1000
 
+S3_CLIENT: Final[Any] = boto3.client("s3")
 IMAGES_BUCKET_NAME = os.getenv("IMAGES_BUCKET_NAME")
 
 
@@ -58,7 +60,7 @@ class Event(TypedDict):
 
 
 def save_resource(img: bytes, filename: str) -> None:
-    print("Saving: " + filename)
+    S3_CLIENT.put_object(Body=img, Bucket=IMAGES_BUCKET_NAME, Key=filename)
 
 
 def filename_from_url(url: str):

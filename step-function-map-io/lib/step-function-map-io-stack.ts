@@ -1,12 +1,17 @@
 import * as cdk from "aws-cdk-lib";
 import {
+  aws_dynamodb as dynamodb,
+  aws_iam as iam,
   aws_lambda as lambda,
+  aws_kms as kms,
   aws_s3 as s3,
+  aws_sns as sns,
   aws_stepfunctions as sfn,
   aws_stepfunctions_tasks as tasks,
 } from "aws-cdk-lib";
+import { Effect } from "aws-cdk-lib/aws-iam";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
-import { DefinitionBody } from "aws-cdk-lib/aws-stepfunctions";
+import { DefinitionBody, JsonPath } from "aws-cdk-lib/aws-stepfunctions";
 import { Construct } from "constructs";
 import { join } from "path";
 
@@ -38,6 +43,26 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       ],
     });
 
+    // Url to s3 name dynamo table
+    const urlToNameTable = new dynamodb.Table(this, "urlToName", {
+      partitionKey: { name: "url", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Kms Key for Sns topic
+    const kmsKey = new kms.Key(this, "SnsKmsKey", {
+      description: "KMS key used for SNS",
+      enableKeyRotation: true,
+      enabled: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Create an sns topic to alert users of errored requests
+    const snsTopic = new sns.Topic(this, "SnsTopic", {
+      masterKey: kmsKey,
+    });
+
     // Batch Lambda
     const batchLambda = new lambda.Function(this, "batchLambda", {
       runtime: lambda.Runtime.PYTHON_3_11,
@@ -49,7 +74,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         MAX_CONCURENCY: `${maxLambdaConcurrency}`,
       },
     });
-    
+
     const batchLambdaTask = new tasks.LambdaInvoke(this, "batchLambdaTask", {
       lambdaFunction: batchLambda,
       // Use the entire input
@@ -59,12 +84,12 @@ export class StepFunctionMapIoStack extends cdk.Stack {
     });
 
     // Download lambda
-    const itemIterator = new sfn.Map(this, "ItemIterator", {
+    const itemIterator = new sfn.Map(this, "resourceIterator", {
       maxConcurrency: maxLambdaConcurrency,
       itemsPath: "$.Tasks",
       // Flatten the results from above into a single list
       resultSelector: {
-        "Results.$": "$[*][*]",
+        "results.$": "$[*][*]",
       },
     });
 
@@ -115,28 +140,92 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       ),
       handler: "consolidate_lambda.handler",
     });
-    
-    const consolidateLambdaTask = new tasks.LambdaInvoke(this, "consolidateLambdaTask", {
-      lambdaFunction: consolidateLambda,
-      // Use the entire input
-      inputPath: "$.Results[*].statusCode",
-      // Augment the result path with the all succeeded value
-      resultPath: "$.AllSucceeded",
-      payloadResponseOnly: true,
-      taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(2)),
+
+    const consolidateLambdaTask = new tasks.LambdaInvoke(
+      this,
+      "consolidateLambdaTask",
+      {
+        lambdaFunction: consolidateLambda,
+        // Use the entire input
+        inputPath: "$.results[*].statusCode",
+        // Augment the result path with the all succeeded value
+        resultPath: "$.allSucceeded",
+        payloadResponseOnly: true,
+        taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(2)),
+      }
+    );
+
+    const publishErroredTasks = new tasks.SnsPublish(
+      this,
+      "publishErroredTasks",
+      {
+        topic: snsTopic,
+        subject: "Failed stepfunction download tasks",
+        inputPath: "$.results[?(@.statusCode != 200)].message",
+        // Find all the tasks that did not have a status code of 200 and
+        // extract the message component
+        message: sfn.TaskInput.fromJsonPathAt("$"),
+        resultPath: JsonPath.DISCARD,
+      }
+    );
+
+    const dynamoPutIterator = new sfn.Map(this, "dynamoPutIterator", {
+      maxConcurrency: maxLambdaConcurrency,
+      itemsPath: "$",
+      inputPath: "$.results[?(@.statusCode == 200)]",
+      resultPath: JsonPath.DISCARD,
     });
 
+    const commitSucceededToDynamoTask = new tasks.DynamoPutItem(
+      this,
+      "commitSucceededTasks",
+      {
+        table: urlToNameTable,
+        item: {
+          url: tasks.DynamoAttributeValue.fromString(
+            JsonPath.stringAt("$.url")
+          ),
+          filename: tasks.DynamoAttributeValue.fromString(
+            JsonPath.stringAt("$.filename")
+          ),
+        },
+      }
+    );
+
     // Define the statemachine
-    const stateMachineDefinition = sfn.Chain.start(batchLambdaTask).next(
-      itemIterator.iterator(downloadLambdaTask)
-    ).next(consolidateLambdaTask);
+    const stateMachineDefinition = sfn.Chain.start(batchLambdaTask)
+      .next(itemIterator.iterator(downloadLambdaTask))
+      .next(consolidateLambdaTask)
+      .next(dynamoPutIterator.iterator(commitSucceededToDynamoTask))
+      .next(
+        new sfn.Choice(this, "Check for errored tasks")
+          .when(
+            sfn.Condition.booleanEquals("$.allSucceeded", false),
+            publishErroredTasks
+          )
+          .otherwise(new sfn.Pass(this, "No message on all succeeded"))
+      );
 
     const mapStateMachineDefinition = new sfn.StateMachine(
       this,
       "DownloadImagesConcurrently",
       {
         definitionBody: DefinitionBody.fromChainable(stateMachineDefinition),
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
       }
+    );
+
+    mapStateMachineDefinition.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: [
+          "kms:Decrypt",
+          "kms:DescribeKey",
+          "kms:Encrypt",
+          "kms:GenerateDataKey*",
+        ],
+        resources: [`${kmsKey.keyArn}`],
+      })
     );
   }
 }
