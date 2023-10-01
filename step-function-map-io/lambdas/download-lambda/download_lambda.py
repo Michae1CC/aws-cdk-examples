@@ -72,7 +72,7 @@ def filename_from_url(url: str):
 
 async def get_resource(client: httpx.AsyncClient, url: str) -> bytes:
     # Change so that we use the end part of the URL
-    resp = await client.get(url, timeout=3.1, follow_redirects=True)
+    resp = await client.get(url, timeout=10, follow_redirects=True)
     resp.raise_for_status()
     return resp.content
 
@@ -114,7 +114,7 @@ async def supervisor(
 ) -> list[CompletedTask]:
     completed_tasks: list[CompletedTask] = []
     semaphore = asyncio.Semaphore(concur_req)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         to_do = [
             download_one(client, resource, base_url, semaphore)
             for resource in sorted(resource_list)
@@ -158,10 +158,10 @@ def download_images(
 def handler(payload: InputPayload, _: Any) -> list[dict[str, Any]]:
     logger: logging.Logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
-    # if not IMAGES_BUCKET_NAME:
-    #     error_message = "No IMAGES_BUCKET_NAME set"
-    #     logger.error(error_message)
-    #     return [{"statusCode": 500, "Message": error_message}]
+    if not IMAGES_BUCKET_NAME:
+        error_message = "No IMAGES_BUCKET_NAME set"
+        logger.error(error_message)
+        return [{"statusCode": 500, "Message": error_message}]
     logger.info("Payload:")
     logger.info(json.dumps(payload))
 

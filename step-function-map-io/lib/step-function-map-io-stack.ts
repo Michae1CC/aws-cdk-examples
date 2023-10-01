@@ -80,7 +80,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       // Use the entire input
       inputPath: "$",
       payloadResponseOnly: true,
-      taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(2)),
+      taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(3)),
     });
 
     // Download lambda
@@ -128,7 +128,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         resultPath: "$",
         // Ignore any lambda invocation metadata
         payloadResponseOnly: true,
-        taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(3)),
+        taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(120)),
       }
     );
 
@@ -169,6 +169,14 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       }
     );
 
+    const publishErroredTasksAndFail = sfn.Chain.start(
+      publishErroredTasks
+    ).next(
+      new sfn.Fail(this, "All resource downloads did not succeed", {
+        cause: "One or more resources failed to download",
+      })
+    );
+
     const dynamoPutIterator = new sfn.Map(this, "dynamoPutIterator", {
       maxConcurrency: maxLambdaConcurrency,
       itemsPath: "$",
@@ -201,9 +209,9 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         new sfn.Choice(this, "Check for errored tasks")
           .when(
             sfn.Condition.booleanEquals("$.allSucceeded", false),
-            publishErroredTasks
+            publishErroredTasksAndFail
           )
-          .otherwise(new sfn.Pass(this, "No message on all succeeded"))
+          .otherwise(new sfn.Pass(this, "All resource downloads succeeded"))
       );
 
     const mapStateMachineDefinition = new sfn.StateMachine(
