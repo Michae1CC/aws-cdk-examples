@@ -49,13 +49,11 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         MAX_CONCURENCY: `${maxLambdaConcurrency}`,
       },
     });
-
+    
     const batchLambdaTask = new tasks.LambdaInvoke(this, "batchLambdaTask", {
       lambdaFunction: batchLambda,
       // Use the entire input
       inputPath: "$",
-      // Replace the entire output with the task result
-      resultPath: "$",
       payloadResponseOnly: true,
       taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(2)),
     });
@@ -64,6 +62,10 @@ export class StepFunctionMapIoStack extends cdk.Stack {
     const itemIterator = new sfn.Map(this, "ItemIterator", {
       maxConcurrency: maxLambdaConcurrency,
       itemsPath: "$.Tasks",
+      // Flatten the results from above into a single list
+      resultSelector: {
+        "Results.$": "$[*][*]",
+      },
     });
 
     const downloadLambda = new lambda.Function(this, "downloadLambda", {
@@ -105,10 +107,29 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       }
     );
 
+    // Consolidate Lambda
+    const consolidateLambda = new lambda.Function(this, "consolidateLambda", {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      code: lambda.Code.fromAsset(
+        join(__dirname, "..", "lambdas", "consolidate-lambda")
+      ),
+      handler: "consolidate_lambda.handler",
+    });
+    
+    const consolidateLambdaTask = new tasks.LambdaInvoke(this, "consolidateLambdaTask", {
+      lambdaFunction: consolidateLambda,
+      // Use the entire input
+      inputPath: "$.Results[*].statusCode",
+      // Augment the result path with the all succeeded value
+      resultPath: "$.AllSucceeded",
+      payloadResponseOnly: true,
+      taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(2)),
+    });
+
     // Define the statemachine
     const stateMachineDefinition = sfn.Chain.start(batchLambdaTask).next(
       itemIterator.iterator(downloadLambdaTask)
-    );
+    ).next(consolidateLambdaTask);
 
     const mapStateMachineDefinition = new sfn.StateMachine(
       this,

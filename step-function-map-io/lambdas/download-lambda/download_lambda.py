@@ -40,13 +40,13 @@ class InputPayload(TypedDict):
 
 class CompletedTaskError(NamedTuple):
     url: str
-    status_code: int
+    statusCode: int
     message: str
 
 
 class CompletedTaskSuccess(NamedTuple):
     url: str
-    status_code: int
+    statusCode: int
     filename: str
 
 
@@ -102,9 +102,9 @@ async def download_one(
         filename = filename_from_url(url)
         await asyncio.to_thread(save_resource, image, filename)
         status_code = int(HTTPStatus.OK)
-        return CompletedTaskSuccess(url=url, status_code=status_code, filename=filename)
+        return CompletedTaskSuccess(url=url, statusCode=status_code, filename=filename)
 
-    return CompletedTaskError(url=url, status_code=int(status_code), message=message)
+    return CompletedTaskError(url=url, statusCode=int(status_code), message=message)
 
 
 async def supervisor(
@@ -159,7 +159,7 @@ def handler(payload: InputPayload, _: Any) -> list[dict[str, Any]]:
     # if not IMAGES_BUCKET_NAME:
     #     error_message = "No IMAGES_BUCKET_NAME set"
     #     logger.error(error_message)
-    #     return [{"StatusCode": 500, "Message": error_message}]
+    #     return [{"statusCode": 500, "Message": error_message}]
     logger.info("Payload:")
     logger.info(json.dumps(payload))
 
