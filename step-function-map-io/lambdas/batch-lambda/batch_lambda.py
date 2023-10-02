@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+__author__ = "Michael Ciccotosto-Camp"
+__version__ = ""
+
 import os
 import json
 import logging

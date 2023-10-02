@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+__author__ = "Michael Ciccotosto-Camp"
+__version__ = ""
+
 import os
 import asyncio
 import logging
@@ -71,7 +76,6 @@ def filename_from_url(url: str):
 
 
 async def get_resource(client: httpx.AsyncClient, url: str) -> bytes:
-    # Change so that we use the end part of the URL
     resp = await client.get(url, timeout=10, follow_redirects=True)
     resp.raise_for_status()
     return resp.content
@@ -187,6 +191,4 @@ if __name__ == "__main__":
     }
     print(POP20_CC)
     result = handler(mock_input, None)
-    from pprint import pprint
-
-    pprint(result)
+    print(result)

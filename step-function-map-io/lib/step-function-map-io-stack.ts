@@ -1,5 +1,7 @@
 import * as cdk from "aws-cdk-lib";
+import * as apigwv2alpha from "@aws-cdk/aws-apigatewayv2-alpha";
 import {
+  aws_apigatewayv2 as apigwv2,
   aws_dynamodb as dynamodb,
   aws_iam as iam,
   aws_lambda as lambda,
@@ -9,9 +11,6 @@ import {
   aws_stepfunctions as sfn,
   aws_stepfunctions_tasks as tasks,
 } from "aws-cdk-lib";
-import { Effect } from "aws-cdk-lib/aws-iam";
-import { Runtime } from "aws-cdk-lib/aws-lambda";
-import { DefinitionBody, JsonPath } from "aws-cdk-lib/aws-stepfunctions";
 import { Construct } from "constructs";
 import { join } from "path";
 
@@ -99,7 +98,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         join(__dirname, "..", "lambdas", "download-lambda"),
         {
           bundling: {
-            image: Runtime.PYTHON_3_11.bundlingImage,
+            image: lambda.Runtime.PYTHON_3_11.bundlingImage,
             command: [
               "bash",
               "-c",
@@ -165,7 +164,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         // Find all the tasks that did not have a status code of 200 and
         // extract the message component
         message: sfn.TaskInput.fromJsonPathAt("$"),
-        resultPath: JsonPath.DISCARD,
+        resultPath: sfn.JsonPath.DISCARD,
       }
     );
 
@@ -181,7 +180,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       maxConcurrency: maxLambdaConcurrency,
       itemsPath: "$",
       inputPath: "$.results[?(@.statusCode == 200)]",
-      resultPath: JsonPath.DISCARD,
+      resultPath: sfn.JsonPath.DISCARD,
     });
 
     const commitSucceededToDynamoTask = new tasks.DynamoPutItem(
@@ -191,10 +190,10 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         table: urlToNameTable,
         item: {
           url: tasks.DynamoAttributeValue.fromString(
-            JsonPath.stringAt("$.url")
+            sfn.JsonPath.stringAt("$.url")
           ),
           filename: tasks.DynamoAttributeValue.fromString(
-            JsonPath.stringAt("$.filename")
+            sfn.JsonPath.stringAt("$.filename")
           ),
         },
       }
@@ -218,14 +217,16 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       this,
       "DownloadImagesConcurrently",
       {
-        definitionBody: DefinitionBody.fromChainable(stateMachineDefinition),
+        definitionBody: sfn.DefinitionBody.fromChainable(
+          stateMachineDefinition
+        ),
         removalPolicy: cdk.RemovalPolicy.DESTROY,
       }
     );
 
     mapStateMachineDefinition.addToRolePolicy(
       new iam.PolicyStatement({
-        effect: Effect.ALLOW,
+        effect: iam.Effect.ALLOW,
         actions: [
           "kms:Decrypt",
           "kms:DescribeKey",
@@ -235,5 +236,52 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         resources: [`${kmsKey.keyArn}`],
       })
     );
+
+    // Create a HTTP API endpoint to invoke our step function
+    // To start we will need to give the endpoint permission to
+    // invoke our function
+    const httpApiRole = new iam.Role(this, "HttpApiRole", {
+      assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+      inlinePolicies: {
+        AllowSFNExec: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              actions: ["states:StartExecution"],
+              effect: iam.Effect.ALLOW,
+              resources: [mapStateMachineDefinition.stateMachineArn],
+            }),
+          ],
+        }),
+      },
+    });
+    const api = new apigwv2alpha.HttpApi(this, "StateMachineApi", {
+      createDefaultStage: true,
+    });
+
+    // create an AWS_PROXY integration between the HTTP API and our Step Function
+    const integ = new apigwv2.CfnIntegration(this, "Integ", {
+      apiId: api.httpApiId,
+      integrationType: "AWS_PROXY",
+      connectionType: "INTERNET",
+      integrationSubtype: "StepFunctions-StartExecution",
+      credentialsArn: httpApiRole.roleArn,
+      requestParameters: {
+        Input: "$request.body",
+        StateMachineArn: mapStateMachineDefinition.stateMachineArn,
+      },
+      payloadFormatVersion: "1.0",
+      timeoutInMillis: cdk.Duration.minutes(2).toMilliseconds(),
+    });
+
+    new apigwv2.CfnRoute(this, "DefaultRoute", {
+      apiId: api.httpApiId,
+      routeKey: apigwv2alpha.HttpRouteKey.DEFAULT.key,
+      target: `integrations/${integ.ref}`,
+    });
+
+    // output the URL of the HTTP API
+    new cdk.CfnOutput(this, "Http Api Url", {
+      value: api.url ?? "Something went wrong with the deploy",
+    });
   }
 }
