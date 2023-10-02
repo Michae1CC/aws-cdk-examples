@@ -270,7 +270,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         StateMachineArn: mapStateMachineDefinition.stateMachineArn,
       },
       payloadFormatVersion: "1.0",
-      timeoutInMillis: cdk.Duration.minutes(2).toMilliseconds(),
+      timeoutInMillis: cdk.Duration.seconds(10).toMilliseconds(),
     });
 
     new apigwv2.CfnRoute(this, "DefaultRoute", {
