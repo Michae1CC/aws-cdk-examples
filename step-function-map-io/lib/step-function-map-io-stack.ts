@@ -18,13 +18,15 @@ export class StepFunctionMapIoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Global environment variables
+    /**
+     * Global resources and parameters
+     */
 
     // Defines the maximum number of lambdas we would like concurrently
     // executing
     const maxLambdaConcurrency = 5 as const;
 
-    // Images bucket
+    // An s3 bucket to place our images into
     const imagesBucket = new s3.Bucket(this, "imagesBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -49,20 +51,11 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Kms Key for Sns topic
-    const kmsKey = new kms.Key(this, "SnsKmsKey", {
-      description: "KMS key used for SNS",
-      enableKeyRotation: true,
-      enabled: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    /**
+     * Step function tasks and resources
+     */
 
-    // Create an sns topic to alert users of errored requests
-    const snsTopic = new sns.Topic(this, "SnsTopic", {
-      masterKey: kmsKey,
-    });
-
-    // Batch Lambda
+    // A lambda to batch the image download tasks
     const batchLambda = new lambda.Function(this, "batchLambda", {
       runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset(
@@ -74,24 +67,18 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       },
     });
 
+    // Create a stepfunction task for the batch lambda
     const batchLambdaTask = new tasks.LambdaInvoke(this, "batchLambdaTask", {
       lambdaFunction: batchLambda,
-      // Use the entire input
+      // Use the entire input from the step function invocation
       inputPath: "$",
+      // Don't attach any additional metadata in the payload response
       payloadResponseOnly: true,
-      taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(3)),
+      taskTimeout: sfn.Timeout.duration(cdk.Duration.seconds(5)),
     });
 
-    // Download lambda
-    const itemIterator = new sfn.Map(this, "resourceIterator", {
-      maxConcurrency: maxLambdaConcurrency,
-      itemsPath: "$.Tasks",
-      // Flatten the results from above into a single list
-      resultSelector: {
-        "results.$": "$[*][*]",
-      },
-    });
-
+    // Create a lambda to download images using the base url and resource
+    // paths
     const downloadLambda = new lambda.Function(this, "downloadLambda", {
       runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset(
@@ -116,6 +103,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
     // Allows us to save downloaded images to s3
     imagesBucket.grantWrite(downloadLambda);
 
+    // Create a stepfunction task for the download lambda
     const downloadLambdaTask = new tasks.LambdaInvoke(
       this,
       "downloadLambdaTask",
@@ -131,7 +119,19 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       }
     );
 
-    // Consolidate Lambda
+    // This map iterator will start a pool of lambda tasks each with a
+    // single item from resultSelector
+    const itemIterator = new sfn.Map(this, "resourceIterator", {
+      maxConcurrency: maxLambdaConcurrency,
+      itemsPath: "$.tasks",
+      // Flatten the results from above into a single list
+      resultSelector: {
+        "results.$": "$[*][*]",
+      },
+    });
+
+    // This lambda will just check if all the downloads from the previous steps
+    // finished successfully
     const consolidateLambda = new lambda.Function(this, "consolidateLambda", {
       runtime: lambda.Runtime.PYTHON_3_11,
       code: lambda.Code.fromAsset(
@@ -140,6 +140,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       handler: "consolidate_lambda.handler",
     });
 
+    // Create a stepfunction task for our consolidation step
     const consolidateLambdaTask = new tasks.LambdaInvoke(
       this,
       "consolidateLambdaTask",
@@ -154,20 +155,48 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       }
     );
 
+    // Create a stepfunction iterator to iterate over the successfully
+    // downloaded and create url-s3 name entries in dynamodb
+    const dynamoPutIterator = new sfn.Map(this, "dynamoPutIterator", {
+      maxConcurrency: maxLambdaConcurrency,
+      itemsPath: "$",
+      // We only want to create entries for resources that downloaded
+      // successfully, that is, downloaded with a status code of 200
+      inputPath: "$.results[?(@.statusCode == 200)]",
+      // Just forward the input for the iterator to the next step
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    // Kms Key for Sns topic
+    const kmsKey = new kms.Key(this, "SnsKmsKey", {
+      description: "KMS key used for SNS",
+      enableKeyRotation: true,
+      enabled: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Create an sns topic to alert users of errored requests
+    const snsTopic = new sns.Topic(this, "SnsTopic", {
+      masterKey: kmsKey,
+    });
+
+    // Create a stepfunction task to publish unsuccessful downloads to the
+    // above sns topic
     const publishErroredTasks = new tasks.SnsPublish(
       this,
       "publishErroredTasks",
       {
         topic: snsTopic,
         subject: "Failed stepfunction download tasks",
-        inputPath: "$.results[?(@.statusCode != 200)].message",
         // Find all the tasks that did not have a status code of 200 and
         // extract the message component
+        inputPath: "$.results[?(@.statusCode != 200)].message",
         message: sfn.TaskInput.fromJsonPathAt("$"),
         resultPath: sfn.JsonPath.DISCARD,
       }
     );
 
+    // After publishing errored task, fail the stepfunction invocation.
     const publishErroredTasksAndFail = sfn.Chain.start(
       publishErroredTasks
     ).next(
@@ -175,13 +204,6 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         cause: "One or more resources failed to download",
       })
     );
-
-    const dynamoPutIterator = new sfn.Map(this, "dynamoPutIterator", {
-      maxConcurrency: maxLambdaConcurrency,
-      itemsPath: "$",
-      inputPath: "$.results[?(@.statusCode == 200)]",
-      resultPath: sfn.JsonPath.DISCARD,
-    });
 
     const commitSucceededToDynamoTask = new tasks.DynamoPutItem(
       this,
@@ -198,6 +220,10 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         },
       }
     );
+
+    /**
+     * State machine definition and api gateway integration
+     */
 
     // Define the statemachine
     const stateMachineDefinition = sfn.Chain.start(batchLambdaTask)
@@ -224,6 +250,7 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       }
     );
 
+    // Provide the state machine access to kms key for our sns topic
     mapStateMachineDefinition.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -254,32 +281,38 @@ export class StepFunctionMapIoStack extends cdk.Stack {
         }),
       },
     });
+
     const api = new apigwv2alpha.HttpApi(this, "StateMachineApi", {
       createDefaultStage: true,
     });
 
-    // create an AWS_PROXY integration between the HTTP API and our Step Function
-    const integ = new apigwv2.CfnIntegration(this, "Integ", {
-      apiId: api.httpApiId,
-      integrationType: "AWS_PROXY",
-      connectionType: "INTERNET",
-      integrationSubtype: "StepFunctions-StartExecution",
-      credentialsArn: httpApiRole.roleArn,
-      requestParameters: {
-        Input: "$request.body",
-        StateMachineArn: mapStateMachineDefinition.stateMachineArn,
-      },
-      payloadFormatVersion: "1.0",
-      timeoutInMillis: cdk.Duration.seconds(10).toMilliseconds(),
-    });
+    // Create an AWS_PROXY integration between the HTTP API and our Step Function
+    const stepFunctionIntegration = new apigwv2.CfnIntegration(
+      this,
+      "stepFunctionIntegration",
+      {
+        apiId: api.httpApiId,
+        integrationType: "AWS_PROXY",
+        connectionType: "INTERNET",
+        integrationSubtype: "StepFunctions-StartExecution",
+        credentialsArn: httpApiRole.roleArn,
+        requestParameters: {
+          Input: "$request.body",
+          StateMachineArn: mapStateMachineDefinition.stateMachineArn,
+        },
+        payloadFormatVersion: "1.0",
+        timeoutInMillis: cdk.Duration.seconds(10).toMilliseconds(),
+      }
+    );
 
+    // Have the api gateway default route target our stepfunction integration
     new apigwv2.CfnRoute(this, "DefaultRoute", {
       apiId: api.httpApiId,
       routeKey: apigwv2alpha.HttpRouteKey.DEFAULT.key,
-      target: `integrations/${integ.ref}`,
+      target: `integrations/${stepFunctionIntegration.ref}`,
     });
 
-    // output the URL of the HTTP API
+    // Output the URL of the HTTP API
     new cdk.CfnOutput(this, "Http Api Url", {
       value: api.url ?? "Something went wrong with the deploy",
     });

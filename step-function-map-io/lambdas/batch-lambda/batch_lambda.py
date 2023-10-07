@@ -13,21 +13,21 @@ MAX_CONCURRENCY = int(os.getenv("MAX_CONCURRENCY") or DEFAULT_MAX_CONCURRENCY)
 
 
 class BatchPayload(TypedDict):
-    BaseUrl: str
-    LambdaConcur: str
+    baseUrl: str
+    lambdaConcur: str
 
 
 class InputPayload(BatchPayload):
-    ResourcePaths: list[str]
+    resourcePaths: list[str]
 
 
 class BatchResources(TypedDict):
-    ResourcePaths: list[str]
-    BatchInput: BatchPayload
+    resourcePaths: list[str]
+    batchInput: BatchPayload
 
 
 class OutputPayload(TypedDict):
-    Tasks: list[BatchResources]
+    tasks: list[BatchResources]
 
 
 T = TypeVar("T")
@@ -45,16 +45,16 @@ def handler(payload: InputPayload, _: Any) -> OutputPayload:
     logger.info(json.dumps(payload))
 
     return {
-        "Tasks": [
+        "tasks": [
             {
-                "ResourcePaths": resource_partition,
-                "BatchInput": {
-                    "BaseUrl": payload["BaseUrl"],
-                    "LambdaConcur": payload["LambdaConcur"],
+                "resourcePaths": resource_partition,
+                "batchInput": {
+                    "baseUrl": payload["baseUrl"],
+                    "lambdaConcur": payload["lambdaConcur"],
                 },
             }
             for resource_partition in partition(
-                payload["ResourcePaths"], MAX_CONCURRENCY
+                payload["resourcePaths"], MAX_CONCURRENCY
             )
         ]
     }

@@ -15,5 +15,5 @@ RESOURCE_PATHS=$(echo "$COUNTRY_CODES" | xargs -n1 -I{} echo '"{}/{}.gif"' | tr 
 curl -i --globoff -X POST \
    -H "Content-Type:application/json;chartset=UTF-8" \
    -d \
-    "{ \"ResourcePaths\": [$RESOURCE_PATHS], \"BaseUrl\": \"$BASE_URL\", \"LambdaConcur\": 2 }" \
+    "{ \"resourcePaths\": [$RESOURCE_PATHS], \"baseUrl\": \"$BASE_URL\", \"lambdaConcur\": 2 }" \
     "$1"

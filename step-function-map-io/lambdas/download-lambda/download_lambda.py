@@ -36,13 +36,13 @@ IMAGES_BUCKET_NAME = os.getenv("IMAGES_BUCKET_NAME")
 
 
 class BatchPayload(TypedDict):
-    BaseUrl: str
-    LambdaConcur: str
+    baseUrl: str
+    lambdaConcur: str
 
 
 class InputPayload(TypedDict):
-    ResourcePaths: list[str]
-    BatchInput: BatchPayload
+    resourcePaths: list[str]
+    batchInput: BatchPayload
 
 
 class CompletedTaskError(NamedTuple):
@@ -172,9 +172,9 @@ def handler(payload: InputPayload, _: Any) -> list[dict[str, Any]]:
     completed_tasks = download_images(
         download_many,
         DEFAULT_CONCUR_REQ,
-        int(payload["BatchInput"]["LambdaConcur"] or MAX_CONCUR_REQ),
-        payload["ResourcePaths"],
-        payload["BatchInput"]["BaseUrl"],
+        int(payload["batchInput"]["lambdaConcur"] or MAX_CONCUR_REQ),
+        payload["resourcePaths"],
+        payload["batchInput"]["baseUrl"],
     )
     logger.info(json.dumps(completed_tasks))
 
@@ -183,10 +183,10 @@ def handler(payload: InputPayload, _: Any) -> list[dict[str, Any]]:
 
 if __name__ == "__main__":
     mock_input: InputPayload = {
-        "ResourcePaths": POP20_CC,
-        "BatchInput": {
-            "BaseUrl": BASE_URL,
-            "LambdaConcur": "5",
+        "resourcePaths": POP20_CC,
+        "batchInput": {
+            "baseUrl": BASE_URL,
+            "lambdaConcur": "5",
         },
     }
     print(POP20_CC)
