@@ -59,6 +59,7 @@ const urlToNameTable = new dynamodb.Table(this, "urlToName", {
 ## References
 
 * <https://docs.aws.amazon.com/step-functions/latest/dg/amazon-states-language-map-state.html>
+* <https://www.datadoghq.com/knowledge-center/aws-step-functions/>
 * <https://docs.aws.amazon.com/step-functions/latest/dg/tutorial-itembatcher-param-task.html>
 * <https://github.com/cdk-patterns/serverless/tree/main/the-state-machine>
 * <https://github.com/aws-samples/serverless-patterns/tree/main/stepfunction-polly-s3-cdk>
