@@ -14,6 +14,16 @@ The step function expect the following fields in the input json
     lambda can make. We want this value set to prevent making too many requests to
     the site hosting the images.
 
+At a high level, the step function will perform the following tasks:
+
+* Take the list of resources and turn them into smaller batches
+* Download the images from multiple batches using concurrent
+running lambdas and report the location in s3 they are stored as well as 
+their download status
+* Store the s3 download location to dynamnodb for each image if the image
+download was successful
+* Notify an SNS topic if any images did not complete successfully
+
 Images that the step function downloads are stored to a "folder" in s3 where
 a dynamodb table will keep track of the url of their images as well as their
 object name in s3. Additionally, a SNS topic will notify us of any images that
@@ -202,7 +212,9 @@ with the following structure
 
 ```json
 {
-  // TODO
+  "url": "https://www.fluentpython.com/data/flags/ag/ag.gif",
+  "statusCode": 200,
+  "filename": "www.fluentpython.com/ag.gif"
 }
 ```
 
@@ -213,7 +225,31 @@ to the following.
 
 ```json
 [
-  // TODO
+  {
+    "url": "https://www.fluentpython.com/data/flags/ag/ag.gif",
+    "statusCode": 200,
+    "filename": "www.fluentpython.com/ag.gif"
+  },
+  {
+    "url": "https://www.fluentpython.com/data/flags/ae/ae.gif",
+    "statusCode": 200,
+    "filename": "www.fluentpython.com/ae.gif"
+  },
+  {
+    "url": "https://www.fluentpython.com/data/flags/ad/ad.gif",
+    "statusCode": 200,
+    "filename": "www.fluentpython.com/ad.gif"
+  },
+  {
+    "url": "https://www.fluentpython.com/data/flags/al/al.gif",
+    "statusCode": 200,
+    "filename": "www.fluentpython.com/al.gif"
+  },
+  {
+    "url": "https://www.fluentpython.com/data/flags/af/af.gif",
+    "statusCode": 200,
+    "filename": "www.fluentpython.com/af.gif"
+  }
 ]
 ```
 
@@ -262,9 +298,75 @@ new sfn.Choice(this, "Check for errored tasks")
   )
   .otherwise(new sfn.Pass(this, "All resource downloads succeeded"))
 );
+
+const mapStateMachineDefinition = new sfn.StateMachine(
+  this,
+  "DownloadImagesConcurrently",
+  {
+    definitionBody: sfn.DefinitionBody.fromChainable(
+      stateMachineDefinition
+    ),
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+  }
+);
 ```
 
+Creating the step function accomplished using a builder pattern. Tasks that
+that perform conditioning can recursively take other tasks as input to run
+a single path of execution. An api gateway has also been setup for us to hit the
+step function over a network, the following cdk code creates the resources
+required to do this.
 
+```typescript
+// Create a HTTP API endpoint to invoke our step function
+// To start we will need to give the endpoint permission to
+// invoke our function
+const httpApiRole = new iam.Role(this, "HttpApiRole", {
+  assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+  inlinePolicies: {
+    AllowSFNExec: new iam.PolicyDocument({
+      statements: [
+        new iam.PolicyStatement({
+          actions: ["states:StartExecution"],
+          effect: iam.Effect.ALLOW,
+          resources: [mapStateMachineDefinition.stateMachineArn],
+        }),
+      ],
+    }),
+  },
+});
+
+const api = new apigwv2alpha.HttpApi(this, "StateMachineApi", {
+  createDefaultStage: true,
+});
+
+// Create an AWS_PROXY integration between the HTTP API and our Step Function
+const stepFunctionIntegration = new apigwv2.CfnIntegration(
+  this,
+  "stepFunctionIntegration",
+  {
+    apiId: api.httpApiId,
+    integrationType: "AWS_PROXY",
+    connectionType: "INTERNET",
+    integrationSubtype: "StepFunctions-StartExecution",
+    credentialsArn: httpApiRole.roleArn,
+    requestParameters: {
+      Input: "$request.body",
+      StateMachineArn: mapStateMachineDefinition.stateMachineArn,
+    },
+    payloadFormatVersion: "1.0",
+    timeoutInMillis: cdk.Duration.seconds(10).toMilliseconds(),
+  }
+);
+```
+
+The `api` provides a network endpoint for us to send requests and to quick off
+a step function execution. The `stepFunctionIntegration` resource acts a 
+mediator between AWS Step Functions and AWS Api Gateway. From a incoming request
+from our pai gateway, the `stepFunctionIntegration` dictates what API call
+should be made of which step function, and feeds the body of the request in the
+start of the step function. The `httpApiRole` determines what permission the
+`stepFunctionIntegration` should have.
 
 ## References
 
