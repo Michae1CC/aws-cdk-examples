@@ -146,44 +146,125 @@ To determine the input and output paths for our map task, the `batchLambda`
 produces a output similar to the following
 
 ```json
-{
-  "name": "batchLambdaTask",
-  "output": {
-    "tasks": [
-      {
-        "resourcePaths": [
-          "ad/ad.gif",
-          "ae/ae.gif",
-          "af/af.gif",
-          "ag/ag.gif",
-          "al/al.gif"
-        ],
-        "batchInput": {
-          "baseUrl": "https://www.fluentpython.com/data/flags",
-          "lambdaConcur": 5
-        }
-      },
-      {
-        "resourcePaths": [
-          "am/am.gif",
-          "ao/ao.gif",
-          "ar/ar.gif",
-          "at/at.gif",
-          "au/au.gif"
-        ],
-        "batchInput": {
-          "baseUrl": "https://www.fluentpython.com/data/flags",
-          "lambdaConcur": 5
-        }
-      },
-      ...
-    ]
+"tasks": [
+  {
+    "resourcePaths": [
+      "ad/ad.gif",
+      "ae/ae.gif",
+      "af/af.gif",
+      "ag/ag.gif",
+      "al/al.gif"
+    ],
+    "batchInput": {
+      "baseUrl": "https://www.fluentpython.com/data/flags",
+      "lambdaConcur": 5
+    }
   },
-  "outputDetails": {
-    "truncated": false
+  {
+    "resourcePaths": [
+      "am/am.gif",
+      "ao/ao.gif",
+      "ar/ar.gif",
+      "at/at.gif",
+      "au/au.gif"
+    ],
+    "batchInput": {
+      "baseUrl": "https://www.fluentpython.com/data/flags",
+      "lambdaConcur": 5
+    }
+  },
+  // ...
+]
+```
+
+Thus, the list of items for our iteration lambda to process is located under the
+`'$.tasks'` path. Since the map task passess a single item to each iterator task
+the input for each iterator task will look similar to the following
+
+```json
+{
+    "resourcePaths": [
+      "am/am.gif",
+      "ao/ao.gif",
+      "ar/ar.gif",
+      "at/at.gif",
+      "au/au.gif"
+    ],
+    "batchInput": {
+      "baseUrl": "https://www.fluentpython.com/data/flags",
+      "lambdaConcur": 5
+    }
   }
+```
+
+The output of each iterator lambda will be a list of objects
+with the following structure
+
+```json
+{
+  // TODO
 }
 ```
+
+The map task will collate the outputs of each processed item into its own list.
+To flatten these outputs into a single list we can use the following JSONPath
+syntax `'$[*][*]'` meaning that the output sent to the sent task will look similar
+to the following.
+
+```json
+[
+  // TODO
+]
+```
+
+With this, we have everything we need to build our map task
+
+```typescript
+// This map iterator will start a pool of lambda tasks each with a
+// single item from resultSelector
+const itemIterator = new sfn.Map(this, "resourceIterator", {
+  maxConcurrency: maxLambdaConcurrency,
+  itemsPath: "$.tasks",
+  // Flatten the results from above into a single list
+  resultSelector: {
+    "results.$": "$[*][*]",
+  },
+});
+```
+
+## The step function definition and API gateway integration
+
+The state machine itself is created by chaining tasks together using the 
+`sfn.Chain` construct. The information passed to and from states is determined
+by the `inputPath`, `outputPath` and `resultPath` defined at the task 
+definition level.
+
+```typescript
+// After publishing errored task, fail the stepfunction invocation.
+const publishErroredTasksAndFail = sfn.Chain.start(
+  publishErroredTasks
+).next(
+  new sfn.Fail(this, "All resource downloads did not succeed", {
+    cause: "One or more resources failed to download",
+  })
+);
+
+// Define the statemachine
+const stateMachineDefinition = sfn.Chain.start(batchLambdaTask)
+.next(itemIterator.iterator(downloadLambdaTask))
+.next(consolidateLambdaTask)
+.next(dynamoPutIterator.iterator(commitSucceededToDynamoTask))
+.next(
+new sfn.Choice(this, "Check for errored tasks")
+  .when(
+    sfn.Condition.booleanEquals("$.allSucceeded", false),
+    publishErroredTasksAndFail
+  )
+  .otherwise(new sfn.Pass(this, "All resource downloads succeeded"))
+);
+```
+
+
 
 ## References
 

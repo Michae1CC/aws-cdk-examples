@@ -196,15 +196,6 @@ export class StepFunctionMapIoStack extends cdk.Stack {
       }
     );
 
-    // After publishing errored task, fail the stepfunction invocation.
-    const publishErroredTasksAndFail = sfn.Chain.start(
-      publishErroredTasks
-    ).next(
-      new sfn.Fail(this, "All resource downloads did not succeed", {
-        cause: "One or more resources failed to download",
-      })
-    );
-
     const commitSucceededToDynamoTask = new tasks.DynamoPutItem(
       this,
       "commitSucceededTasks",
@@ -224,6 +215,15 @@ export class StepFunctionMapIoStack extends cdk.Stack {
     /**
      * State machine definition and api gateway integration
      */
+
+    // After publishing errored task, fail the stepfunction invocation.
+    const publishErroredTasksAndFail = sfn.Chain.start(
+      publishErroredTasks
+    ).next(
+      new sfn.Fail(this, "All resource downloads did not succeed", {
+        cause: "One or more resources failed to download",
+      })
+    );
 
     // Define the statemachine
     const stateMachineDefinition = sfn.Chain.start(batchLambdaTask)
