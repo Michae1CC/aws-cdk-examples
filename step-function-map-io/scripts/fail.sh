@@ -9,8 +9,8 @@ if [[ "$#" -ne 1 ]]; then
 fi
 
 BASE_URL='https://www.fluentpython.com/data/flags';
-COUNTRY_CODES='cn in us id br pk ng bd ru jp mx ph vn et eg de ir tr cd fr zz';
-RESOURCE_PATHS=$(echo "$COUNTRY_CODES" | xargs -n1 -I{} echo '"{}/{}.gif"' | tr '\n' ',' | sed 's/.$//')
+# The resource path zz does not exist!
+RESOURCE_PATHS='"cn/cn.gif","in/in.gif","us/us.gif","mx/mx.gif", "zz/zz.gif"'
 
 curl -i --globoff -X POST \
    -H "Content-Type:application/json;chartset=UTF-8" \
