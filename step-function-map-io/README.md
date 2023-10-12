@@ -6,7 +6,7 @@ we can create a state machine to define the application workflow which dictates
 which passes input and output between states and determine when/where states
 are executed. This example explores how we can create a step function to
 concurrently download hundreds on images while staying completely serverless!
-The step function expect the following fields in the input json
+The step function expect the following fields in the input json:
 
 * baseUrl - This base url that the step function will use to download the images
 * resourcePaths - From the base url, this is a list of paths to each of the images
@@ -38,7 +38,7 @@ I've broken up the architecture into three main components:
 ## Global Resources
 
 To start, we can define an s3 bucket which will store the images downloaded by
-our step function. I've set up my bucket to move object to Glacier Instant
+our step function. I've set up the bucket to move object to Glacier Instant
 Retrieval after one day.
 
 ```typescript
@@ -153,7 +153,7 @@ const downloadLambdaTask = new tasks.LambdaInvoke(
 ```
 
 To determine the input and output paths for our map task, the `batchLambda`
-produces a output similar to the following
+produces a output similar to the following.
 
 ```json
 "tasks": [
@@ -268,7 +268,7 @@ const itemIterator = new sfn.Map(this, "resourceIterator", {
 });
 ```
 
-## The step function definition and API gateway integration
+## The Step Function Definition and API Gateway Integration
 
 The state machine itself is created by chaining tasks together using the 
 `sfn.Chain` construct. The information passed to and from states is determined
@@ -367,6 +367,116 @@ from our pai gateway, the `stepFunctionIntegration` dictates what API call
 should be made of which step function, and feeds the body of the request in the
 start of the step function. The `httpApiRole` determines what permission the
 `stepFunctionIntegration` should have.
+
+## How To Test
+
+First clone the repository
+
+```bash
+git clone https://github.com/Michae1CC/aws-cdk-examples
+```
+
+and change directory into the `step-function-map-io` folder.
+
+```bash
+cd step-function-map-io
+
+Run
+
+```bash
+npm install
+```
+
+to install the required packages to create our Cloudformation template and then
+
+```bash
+cdk bootstrap && cdk deploy
+```
+
+Make sure you have docker running during this step.
+You should see an output displaying the api gateway url
+
+```text
+Outputs:
+StepFunctionMapIoStack.HttpApiUrl = https://...
+Stack ARN:
+arn:aws:cloudformation:...
+```
+
+There are two bash scripts within the script folder, each script will make a
+request to our api gateway endpoint. The `fail.sh` script contains a resource
+path that doesn't exist which will cause the step function invocation to fail.
+
+### Testing the success case
+
+To test the success case, run the `./script/success.sh` bash script and provide
+the api gateway url as the first argument.
+
+```bash
+bash ./scripts/success.sh https://...
+```
+
+You should see output similar to the following confirming that a new executing
+has started!
+
+```text
+HTTP/2 200 
+date: Thu, 12 Oct 2023 11:58:09 GMT
+content-type: application/x-amz-json-1.0
+content-length: 180
+x-amzn-requestid: 8f4ae49f-b8ee-4a17-88fe-66
+apigw-requestid: Mr_UsgyzIAMEMKg=
+
+{"executionArn":"arn:aws:states:us-east-1:...}
+```
+
+You navigate to the step function console to view the state graph of the
+execution as well as the execution logs. This is what the execution graph
+for this step function invocation looked like for my run.
+
+![step-function-success-graph](./img/stepfunctions_graph_success.png)
+
+Since all the resource paths exist in this invocation, all the downloads
+should have succeeded.
+
+### Testing the fail case
+
+To test the success case, run the `./script/fail.sh` bash script and again
+provide the api gateway url as the first argument. If you would like to 
+receive a notification from SNS about failed tasks remember to add a 
+subscription to the topic created by this deployment. For this example, I've
+just subscribed my personal gmail using the AWS console.
+
+```bash
+bash ./scripts/fail.sh https://...
+```
+
+Similar to the success case, there should be output confirming a new step
+function invocation has started.
+
+```text
+HTTP/2 200 
+date: Thu, 12 Oct 2023 12:20:14 GMT
+content-type: application/x-amz-json-1.0
+content-length: 179
+x-amzn-requestid: ...
+apigw-requestid: MsCj1h-ioAMESiw=
+
+{"executionArn":"arn:aws:states:us-east-1:...}
+```
+
+Navigating the step function console, the state function should look similar
+to the following.
+
+![step-function-success-graph](./img/stepfunctions_graph_fail.png)
+
+This time, the `"zz/zz.gif"` doesn't exist as a resource causing the step function
+to execute the 'failure' branch. I've also received an email from my personal
+gmail account indicating which resource failed to download.
+
+```text
+["Could not find: https://www.fluentpython.com/data/flags/zz/zz.gif"]
+```
 
 ## References
 
