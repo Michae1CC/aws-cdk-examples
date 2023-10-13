@@ -395,6 +395,16 @@ cdk bootstrap && cdk deploy
 ```
 
 Make sure you have docker running during this step.
+
+---
+Tip: If you're `podman`, or some other image building client, you can specify
+the alternative client for cdk by setting the environment variable `CDK_DOCKER`
+to the name of the image building command. In the case for podman
+```bash
+export CDK_DOCKER=podman
+```
+---
+
 You should see an output displaying the api gateway url
 
 ```text
