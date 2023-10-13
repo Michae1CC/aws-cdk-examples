@@ -380,6 +380,7 @@ and change directory into the `step-function-map-io` folder.
 
 ```bash
 cd step-function-map-io
+```
 
 Run
 
