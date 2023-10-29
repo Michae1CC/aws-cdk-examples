@@ -17,3 +17,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 - <https://cloud.google.com/kubernetes-engine/docs/tutorials/configuring-domain-name-static-ip>
 - <https://kubernetes.io/docs/concepts/>
+- <https://kubernetes.io/docs/tutorials/kubernetes-basics/>
