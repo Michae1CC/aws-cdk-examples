@@ -1,4 +1,4 @@
-# Concurrently Image Downloading with AWS Step Functions
+# Concurrent Image Downloading with AWS Step Functions
 
 AWS Step Functions allow you to create state machines that follow a fixed or dynamic sequence of
 steps with great integration with other AWS products. To use AWS step functions
