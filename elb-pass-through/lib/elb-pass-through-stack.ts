@@ -1,16 +1,18 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as cdk from "aws-cdk-lib";
+import { aws_route53 as route53 } from "aws-cdk-lib";
+import { Construct } from "constructs";
 
 export class ElbPassThroughStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    const hostedZone = new route53.HostedZone(this, "awscdkexamplehostedzone", {
+      zoneName: "michaelciccotostocampawscdkexample.com",
+    });
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'ElbPassThroughQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    new cdk.CfnOutput(this, "hostedzoneNs", {
+      value: this.toJsonString(hostedZone.hostedZoneNameServers!),
+      description: "NS records for the domain",
+    });
   }
 }
