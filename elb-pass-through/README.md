@@ -16,3 +16,6 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## References
 
 * <https://learn.cantrill.io/courses/1820301/lectures/41301447>
+* <https://learn.cantrill.io/courses/2022818/lectures/45660745>
+* <https://www.cloudflare.com/learning/dns/glossary/dns-zone/>
+* <https://aws.amazon.com/route53/faqs/>

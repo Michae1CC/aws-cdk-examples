@@ -6,6 +6,12 @@ export class ElbPassThroughStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // Create route 53 resources.
+
+    /**
+     * Start by created a Route53 hosted zone. This is comparable to a
+     * DNS zone.
+     */
     const hostedZone = new route53.HostedZone(this, "awscdkexamplehostedzone", {
       zoneName: "michaelciccotostocampawscdkexample.com",
     });
