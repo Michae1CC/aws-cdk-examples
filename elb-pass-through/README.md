@@ -17,7 +17,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 * <https://learn.cantrill.io/courses/1820301/lectures/41301447>
 * <https://learn.cantrill.io/courses/2022818/lectures/45660745>
+* <https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-routing-configuration>
 * <https://www.cloudflare.com/learning/dns/glossary/dns-zone/>
 * <https://aws.amazon.com/route53/faqs/>
-* <https://medium.com/@miladev95/nginx-with-self-signed-certificate-on-docker-a514bb1a4061>
 * <https://medium.com/@miladev95/nginx-with-self-signed-certificate-on-docker-a514bb1a4061>
