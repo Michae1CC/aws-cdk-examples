@@ -3,7 +3,6 @@ import {
   aws_ec2 as ec2,
   aws_ecs as ecs,
   aws_elasticloadbalancingv2 as elbv2,
-  aws_ecs_patterns as ecs_patterns,
   aws_iam as iam,
   aws_logs as logs,
   aws_route53 as route53,
@@ -12,8 +11,6 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { join } from "path";
-import { StatusCodes } from "http-status-codes";
-import { TaskDefinition } from "aws-cdk-lib/aws-ecs";
 
 /**
  * The documented range that ECS might re-expose docker ports on
@@ -117,12 +114,11 @@ export class ElbPassThroughStack extends cdk.Stack {
     });
 
     albSecurityGroup.addEgressRule(fargateSecurityGroup, ECS_DOCKER_PORT_RANGE);
-    albSecurityGroup.addEgressRule(fargateSecurityGroup, ec2.Port.tcp(80));
-    albSecurityGroup.addEgressRule(fargateSecurityGroup, ec2.Port.tcp(443));
 
-    fargateSecurityGroup.addEgressRule(albSecurityGroup, ECS_DOCKER_PORT_RANGE);
-    fargateSecurityGroup.addEgressRule(albSecurityGroup, ec2.Port.tcp(80));
-    fargateSecurityGroup.addEgressRule(albSecurityGroup, ec2.Port.tcp(443));
+    fargateSecurityGroup.addIngressRule(
+      albSecurityGroup,
+      ECS_DOCKER_PORT_RANGE
+    );
 
     const cluster = new ecs.Cluster(this, "fargateCluster", {
       vpc: vpc,
@@ -157,6 +153,7 @@ export class ElbPassThroughStack extends cdk.Stack {
     const fargateService = new ecs.FargateService(this, "fargateService", {
       cluster,
       taskDefinition,
+      desiredCount: 1,
       securityGroups: [fargateSecurityGroup],
     });
 
@@ -193,19 +190,6 @@ export class ElbPassThroughStack extends cdk.Stack {
       }),
     });
 
-    /**
-     * Create a HTTPS listener which returns a 404 error by default
-     */
-    const publicAlbHttpsListener = loadBalancer.addListener("httpsListener", {
-      port: 443,
-      protocol: elbv2.ApplicationProtocol.HTTPS,
-      defaultAction: elbv2.ListenerAction.fixedResponse(StatusCodes.NOT_FOUND, {
-        contentType: "text/plain",
-        messageBody: `${StatusCodes.NOT_FOUND} no ALB rule.`,
-      }),
-      certificates: [domainCertificate],
-    });
-
     const targetGroup = new elbv2.ApplicationTargetGroup(this, "targetGroup", {
       vpc: vpc,
       // Specifying a protocol and port of 443 and HTTPS (respectively)
@@ -218,12 +202,14 @@ export class ElbPassThroughStack extends cdk.Stack {
       },
     });
 
-    new elbv2.ApplicationListenerRule(this, "albRule", {
-      listener: publicAlbHttpsListener,
-      // Forward all traffic received by this listener
-      conditions: [elbv2.ListenerCondition.pathPatterns(["*"])],
-      action: elbv2.ListenerAction.forward([targetGroup]),
-      priority: 100,
+    /**
+     * Create a HTTPS listener which returns a 404 error by default
+     */
+    loadBalancer.addListener("httpsListener", {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      defaultAction: elbv2.ListenerAction.forward([targetGroup]),
+      certificates: [domainCertificate],
     });
 
     targetGroup.addTarget(fargateService);
