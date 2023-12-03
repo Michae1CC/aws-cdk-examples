@@ -7,10 +7,18 @@ import {
   aws_iam as iam,
   aws_logs as logs,
   aws_route53 as route53,
+  aws_route53_targets as route53_targets,
   aws_certificatemanager as acm,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { join } from "path";
+import { StatusCodes } from "http-status-codes";
+import { TaskDefinition } from "aws-cdk-lib/aws-ecs";
+
+/**
+ * The documented range that ECS might re-expose docker ports on
+ */
+export const ECS_DOCKER_PORT_RANGE = ec2.Port.tcpRange(32768, 60999);
 
 export class ElbPassThroughStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -56,47 +64,65 @@ export class ElbPassThroughStack extends cdk.Stack {
       ],
     });
 
-    const securityGroup = new ec2.SecurityGroup(this, "bridgedFargateCluster", {
-      vpc: vpc,
-      allowAllOutbound: true,
-      securityGroupName: "bridged-fargate-service",
-    });
+    const albSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "bridgedFargateCluster",
+      {
+        vpc: vpc,
+        allowAllOutbound: true,
+        securityGroupName: "bridged-fargate-service",
+      }
+    );
 
-    securityGroup.addIngressRule(
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
       "Allow Pings from Ipv4"
     );
 
-    securityGroup.addIngressRule(
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.icmpPing(),
       "Allow Pings from Ipv6"
     );
 
-    securityGroup.addIngressRule(
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(80),
       "Allow HTTP traffic from Ipv4"
     );
 
-    securityGroup.addIngressRule(
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.tcp(80),
       "Allow HTTP from Ipv6"
     );
 
-    securityGroup.addIngressRule(
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(443),
       "Allow HTTPS traffic from Ipv4"
     );
 
-    securityGroup.addIngressRule(
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.tcp(443),
       "Allow HTTPS from Ipv6"
     );
+
+    const fargateSecurityGroup = new ec2.SecurityGroup(this, "fargateSG", {
+      vpc: vpc,
+      allowAllOutbound: true,
+      securityGroupName: "fargateSG",
+    });
+
+    albSecurityGroup.addEgressRule(fargateSecurityGroup, ECS_DOCKER_PORT_RANGE);
+    albSecurityGroup.addEgressRule(fargateSecurityGroup, ec2.Port.tcp(80));
+    albSecurityGroup.addEgressRule(fargateSecurityGroup, ec2.Port.tcp(443));
+
+    fargateSecurityGroup.addEgressRule(albSecurityGroup, ECS_DOCKER_PORT_RANGE);
+    fargateSecurityGroup.addEgressRule(albSecurityGroup, ec2.Port.tcp(80));
+    fargateSecurityGroup.addEgressRule(albSecurityGroup, ec2.Port.tcp(443));
 
     const cluster = new ecs.Cluster(this, "fargateCluster", {
       vpc: vpc,
@@ -111,38 +137,96 @@ export class ElbPassThroughStack extends cdk.Stack {
       },
     ]);
 
+    const taskDefinition = new ecs.FargateTaskDefinition(
+      this,
+      "taskDefinition",
+      {
+        cpu: 256,
+      }
+    );
+
+    const nginxSelfSignedContainer = taskDefinition.addContainer(
+      "nginxSelfSigned",
+      {
+        containerName: "nginxSelfSigned",
+        image: ecs.ContainerImage.fromAsset(join(__dirname, "docker")),
+        portMappings: [{ containerPort: 443 }],
+      }
+    );
+
+    const fargateService = new ecs.FargateService(this, "fargateService", {
+      cluster,
+      taskDefinition,
+      securityGroups: [fargateSecurityGroup],
+    });
+
+    const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "serviceAlb", {
+      vpc: vpc,
+      internetFacing: true,
+      ipAddressType: elbv2.IpAddressType.IPV4,
+      securityGroup: albSecurityGroup,
+      http2Enabled: true,
+    });
+
     /**
-     * We can create both the fargate service and application load balancer
-     * using the ApplicationLoadBalancedFargateService construct.
+     * Create an A record associating our load balancer's IP address to
+     * the domain name create using route53
      */
-    const applicationLoadBalancedFargateService =
-      new ecs_patterns.ApplicationLoadBalancedFargateService(
-        this,
-        "bridgedFargateService",
-        {
-          assignPublicIp: true,
-          certificate: domainCertificate,
-          cluster: cluster,
-          cpu: 512,
-          desiredCount: 1,
-          domainName: domainName,
-          domainZone: hostedZone,
-          listenerPort: 443,
-          // Serve all of our traffic over https
-          protocol: elbv2.ApplicationProtocol.HTTPS,
-          // Setting this value as ALIAS will create an A record mapping the
-          // designated IP address of the load balancer to the route53
-          // domain name
-          recordType:
-            ecs_patterns.ApplicationLoadBalancedServiceRecordType.ALIAS,
-          // Redirects http traffic to https
-          redirectHTTP: true,
-          securityGroups: [securityGroup],
-          taskImageOptions: {
-            image: ecs.ContainerImage.fromAsset(join(__dirname, "docker")),
-          },
-        }
-      );
+    new route53.ARecord(this, "albARecord", {
+      zone: hostedZone,
+      recordName: domainName,
+      target: route53.RecordTarget.fromAlias(
+        new route53_targets.LoadBalancerTarget(loadBalancer)
+      ),
+    });
+
+    /**
+     * Create a HTTP listener which redirects to HTTP
+     */
+    loadBalancer.addListener("httpListener", {
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      defaultAction: elbv2.ListenerAction.redirect({
+        port: "443",
+        protocol: elbv2.ApplicationProtocol.HTTPS,
+        permanent: true,
+      }),
+    });
+
+    /**
+     * Create a HTTPS listener which returns a 404 error by default
+     */
+    const publicAlbHttpsListener = loadBalancer.addListener("httpsListener", {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      defaultAction: elbv2.ListenerAction.fixedResponse(StatusCodes.NOT_FOUND, {
+        contentType: "text/plain",
+        messageBody: `${StatusCodes.NOT_FOUND} no ALB rule.`,
+      }),
+      certificates: [domainCertificate],
+    });
+
+    const targetGroup = new elbv2.ApplicationTargetGroup(this, "targetGroup", {
+      vpc: vpc,
+      // Specifying a protocol and port of 443 and HTTPS (respectively)
+      // will cause our ALB to communicate to our target group using HTTPS
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      port: 443,
+      healthCheck: {
+        protocol: elbv2.Protocol.HTTPS,
+        path: "/healthcheck",
+      },
+    });
+
+    new elbv2.ApplicationListenerRule(this, "albRule", {
+      listener: publicAlbHttpsListener,
+      // Forward all traffic received by this listener
+      conditions: [elbv2.ListenerCondition.pathPatterns(["*"])],
+      action: elbv2.ListenerAction.forward([targetGroup]),
+      priority: 100,
+    });
+
+    targetGroup.addTarget(fargateService);
 
     // Create flowlogs resources
 
