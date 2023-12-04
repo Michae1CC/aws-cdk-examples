@@ -23,7 +23,7 @@ export class ElbPassThroughStack extends cdk.Stack {
 
     // Global resources
 
-    const domainName = "michaelciccotostocampawscdkexample.com";
+    const domainName = "awscdkeg.com";
 
     // Create route 53 resources.
 
