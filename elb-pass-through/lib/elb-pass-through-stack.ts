@@ -23,7 +23,8 @@ export class ElbPassThroughStack extends cdk.Stack {
 
     // Global resources
 
-    const domainName = "awscdkeg.com";
+    const zoneName = "awscdkeg.com";
+    const domainName = `test.${zoneName}`;
 
     // Create route 53 resources.
 
@@ -35,7 +36,7 @@ export class ElbPassThroughStack extends cdk.Stack {
      * our hosting provider.
      */
     const hostedZone = new route53.HostedZone(this, "awscdkexamplehostedzone", {
-      zoneName: domainName,
+      zoneName: zoneName,
       // keep the vpc empty since we would like to keep this as a public
       // hosted zone
     });
