@@ -29,17 +29,17 @@ export class ElbPassThroughStack extends cdk.Stack {
     // Create route 53 resources.
 
     /**
-     * Start by created a Route53 hosted zone. This is a DNS DB for a domain
-     * consisting of zone file hosted on four name servers provided by DNS.
-     *
-     * Route53 in this case will double as our domain registrar as well as
-     * our hosting provider.
+     * Look up the hosted zone created using the registration process
      */
-    const hostedZone = new route53.HostedZone(this, "awscdkexamplehostedzone", {
-      zoneName: zoneName,
-      // keep the vpc empty since we would like to keep this as a public
-      // hosted zone
-    });
+    const hostedZone = route53.HostedZone.fromLookup(
+      this,
+      "awscdkexamplehostedzone",
+      {
+        domainName,
+        // keep the vpc empty since we would like to keep this as a public
+        // hosted zone
+      }
+    );
 
     // Create certificate manager resources
 
