@@ -23,8 +23,7 @@ export class ElbPassThroughStack extends cdk.Stack {
 
     // Global resources
 
-    const zoneName = "awscdkeg.com";
-    const domainName = `test.${zoneName}`;
+    const domainName = "awscdkeg.net";
 
     // Create route 53 resources.
 
@@ -52,7 +51,7 @@ export class ElbPassThroughStack extends cdk.Stack {
 
     const vpc = new ec2.Vpc(this, "fargateVpc", {
       natGateways: 0,
-      maxAzs: 2,
+      maxAzs: 3,
       subnetConfiguration: [
         {
           name: "public-subnet",
@@ -117,6 +116,42 @@ export class ElbPassThroughStack extends cdk.Stack {
     albSecurityGroup.addEgressRule(fargateSecurityGroup, ECS_DOCKER_PORT_RANGE);
 
     fargateSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv4"
+    );
+
+    fargateSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv6"
+    );
+
+    fargateSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(80),
+      "Allow HTTP traffic from Ipv4"
+    );
+
+    fargateSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.tcp(80),
+      "Allow HTTP from Ipv6"
+    );
+
+    fargateSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      "Allow HTTPS traffic from Ipv4"
+    );
+
+    fargateSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.tcp(443),
+      "Allow HTTPS from Ipv6"
+    );
+
+    fargateSecurityGroup.addIngressRule(
       albSecurityGroup,
       ECS_DOCKER_PORT_RANGE
     );
@@ -155,6 +190,7 @@ export class ElbPassThroughStack extends cdk.Stack {
       cluster,
       taskDefinition,
       desiredCount: 1,
+      assignPublicIp: true,
       securityGroups: [fargateSecurityGroup],
     });
 
@@ -214,38 +250,5 @@ export class ElbPassThroughStack extends cdk.Stack {
     });
 
     targetGroup.addTarget(fargateService);
-
-    // Create flowlogs resources
-
-    const cloudWatchLogGroup = new logs.LogGroup(this, "fargateServiceVpc");
-
-    const cloudwatchPublishPolicy = new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams",
-      ],
-      resources: [cloudWatchLogGroup.logGroupArn],
-    });
-
-    const cloudwatchPublishRole = new iam.Role(this, "CloudWatchPublishRole", {
-      assumedBy: new iam.ServicePrincipal("vpc-flow-logs.amazonaws.com"),
-    });
-
-    cloudwatchPublishRole.addToPolicy(cloudwatchPublishPolicy);
-    new ec2.FlowLog(this, "vpcFlowLogs", {
-      resourceType: ec2.FlowLogResourceType.fromVpc(vpc),
-      destination: ec2.FlowLogDestination.toCloudWatchLogs(cloudWatchLogGroup),
-    });
-
-    // Outputs
-
-    new cdk.CfnOutput(this, "hostedzoneNs", {
-      value: this.toJsonString(hostedZone.hostedZoneNameServers!),
-      description: "NS records for the domain",
-    });
   }
 }

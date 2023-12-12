@@ -23,3 +23,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://www.cloudflare.com/learning/dns/glossary/dns-zone/>
 * <https://aws.amazon.com/route53/faqs/>
 * <https://medium.com/@miladev95/nginx-with-self-signed-certificate-on-docker-a514bb1a4061>
+* <https://github.com/aws-samples/serverless-patterns/tree/main/route53-alb-fargate-cdk-dotnet>
