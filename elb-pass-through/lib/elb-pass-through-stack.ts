@@ -169,6 +169,14 @@ export class ElbPassThroughStack extends cdk.Stack {
       },
     ]);
 
+    /**
+     * Create a log group to capture the deployment output
+     */
+    const taskLogGroup = new logs.LogGroup(this, "deployLogs", {
+      logGroupName: "/ecs/cdk-deploy",
+      retention: logs.RetentionDays.FIVE_DAYS,
+    });
+
     const taskDefinition = new ecs.FargateTaskDefinition(
       this,
       "taskDefinition",
@@ -183,6 +191,10 @@ export class ElbPassThroughStack extends cdk.Stack {
         containerName: "nginxSelfSigned",
         image: ecs.ContainerImage.fromAsset(join(__dirname, "docker")),
         portMappings: [{ containerPort: 443 }],
+        logging: new ecs.AwsLogDriver({
+          logGroup: taskLogGroup,
+          streamPrefix: "cdk-deploy",
+        }),
       }
     );
 
