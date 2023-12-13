@@ -113,7 +113,7 @@ export class ElbPassThroughStack extends cdk.Stack {
       securityGroupName: "fargateSG",
     });
 
-    albSecurityGroup.addEgressRule(fargateSecurityGroup, ECS_DOCKER_PORT_RANGE);
+    albSecurityGroup.addEgressRule(fargateSecurityGroup, ec2.Port.tcp(443));
 
     fargateSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
@@ -128,35 +128,13 @@ export class ElbPassThroughStack extends cdk.Stack {
     );
 
     fargateSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(80),
-      "Allow HTTP traffic from Ipv4"
-    );
-
-    fargateSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(80),
-      "Allow HTTP from Ipv6"
-    );
-
-    fargateSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(443),
-      "Allow HTTPS traffic from Ipv4"
-    );
-
-    fargateSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(443),
-      "Allow HTTPS from Ipv6"
-    );
-
-    fargateSecurityGroup.addIngressRule(
       albSecurityGroup,
-      ECS_DOCKER_PORT_RANGE
+      // Just 443, look at ecs networking modes
+      ec2.Port.tcp(443),
     );
 
     const cluster = new ecs.Cluster(this, "fargateCluster", {
+      //s3, ecr api or NAT gateway
       vpc: vpc,
       enableFargateCapacityProviders: true,
     });
@@ -202,7 +180,8 @@ export class ElbPassThroughStack extends cdk.Stack {
       cluster,
       taskDefinition,
       desiredCount: 1,
-      assignPublicIp: true,
+      // We will need to add a NAT gatway to get this working
+      assignPublicIp: false,
       securityGroups: [fargateSecurityGroup],
     });
 
