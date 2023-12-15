@@ -12,11 +12,6 @@ import {
 import { Construct } from "constructs";
 import { join } from "path";
 
-/**
- * The documented range that ECS might re-expose docker ports on
- */
-export const ECS_DOCKER_PORT_RANGE = ec2.Port.tcpRange(32768, 60999);
-
 export class ElbPassThroughStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -50,12 +45,17 @@ export class ElbPassThroughStack extends cdk.Stack {
     // Create EC2 and ECS resources
 
     const vpc = new ec2.Vpc(this, "fargateVpc", {
-      natGateways: 0,
-      maxAzs: 3,
+      natGateways: 2,
+      maxAzs: 2,
       subnetConfiguration: [
         {
           name: "public-subnet",
           subnetType: ec2.SubnetType.PUBLIC,
+          cidrMask: 24,
+        },
+        {
+          name: "private-subnet",
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
           cidrMask: 24,
         },
       ],
@@ -130,7 +130,7 @@ export class ElbPassThroughStack extends cdk.Stack {
     fargateSecurityGroup.addIngressRule(
       albSecurityGroup,
       // Just 443, look at ecs networking modes
-      ec2.Port.tcp(443),
+      ec2.Port.tcp(443)
     );
 
     const cluster = new ecs.Cluster(this, "fargateCluster", {
@@ -166,6 +166,7 @@ export class ElbPassThroughStack extends cdk.Stack {
     const nginxSelfSignedContainer = taskDefinition.addContainer(
       "nginxSelfSigned",
       {
+        essential: true,
         containerName: "nginxSelfSigned",
         image: ecs.ContainerImage.fromAsset(join(__dirname, "docker")),
         portMappings: [{ containerPort: 443 }],
@@ -179,10 +180,15 @@ export class ElbPassThroughStack extends cdk.Stack {
     const fargateService = new ecs.FargateService(this, "fargateService", {
       cluster,
       taskDefinition,
-      desiredCount: 1,
       // We will need to add a NAT gatway to get this working
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
       assignPublicIp: false,
       securityGroups: [fargateSecurityGroup],
+      desiredCount: 1,
+      minHealthyPercent: 0,
+      maxHealthyPercent: 100,
     });
 
     const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "serviceAlb", {
