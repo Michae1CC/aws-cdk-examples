@@ -52,6 +52,59 @@ export class ElbPassThroughStack extends cdk.Stack {
       validation: acm.CertificateValidation.fromDns(hostedZone),
     });
 
+    // Resources use to create our health check
+
+    // Kms Key for Sns topic
+    const kmsKey = new kms.Key(this, "SnsKmsKey", {
+      description: "KMS key used for SNS",
+      enableKeyRotation: true,
+      enabled: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Create an sns topic to alert engineers of a failed health check
+    const snsTopic = new sns.Topic(this, "SnsTopic", {
+      masterKey: kmsKey,
+    });
+
+    snsTopic.addSubscription(
+      new sns_subscriptions.EmailSubscription(process.env.SNS_EMAIL!)
+    );
+
+    const healthCheck = new route53.CfnHealthCheck(this, "serviceHealthCheck", {
+      healthCheckConfig: {
+        type: "HTTPS",
+        requestInterval: cdk.Duration.seconds(10).toSeconds(),
+        failureThreshold: 2,
+        fullyQualifiedDomainName: domainName,
+        port: HTTPS_PORT,
+        resourcePath: "/healthcheck",
+      },
+    });
+
+    const healthCheckMetric = new cloudwatch.Metric({
+      namespace: "AWS/Route53",
+      metricName: "HealthCheckStatus",
+      dimensionsMap: {
+        HealthCheckId: healthCheck.attrHealthCheckId,
+      },
+      statistic: cloudwatch.Stats.MINIMUM,
+      period: cdk.Duration.seconds(30),
+    });
+
+    const healthCheckAlarm = healthCheckMetric.createAlarm(
+      this,
+      "route53Alarm",
+      {
+        actionsEnabled: true,
+        comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+        threshold: 1,
+        evaluationPeriods: 1,
+        alarmDescription: "Route53 bad status",
+      }
+    );
+
+    healthCheckAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(snsTopic));
     // Create EC2 and ECS resources
 
     /**
@@ -192,6 +245,10 @@ export class ElbPassThroughStack extends cdk.Stack {
     const fargateService = new ecs.FargateService(this, "fargateService", {
       cluster,
       taskDefinition,
+      deploymentAlarms: {
+        alarmNames: [healthCheckAlarm.alarmName],
+        behavior: ecs.AlarmBehavior.ROLLBACK_ON_ALARM,
+      },
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
@@ -258,58 +315,5 @@ export class ElbPassThroughStack extends cdk.Stack {
     });
 
     targetGroup.addTarget(fargateService);
-
-    // Resources use to create our health check
-
-    // Kms Key for Sns topic
-    const kmsKey = new kms.Key(this, "SnsKmsKey", {
-      description: "KMS key used for SNS",
-      enableKeyRotation: true,
-      enabled: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    // Create an sns topic to alert users of errored requests
-    const snsTopic = new sns.Topic(this, "SnsTopic", {
-      masterKey: kmsKey,
-    });
-    snsTopic.addSubscription(
-      new sns_subscriptions.EmailSubscription(process.env.SNS_EMAIL!)
-    );
-
-    const healthCheck = new route53.CfnHealthCheck(this, "serviceHealthCheck", {
-      healthCheckConfig: {
-        type: "HTTPS",
-        requestInterval: cdk.Duration.seconds(10).toSeconds(),
-        failureThreshold: 2,
-        fullyQualifiedDomainName: domainName,
-        port: HTTPS_PORT,
-        resourcePath: "/healthcheck",
-      },
-    });
-
-    const healthCheckMetric = new cloudwatch.Metric({
-      namespace: "AWS/Route53",
-      metricName: "HealthCheckStatus",
-      dimensionsMap: {
-        HealthCheckId: healthCheck.attrHealthCheckId,
-      },
-      statistic: cloudwatch.Stats.MINIMUM,
-      period: cdk.Duration.seconds(30),
-    });
-
-    const healthCheckAlarm = healthCheckMetric.createAlarm(
-      this,
-      "route53Alarm",
-      {
-        actionsEnabled: true,
-        comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-        threshold: 1,
-        evaluationPeriods: 1,
-        alarmDescription: "Route53 bad status",
-      }
-    );
-
-    healthCheckAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(snsTopic));
   }
 }
