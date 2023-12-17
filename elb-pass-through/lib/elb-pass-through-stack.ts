@@ -24,7 +24,11 @@ export class ElbPassThroughStack extends cdk.Stack {
 
     // Global resources
 
-    const domainName = "awscdkeg.net";
+    if (process.env.DOMAIN_NAME === undefined) {
+      throw new Error("No SNS email provided");
+    }
+
+    const domainName = process.env.DOMAIN_NAME;
 
     // Create route 53 resources.
 
@@ -36,7 +40,7 @@ export class ElbPassThroughStack extends cdk.Stack {
       "awscdkexamplehostedzone",
       {
         domainName,
-        // keep the vpc empty since we would like to keep this as a public
+        // Keep the vpc field empty since we would like to keep this as a public
         // hosted zone
       }
     );
@@ -54,7 +58,9 @@ export class ElbPassThroughStack extends cdk.Stack {
 
     // Resources use to create our health check
 
-    // Kms Key for Sns topic
+    /**
+     * Kms Key for Sns topic
+     */
     const kmsKey = new kms.Key(this, "SnsKmsKey", {
       description: "KMS key used for SNS",
       enableKeyRotation: true,
@@ -62,15 +68,27 @@ export class ElbPassThroughStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Create an sns topic to alert engineers of a failed health check
+    /**
+     * Create an sns topic to alert engineers of a failed health check
+     */
     const snsTopic = new sns.Topic(this, "SnsTopic", {
       masterKey: kmsKey,
     });
 
+    // Check that an email has been provided in our SNS topic, otherwise fail
+    // the build
+    if (process.env.SNS_EMAIL === undefined) {
+      throw new Error("No SNS email provided");
+    }
+
     snsTopic.addSubscription(
-      new sns_subscriptions.EmailSubscription(process.env.SNS_EMAIL!)
+      new sns_subscriptions.EmailSubscription(process.env.SNS_EMAIL)
     );
 
+    /**
+     * Create a route53 health check that will make requests to the /healthcheck
+     * path of our service.
+     */
     const healthCheck = new route53.CfnHealthCheck(this, "serviceHealthCheck", {
       healthCheckConfig: {
         type: "HTTPS",
@@ -82,6 +100,9 @@ export class ElbPassThroughStack extends cdk.Stack {
       },
     });
 
+    /**
+     * Create a metric that monitors the number of successful/failed checks
+     */
     const healthCheckMetric = new cloudwatch.Metric({
       namespace: "AWS/Route53",
       metricName: "HealthCheckStatus",
@@ -92,6 +113,9 @@ export class ElbPassThroughStack extends cdk.Stack {
       period: cdk.Duration.seconds(30),
     });
 
+    /**
+     * Create an alarm when the healthCheck fails too often for too long.
+     */
     const healthCheckAlarm = healthCheckMetric.createAlarm(
       this,
       "route53Alarm",
@@ -99,12 +123,16 @@ export class ElbPassThroughStack extends cdk.Stack {
         actionsEnabled: true,
         comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
         threshold: 1,
-        evaluationPeriods: 1,
+        evaluationPeriods: 2,
         alarmDescription: "Route53 bad status",
       }
     );
 
+    /**
+     * Send a message to the SNS topic when our health check goes into alarm.
+     */
     healthCheckAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(snsTopic));
+
     // Create EC2 and ECS resources
 
     /**
@@ -280,7 +308,7 @@ export class ElbPassThroughStack extends cdk.Stack {
     });
 
     /**
-     * Create a HTTP listener which redirects to HTTP
+     * Create a HTTP listener which redirects to HTTPS
      */
     loadBalancer.addListener("httpListener", {
       port: HTTP_PORT,
@@ -305,7 +333,8 @@ export class ElbPassThroughStack extends cdk.Stack {
     });
 
     /**
-     * Create a HTTPS listener which returns a 404 error by default
+     * Create a HTTPS listener which forwards traffic to the above target group
+     * by default.
      */
     loadBalancer.addListener("httpsListener", {
       port: HTTPS_PORT,
