@@ -59,33 +59,6 @@ export class ElbPassThroughStack extends cdk.Stack {
     // Resources use to create our health check
 
     /**
-     * Kms Key for Sns topic
-     */
-    const kmsKey = new kms.Key(this, "SnsKmsKey", {
-      description: "KMS key used for SNS",
-      enableKeyRotation: true,
-      enabled: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    /**
-     * Create an sns topic to alert engineers of a failed health check
-     */
-    const snsTopic = new sns.Topic(this, "SnsTopic", {
-      masterKey: kmsKey,
-    });
-
-    // Check that an email has been provided in our SNS topic, otherwise fail
-    // the build
-    if (process.env.SNS_EMAIL === undefined) {
-      throw new Error("No SNS email provided");
-    }
-
-    snsTopic.addSubscription(
-      new sns_subscriptions.EmailSubscription(process.env.SNS_EMAIL)
-    );
-
-    /**
      * Create a route53 health check that will make requests to the /healthcheck
      * path of our service.
      */
@@ -129,8 +102,24 @@ export class ElbPassThroughStack extends cdk.Stack {
     );
 
     /**
+     * Create an sns topic to alert engineers of a failed health check
+     */
+    const snsTopic = new sns.Topic(this, "SnsTopic");
+
+    // Check that an email has been provided in our SNS topic, otherwise fail
+    // the build
+    if (process.env.SNS_EMAIL === undefined) {
+      throw new Error("No SNS email provided");
+    }
+
+    snsTopic.addSubscription(
+      new sns_subscriptions.EmailSubscription(process.env.SNS_EMAIL)
+    );
+
+    /**
      * Send a message to the SNS topic when our health check goes into alarm.
      */
+    healthCheckAlarm;
     healthCheckAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(snsTopic));
 
     // Create EC2 and ECS resources
