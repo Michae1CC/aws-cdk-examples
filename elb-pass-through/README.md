@@ -272,7 +272,7 @@ const fargateService = new ecs.FargateService(this, "fargateService", {
 });
 ```
 
-The load balancer on the other hand will be public facing and is given IPv4 
+The load balancer on the other hand will be public facing and is given IPv4
 addressing.
 
 ```typescript
@@ -320,6 +320,8 @@ const targetGroup = new elbv2.ApplicationTargetGroup(this, "targetGroup", {
     },
 });
 ```
+
+## How to Test
 
 ## References
 
