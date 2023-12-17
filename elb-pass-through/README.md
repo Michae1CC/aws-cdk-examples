@@ -1,17 +1,50 @@
-# Welcome to your CDK TypeScript project
+# ALB SSL Bridging
 
-This is a blank project for CDK development with TypeScript.
+When setting up routing configurations from load balancers to target groups, you
+have three options our how HTTPS connections are handled:
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+* Bridging: Have an ALB decrypt the connect and re-encrypt the traffic when
+forwarding it to a target group.
+* Pass-through: Have a NLB pass encrypted traffic directly to the target groups.
+* Offload: Have an ALB decrypt the connection and have it send un-encrypted
+to the target groups.
 
-## Useful commands
+This slide from Adrian Cantrill's Associate Solutions Architect online course
+summaries it nicely:
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
+![lb-ssl-connection-types](./img/lb-ssl-connection-types.png)
+
+This tutorial will demonstrate how to set up a simple Fargate Service that
+utilizes bridging connections to handle secure traffic. The contents of the Dockerfile
+are shown below.
+
+## Website Dockerfile
+
+We will use a nginx Docker Image to generate and server the pages for our
+website. No particular reason for using a nginx Docker Image, apart from it
+being pretty straight to create and attach a self-signed certificate to our
+website.
+
+```Dockerfile
+FROM --platform=linux/amd64 nginx:latest
+
+USER root
+
+RUN : \
+    && mkdir /etc/nginx/ssl \
+    && chmod 700 /etc/nginx/ssl \
+    && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx-selfsigned.key -subj /C=AU/ST=/L=/O=/OU=/CN= -out /etc/nginx/ssl/nginx-selfsigned.crt -keyout /etc/nginx/ssl/nginx-selfsigned.key
+
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 443
+```
+
+The AWS documentation mentions that if a target group is configured to use HTTPS,
+the load balancer will establish a TLS connections with the target group using
+certificates installed on the targets. Since these certificates are not checked,
+we can used self-signed certificates here. I've generated self-signed certificates
+using the `openssl` command and have add them to our nginx configuration.
 
 ## References
 
