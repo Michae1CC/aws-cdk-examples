@@ -16,3 +16,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## References
 
 - <https://github.com/ksmin23/my-aws-cdk-examples/tree/main/api-gateway/dynamodb-cognito>
+- <https://github.com/cloudcomponents/cdk-constructs/tree/master/packages/cdk-cloudfront-authorization>
