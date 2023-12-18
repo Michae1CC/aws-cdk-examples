@@ -323,6 +323,125 @@ const targetGroup = new elbv2.ApplicationTargetGroup(this, "targetGroup", {
 
 ## How to Test
 
+### Register a Domain
+
+You will need to register a domain to test out this if you want to test this,
+setup. It's pretty simple to register a domain through Route 53 and following
+these instructions:
+<https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/domain-register.html>.
+Be warned that register domains can cost a bit (some of the cheaper domains
+can be purchased for $10 USD). I'm using the domain `awscdkeg.net` for this
+example.
+
+### Setup
+
+First clone the repository
+
+```bash
+git clone https://github.com/Michae1CC/aws-cdk-examples
+```
+
+and change directory into the `step-function-map-io` folder.
+
+```bash
+cd alb-ssl-bridging
+```
+
+Run
+
+```bash
+npm install
+```
+
+to install the required packages to create our Cloudformation template and then
+create a config file using the `.env.example` as a template
+
+```bash
+sed 's/<YOUR-ACCOUNT>/1234567890123/gI' < .env.example | sed 's/<YOUR-REGION>/us-east-1/gI' | sed 's/<YOUR-DOMAIN>/awscdkeg.net/gI' | sed 's/<YOUR-EMAIL>/john-doe@example.com/gI' > .env
+```
+
+Next boot strap and deploy your environment.
+
+```bash
+cdk bootstrap && cdk deploy
+```
+
+Make sure you have docker running during this step.
+
+---
+Tip: If you're `podman`, or some other image building client, you can specify
+the alternative client for cdk by setting the environment variable `CDK_DOCKER`
+to the name of the image building command. In the case for podman
+
+```bash
+export CDK_DOCKER=podman
+```
+
+---
+
+### Usage
+
+Once deployed we should be able to visit the website of our domain, in this case
+`awscdkeg.net`.
+
+![website-open](./img/website-open.png)
+
+We can emulate a failed deployment, by having the routes on the health check
+return a status code of 404 instead of 200. My updated Dockerfile looks like
+this.
+
+```text
+events {
+    worker_connections 1024;
+}
+
+http {
+    server {
+        listen 443 ssl;
+        server_name localhost;
+
+        ssl_certificate /etc/nginx/ssl/nginx-selfsigned.crt;
+        ssl_certificate_key /etc/nginx/ssl/nginx-selfsigned.key;
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+        }
+
+        location /healthcheck {
+            return 404;
+        }
+
+        location /healthcheck/ {
+            return 404;
+        }
+    }
+}
+```
+
+Running `cdk deploy` again, you should notice gets stuck for a while. This is
+our health checks are now failing which sets off our health check alarm.
+
+![health-check-firing](./img/health-check-firing.png)
+
+This will trigger both a roll-back of the deployment, which we can see in the
+ECS console
+
+![rollback-events](./img/rollback-events.png)
+
+as well as an email to our sns topic
+
+![sns-alarm-email](./img/sns-alarm-email.jpg)
+
+The deployment should have also failed. After the alarm the service should
+have recovered to a good state.
+
+![health-check-okay](./img/health-check-okay.png)
+
+### Cleanup
+
+Remember to run `cdk destroy` once you're done with this demo.
+
 ## References
 
 * <https://learn.cantrill.io/courses/1820301/lectures/41301447>
