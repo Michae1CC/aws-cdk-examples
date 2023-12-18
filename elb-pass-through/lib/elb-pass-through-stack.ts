@@ -7,7 +7,6 @@ import {
   aws_elasticloadbalancingv2 as elbv2,
   aws_route53 as route53,
   aws_route53_targets as route53_targets,
-  aws_kms as kms,
   aws_sns as sns,
   aws_sns_subscriptions as sns_subscriptions,
   aws_certificatemanager as acm,
