@@ -17,7 +17,7 @@ import { join } from "path";
 const HTTPS_PORT = 443;
 const HTTP_PORT = 80;
 
-export class ElbPassThroughStack extends cdk.Stack {
+export class AlbSslBridgingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 

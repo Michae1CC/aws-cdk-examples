@@ -3,11 +3,11 @@
 When setting up routing configurations from load balancers to target groups, you
 have three options our how HTTPS connections are handled:
 
-* Bridging: Have an ALB decrypt the connect and re-encrypt the traffic when
-forwarding it to a target group.
-* Pass-through: Have a NLB pass encrypted traffic directly to the target groups.
-* Offload: Have an ALB decrypt the connection and have it send un-encrypted
-to the target groups.
+- Bridging: Have an ALB decrypt the connect and re-encrypt the traffic when
+  forwarding it to a target group.
+- Pass-through: Have a NLB pass encrypted traffic directly to the target groups.
+- Offload: Have an ALB decrypt the connection and have it send un-encrypted
+  to the target groups.
 
 This slide from Adrian Cantrill's Associate Solutions Architect online course
 summaries it nicely:
@@ -81,7 +81,7 @@ http {
 
 The following cdk loads in a hosted zone from AWS Route53 hosts the domain used
 in this demo. We also create a certificate for the domain here using AWS
-certificate Manager which will provide an SSL certificate from a trusted authority
+Certificate Manager which will provide an SSL certificate from a trusted authority
 (since a user's browser won't usually trust self-signed certificates).
 
 ```typescript
@@ -91,13 +91,13 @@ certificate Manager which will provide an SSL certificate from a trusted authori
  * Look up the hosted zone created using the registration process
  */
 const hostedZone = route53.HostedZone.fromLookup(
-    this,
-    "awscdkexamplehostedzone",
-    {
+  this,
+  "awscdkexamplehostedzone",
+  {
     domainName,
     // Keep the vpc field empty since we would like to keep this as a public
     // hosted zone
-    }
+  },
 );
 
 // Create certificate manager resources
@@ -107,8 +107,8 @@ const hostedZone = route53.HostedZone.fromLookup(
  * domain.
  */
 const domainCertificate = new acm.Certificate(this, "exampleCertificate", {
-    domainName: domainName,
-    validation: acm.CertificateValidation.fromDns(hostedZone),
+  domainName: domainName,
+  validation: acm.CertificateValidation.fromDns(hostedZone),
 });
 ```
 
@@ -125,14 +125,14 @@ will periodically hit our domain using `HTTPS`.
  * path of our service.
  */
 const healthCheck = new route53.CfnHealthCheck(this, "serviceHealthCheck", {
-    healthCheckConfig: {
+  healthCheckConfig: {
     type: "HTTPS",
     requestInterval: cdk.Duration.seconds(10).toSeconds(),
     failureThreshold: 2,
     fullyQualifiedDomainName: domainName,
     port: HTTPS_PORT,
     resourcePath: "/healthcheck",
-    },
+  },
 });
 ```
 
@@ -144,13 +144,13 @@ refer to in cdk.
  * Create a metric that monitors the number of successful/failed checks
  */
 const healthCheckMetric = new cloudwatch.Metric({
-    namespace: "AWS/Route53",
-    metricName: "HealthCheckStatus",
-    dimensionsMap: {
+  namespace: "AWS/Route53",
+  metricName: "HealthCheckStatus",
+  dimensionsMap: {
     HealthCheckId: healthCheck.attrHealthCheckId,
-    },
-    statistic: cloudwatch.Stats.MINIMUM,
-    period: cdk.Duration.seconds(30),
+  },
+  statistic: cloudwatch.Stats.MINIMUM,
+  period: cdk.Duration.seconds(30),
 });
 ```
 
@@ -161,47 +161,31 @@ within a certain period of time.
 /**
  * Create an alarm when the healthCheck fails too often for too long.
  */
-const healthCheckAlarm = healthCheckMetric.createAlarm(
-    this,
-    "route53Alarm",
-    {
-    actionsEnabled: true,
-    comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-    threshold: 1,
-    evaluationPeriods: 2,
-    alarmDescription: "Route53 bad status",
-    }
-);
+const healthCheckAlarm = healthCheckMetric.createAlarm(this, "route53Alarm", {
+  actionsEnabled: true,
+  comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+  threshold: 1,
+  evaluationPeriods: 2,
+  alarmDescription: "Route53 bad status",
+});
 ```
 
 In response to an alarm, we can send a notification to a on-call SNS topic.
 
 ```typescript
 /**
- * Kms Key for Sns topic
- */
-const kmsKey = new kms.Key(this, "SnsKmsKey", {
-    description: "KMS key used for SNS",
-    enableKeyRotation: true,
-    enabled: true,
-    removalPolicy: cdk.RemovalPolicy.DESTROY,
-});
-
-/**
  * Create an sns topic to alert engineers of a failed health check
  */
-const snsTopic = new sns.Topic(this, "SnsTopic", {
-    masterKey: kmsKey,
-});
+const snsTopic = new sns.Topic(this, "SnsTopic");
 
 // Check that an email has been provided in our SNS topic, otherwise fail
 // the build
 if (process.env.SNS_EMAIL === undefined) {
-    throw new Error("No SNS email provided");
+  throw new Error("No SNS email provided");
 }
 
 snsTopic.addSubscription(
-    new sns_subscriptions.EmailSubscription(process.env.SNS_EMAIL)
+  new sns_subscriptions.EmailSubscription(process.env.SNS_EMAIL),
 );
 
 /**
@@ -228,20 +212,20 @@ private subnets so that fargate can discover and pull images from ECR.
  * subnet to discover/pull from ECR.
  */
 const vpc = new ec2.Vpc(this, "serviceVpc", {
-    natGateways: 2,
-    maxAzs: 2,
-    subnetConfiguration: [
+  natGateways: 2,
+  maxAzs: 2,
+  subnetConfiguration: [
     {
-        name: "public-subnet",
-        subnetType: ec2.SubnetType.PUBLIC,
-        cidrMask: 24,
+      name: "public-subnet",
+      subnetType: ec2.SubnetType.PUBLIC,
+      cidrMask: 24,
     },
     {
-        name: "private-subnet",
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-        cidrMask: 24,
+      name: "private-subnet",
+      subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      cidrMask: 24,
     },
-    ],
+  ],
 });
 ```
 
@@ -255,20 +239,20 @@ roll back the deployment to the previous image.
 
 ```typescript
 const fargateService = new ecs.FargateService(this, "fargateService", {
-    cluster,
-    taskDefinition,
-    deploymentAlarms: {
+  cluster,
+  taskDefinition,
+  deploymentAlarms: {
     alarmNames: [healthCheckAlarm.alarmName],
     behavior: ecs.AlarmBehavior.ROLLBACK_ON_ALARM,
-    },
-    vpcSubnets: {
+  },
+  vpcSubnets: {
     subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-    },
-    assignPublicIp: false,
-    securityGroups: [fargateSecurityGroup],
-    desiredCount: 1,
-    minHealthyPercent: 0,
-    maxHealthyPercent: 100,
+  },
+  assignPublicIp: false,
+  securityGroups: [fargateSecurityGroup],
+  desiredCount: 1,
+  minHealthyPercent: 0,
+  maxHealthyPercent: 100,
 });
 ```
 
@@ -277,11 +261,11 @@ addressing.
 
 ```typescript
 const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "serviceAlb", {
-    vpc: vpc,
-    internetFacing: true,
-    ipAddressType: elbv2.IpAddressType.IPV4,
-    securityGroup: albSecurityGroup,
-    http2Enabled: true,
+  vpc: vpc,
+  internetFacing: true,
+  ipAddressType: elbv2.IpAddressType.IPV4,
+  securityGroup: albSecurityGroup,
+  http2Enabled: true,
 });
 ```
 
@@ -294,11 +278,11 @@ gives this ALB to our domain
  * the domain name create using route53
  */
 new route53.ARecord(this, "albARecord", {
-    zone: hostedZone,
-    recordName: domainName,
-    target: route53.RecordTarget.fromAlias(
-    new route53_targets.LoadBalancerTarget(loadBalancer)
-    ),
+  zone: hostedZone,
+  recordName: domainName,
+  target: route53.RecordTarget.fromAlias(
+    new route53_targets.LoadBalancerTarget(loadBalancer),
+  ),
 });
 ```
 
@@ -309,15 +293,15 @@ are to be when directing traffic to this target group.
 
 ```typescript
 const targetGroup = new elbv2.ApplicationTargetGroup(this, "targetGroup", {
-    vpc: vpc,
-    // Specifying a protocol and port of HTTPS_PORT and HTTPS (respectively)
-    // will cause our ALB to communicate to our target group using HTTPS
-    protocol: elbv2.ApplicationProtocol.HTTPS,
-    port: HTTPS_PORT,
-    healthCheck: {
+  vpc: vpc,
+  // Specifying a protocol and port of HTTPS_PORT and HTTPS (respectively)
+  // will cause our ALB to communicate to our target group using HTTPS
+  protocol: elbv2.ApplicationProtocol.HTTPS,
+  port: HTTPS_PORT,
+  healthCheck: {
     protocol: elbv2.Protocol.HTTPS,
     path: "/healthcheck",
-    },
+  },
 });
 ```
 
@@ -341,7 +325,7 @@ First clone the repository
 git clone https://github.com/Michae1CC/aws-cdk-examples
 ```
 
-and change directory into the `step-function-map-io` folder.
+and change directory into the `alb-ssl-bridging` folder.
 
 ```bash
 cd alb-ssl-bridging
@@ -369,6 +353,7 @@ cdk bootstrap && cdk deploy
 Make sure you have docker running during this step.
 
 ---
+
 Tip: If you're `podman`, or some other image building client, you can specify
 the alternative client for cdk by setting the environment variable `CDK_DOCKER`
 to the name of the image building command. In the case for podman
@@ -444,14 +429,14 @@ Remember to run `cdk destroy` once you're done with this demo.
 
 ## References
 
-* <https://learn.cantrill.io/courses/1820301/lectures/41301447>
-* <https://learn.cantrill.io/courses/2022818/lectures/45660745>
-* <https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-routing-configuration>
-* <https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-update-security-groups.html>
-* <https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html>
-* <https://www.cloudflare.com/learning/dns/glossary/dns-zone/>
-* <https://aws.amazon.com/route53/faqs/>
-* <https://medium.com/@miladev95/nginx-with-self-signed-certificate-on-docker-a514bb1a4061>
-* <https://github.com/aws-samples/serverless-patterns/tree/main/route53-alb-fargate-cdk-dotnet>
-* <https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode-awsvpc.html>
-* <https://nedvedyang.medium.com/create-a-cloudformation-template-for-route53-health-check-cloudwatch-alarms-and-sns-49f70d3b3f92>
+- <https://learn.cantrill.io/courses/1820301/lectures/41301447>
+- <https://learn.cantrill.io/courses/2022818/lectures/45660745>
+- <https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-routing-configuration>
+- <https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-update-security-groups.html>
+- <https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_PortMapping.html>
+- <https://www.cloudflare.com/learning/dns/glossary/dns-zone/>
+- <https://aws.amazon.com/route53/faqs/>
+- <https://medium.com/@miladev95/nginx-with-self-signed-certificate-on-docker-a514bb1a4061>
+- <https://github.com/aws-samples/serverless-patterns/tree/main/route53-alb-fargate-cdk-dotnet>
+- <https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-networkmode-awsvpc.html>
+- <https://nedvedyang.medium.com/create-a-cloudformation-template-for-route53-health-check-cloudwatch-alarms-and-sns-49f70d3b3f92>
