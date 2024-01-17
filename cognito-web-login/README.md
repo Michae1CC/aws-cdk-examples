@@ -21,3 +21,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://haydnjmorris.medium.com/uploading-photos-to-aws-s3-getting-started-with-cognito-and-iam-c96ba5b5496d>
 - <https://blog.bytebytego.com/p/what-is-sso-episode-7>
 - <https://datatracker.ietf.org/doc/html/rfc7519#page-9>
+- <https://www.youtube.com/watch?v=l-6QSEqDJPo>
