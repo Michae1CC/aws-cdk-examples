@@ -22,3 +22,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://blog.bytebytego.com/p/what-is-sso-episode-7>
 - <https://datatracker.ietf.org/doc/html/rfc7519#page-9>
 - <https://www.youtube.com/watch?v=l-6QSEqDJPo>
+- <https://remix.run/docs/en/main/start/quickstart>
