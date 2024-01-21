@@ -23,3 +23,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://datatracker.ietf.org/doc/html/rfc7519#page-9>
 - <https://www.youtube.com/watch?v=l-6QSEqDJPo>
 - <https://remix.run/docs/en/main/start/quickstart>
+- <https://github.com/xHomu/remix-v2-server/tree/cjs-server.ts>
