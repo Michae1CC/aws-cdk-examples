@@ -1,0 +1,33 @@
+:root {
+    --coffee-light: #f3e3d3
+}
+
+* {
+    padding: 0;
+    margin: 0;
+    text-decoration: none;
+    list-style: none;
+    box-sizing: 0;
+}
+
+.navbar {
+    background-color: var(--coffee-light);
+    height: 80px;
+    width: 100%;
+}
+
+.nav-elements {
+   width: 100%;
+   max-width: 1080px;
+   margin: 0 auto;
+}
+
+.nav-elements li {
+    display: inline-block;
+    line-height: 80px;
+    margin: 0 5px;
+}
+
+h1 {
+    color: red;
+}

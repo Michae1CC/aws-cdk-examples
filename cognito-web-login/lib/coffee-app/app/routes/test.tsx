@@ -1,3 +1,4 @@
+
 import type { MetaFunction, LinksFunction } from "@remix-run/node";
 
 import stylesUrl from "~/styles/index.css";
@@ -13,18 +14,8 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export default function Index() {
+export default function Test() {
   return (
-    <>
-    <div className="navbar">
-      <div className="nav-elements">
-        <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="/">Edit</a></li>
-        <li><a href="/">Login</a></li>
-        </ul>
-      </div>
-    </div>
     <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
       <h1>Welcome to Remix</h1>
       <ul className="list-disc">
@@ -53,6 +44,5 @@ export default function Index() {
         </li>
       </ul>
     </div>
-    </>
   );
 }
