@@ -28,6 +28,16 @@
     margin: 0 5px;
 }
 
+.content-main {
+  background-color: green;
+  width: 80%;
+  height: calc(90vh - 80px);
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+
 h1 {
     color: red;
 }
