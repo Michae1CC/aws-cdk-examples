@@ -33,6 +33,9 @@ export default function Index() {
       </div>
       <div className="content-main">
         <h1>Welcome to Remix</h1>
+        <div className="feature-picture">
+          Featured with picture
+        </div>
       </div>
     </div>
   );

@@ -31,12 +31,19 @@
 .content-main {
   background-color: green;
   width: 80%;
-  height: calc(90vh - 80px);
+  height: calc(100vh - 80px);
   margin: 0 auto;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
+  padding-top: 4em;
 }
 
+.feature-picture {
+    background-color: blue;
+    width: 500px;
+    height: 40vh;
+}
 
 h1 {
     color: red;
