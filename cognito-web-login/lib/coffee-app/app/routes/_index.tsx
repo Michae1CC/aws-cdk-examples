@@ -1,6 +1,7 @@
 import type { MetaFunction, LinksFunction } from "@remix-run/node";
 
 import stylesUrl from "~/styles/index.css";
+import coffeImage from "~/img/coffee_image.jpg";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
@@ -32,9 +33,11 @@ export default function Index() {
         </div>
       </div>
       <div className="content-main">
-        <h1>Welcome to Remix</h1>
         <div className="feature-picture">
-          Featured with picture
+          <img src={coffeImage}></img>
+        </div>
+        <div className="feature-list">
+          Featured with list
         </div>
       </div>
     </div>
