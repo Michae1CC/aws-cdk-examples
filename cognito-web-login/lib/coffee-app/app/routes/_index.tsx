@@ -63,7 +63,20 @@ export default function Index() {
           </div>
         </div>
         <div className="featured-list">
-          Featured with list
+          <h3>
+            Featured
+          </h3>
+          <hr />
+          <ul>
+            <li className="featured-list-item">
+              <h4>
+                Title
+              </h4>
+              <p>
+                Description
+              </p>
+            </li>
+          </ul>
         </div>
       </div>
     </div>

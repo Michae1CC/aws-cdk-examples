@@ -92,9 +92,23 @@
 
 .featured-list {
     background-color: var(--coffee-light);
+    padding-top: 1em;
+    padding-left: 3em;
+    padding-right: 3em;
     display: block;
     width: 35%;
     height: 30%;
+}
+
+.featured-list h3 {
+    color: var(--header-text);
+    padding-bottom: 1em;
+    padding-top: 1em;
+}
+
+.featured-list li {
+    display: block;
+    margin: 1em;
 }
 
 h1 {
