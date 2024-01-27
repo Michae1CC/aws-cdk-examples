@@ -1,11 +1,13 @@
 export default function FeaturedList() {
-  const items: Array<{ title: string; description: string }> = [
+  const items: Array<{ id: string; title: string; description: string }> = [
     {
+      id: "1",
       title: "Cold Brews",
       description:
         "Lorem ipsum dolor sit amet, consectetur adipiscing edivt. Nam et",
     },
     {
+      id: "2",
       title: "Arabica vs Robusta: The Differences",
       description:
         "Lorem ipsum dolor sit amet, consectetur adipiscing edivt. Nam et",
