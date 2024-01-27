@@ -19,8 +19,10 @@ export default function FeaturedList() {
       {items.map((item, index) => {
         return (
           <div className="featured-list-item" key={`featured-list-${index}`}>
-            <h4>{item.title}</h4>
-            <p>{item.description}</p>
+            <a href="/">
+              <h4>{item.title}</h4>
+              <p>{item.description}</p>
+            </a>
           </div>
         );
       })}
