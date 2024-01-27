@@ -1,0 +1,19 @@
+.navbar {
+    background-color: var(--coffee-light);
+    height: 80px;
+    width: 100%;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.nav-elements {
+   width: 100%;
+   max-width: 1080px;
+   margin: 0 auto;
+}
+
+.nav-elements li {
+    display: inline-block;
+    line-height: 80px;
+    margin: 0 5px;
+}

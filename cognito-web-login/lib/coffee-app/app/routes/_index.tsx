@@ -1,5 +1,7 @@
 import type { MetaFunction, LinksFunction } from "@remix-run/node";
 
+import NavigationBar from "~/components/NavigationBar";
+
 import stylesUrl from "~/styles/index.css";
 import coffeeImage from "~/img/coffee_image.png";
 import coffeeImage2 from "~/img/coffee_image2.png";
@@ -10,29 +12,15 @@ export const links: LinksFunction = () => [
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "Coffee App" },
+    { name: "Michael Ciccotosto-Camp", content: "Tips for coffee enthusiasts" },
   ];
 };
 
 export default function Index() {
   return (
     <div>
-      <div className="navbar">
-        <div className="nav-elements">
-          <ul>
-            <li>
-              <a href="/">Home</a>
-            </li>
-            <li>
-              <a href="/">Edit</a>
-            </li>
-            <li>
-              <a href="/">Login</a>
-            </li>
-          </ul>
-        </div>
-      </div>
+      <NavigationBar />
       <div className="content-main">
         <div className="featured-picture-container">
           <div className="featured-picture">
