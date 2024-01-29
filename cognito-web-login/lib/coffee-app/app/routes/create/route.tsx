@@ -18,7 +18,16 @@ export default function Route() {
       <NavigationBar />
       <div className="content-main">
         <div className="create-main">
-            Create
+          <h2>New Article</h2>
+          <hr />
+          <div className="property-edit">
+            <h4>Title</h4>
+            <input type="text"></input>
+          </div>
+          <div className="property-edit">
+            <h4>Content</h4>
+            <textarea/>
+          </div>
         </div>
       </div>
     </div>
