@@ -27,8 +27,5 @@
 
 .property-edit textarea {
     width: 100%;
-}
-
-.content-input {
-    height: 40%;
+    resize: vertical;
 }

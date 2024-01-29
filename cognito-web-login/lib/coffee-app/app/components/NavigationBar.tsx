@@ -7,7 +7,7 @@ export default function NavigationBar() {
             <a href="/">Home</a>
           </li>
           <li>
-            <a href="/">Edit</a>
+            <a href="/create">Create</a>
           </li>
           <li>
             <a href="/">Login</a>

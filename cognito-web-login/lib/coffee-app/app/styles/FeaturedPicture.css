@@ -3,16 +3,11 @@
 .featured-picture-container {
     width: 50%;
     max-height: 90%;
+    overflow: hidden;
+}
+
+.featured-picture-container:hover {
     overflow-y: auto;
-}
-
-.featured-picture-container::-webkit-scrollbar {
-    display: none;
-}
-
-.featured-picture-container {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
 }
 
 .featured-picture {
