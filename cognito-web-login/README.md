@@ -27,3 +27,5 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://remix.run/docs/en/main/start/quickstart>
 - <https://github.com/xHomu/remix-v2-server/tree/cjs-server.ts>
 - <https://www.color-hex.com/color-palette/30023>
+- <https://help.okta.com/oie/en-us/content/topics/deploymentguides/aws/aws-deployment.htm>
+  
