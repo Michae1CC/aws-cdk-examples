@@ -1,15 +1,18 @@
 import type { LinksFunction } from "@remix-run/node";
 
 import NavigationBar from "~/components/NavigationBar";
+import Button from "~/components/Button";
 
 import stylesUrl from "~/styles/index.css";
 import navigationBarStylesUrl from "~/styles/NavigationBar.css";
 import createStyles from "~/styles/create.css";
+import buttonStyles from "~/styles/Button.css";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
   { rel: "stylesheet", href: navigationBarStylesUrl },
   { rel: "stylesheet", href: createStyles },
+  { rel: "stylesheet", href: buttonStyles },
 ];
 
 export default function Route() {
@@ -26,7 +29,10 @@ export default function Route() {
           </div>
           <div className="property-edit">
             <h4>Content</h4>
-            <textarea/>
+            <textarea />
+          </div>
+          <div className="property-edit">
+            <Button text="Submit"></Button>
           </div>
         </div>
       </div>

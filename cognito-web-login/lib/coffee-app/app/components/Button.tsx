@@ -1,12 +1,7 @@
-
 interface FeaturedListProps {
-    text: string;
+  text: string;
 }
 
-export default function FeaturedList(input: ) {
-    return (
-        <button>
-            
-        </button>
-    )
+export default function FeaturedList(input: FeaturedListProps) {
+  return <button className="react-button">{input.text}</button>;
 }
