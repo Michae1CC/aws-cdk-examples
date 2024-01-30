@@ -1,0 +1,25 @@
+
+@import url("~/styles/common");
+
+.search-main {
+    padding: 1em;
+    width: 50%;
+    max-height: 90%;
+    overflow-y: auto;
+}
+
+.search-main h3 {
+     color: var(--header-text);
+    font-weight: 500;
+    font-stretch: 100%;
+}
+
+.search-main h4 {
+     color: var(--header-text);
+}
+
+.search-main input {
+    width: 100%;
+    margin-top: 0.5em;
+    margin-bottom: 1em;
+}
