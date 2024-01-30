@@ -10,6 +10,9 @@ export default function NavigationBar() {
             <a href="/create">Create</a>
           </li>
           <li>
+            <a href="/search">Search</a>
+          </li>
+          <li>
             <a href="/">Login</a>
           </li>
         </ul>
