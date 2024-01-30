@@ -1,12 +1,12 @@
 
-interface props {
+interface FeaturedListProps {
     text: string;
 }
 
-export default function FeaturedList(input: props) {
+export default function FeaturedList(input: ) {
     return (
         <button>
-
+            
         </button>
     )
 }
