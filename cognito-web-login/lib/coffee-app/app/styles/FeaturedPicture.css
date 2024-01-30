@@ -4,6 +4,7 @@
     width: 50%;
     max-height: 90%;
     overflow: hidden;
+    scrollbar-gutter: stable;
 }
 
 .featured-picture-container:hover {
