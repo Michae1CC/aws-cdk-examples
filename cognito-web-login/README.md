@@ -29,3 +29,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://www.color-hex.com/color-palette/30023>
 - <https://help.okta.com/oie/en-us/content/topics/deploymentguides/aws/aws-deployment.htm>
   
+## Graphs
+
+- <https://youtu.be/996OiexHze0?t=1864>
+- <https://youtu.be/uv-EYcdGUuI?t=104>

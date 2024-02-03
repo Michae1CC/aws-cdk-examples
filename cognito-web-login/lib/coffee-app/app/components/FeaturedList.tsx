@@ -23,7 +23,7 @@ export default function FeaturedList() {
           <div className="featured-list-item" key={`featured-list-${index}`}>
             <a href="/">
               <h4>{item.title}</h4>
-              <p>{item.description}</p>
+              <div>{item.description}</div>
             </a>
           </div>
         );

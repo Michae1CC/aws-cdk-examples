@@ -37,7 +37,7 @@ export default function FeaturedPicture() {
           <div className="featured-picture" key={`featured-key-${index}`}>
             <img src={item.image} alt={item.title}></img>
             <h2>{item.title}</h2>
-            <p>{item.description}</p>
+            <div>{item.description}</div>
           </div>
         );
       })}
