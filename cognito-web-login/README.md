@@ -28,6 +28,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://github.com/xHomu/remix-v2-server/tree/cjs-server.ts>
 - <https://www.color-hex.com/color-palette/30023>
 - <https://help.okta.com/oie/en-us/content/topics/deploymentguides/aws/aws-deployment.htm>
+- <http://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0-cd-02.html#3.High-Level%20SAML%20Use%20Cases|outline>
   
 ## SDK References
 
@@ -38,3 +39,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://youtu.be/996OiexHze0?t=1864>
 - <https://youtu.be/uv-EYcdGUuI?t=104>
 - <https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html>
+- <http://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0-cd-02.html#5.1.2.SP-Initiated%20SSO:%20%20Redirect/POST%20Bindings|outline>
