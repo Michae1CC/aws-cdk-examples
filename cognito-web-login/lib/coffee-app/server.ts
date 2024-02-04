@@ -6,6 +6,8 @@ import { createRequestHandler, type RequestHandler } from "@remix-run/express";
 import { broadcastDevReady, installGlobals } from "@remix-run/node";
 import sourceMapSupport from "source-map-support";
 
+import { getAccessKeys } from "src/authentication";
+
 // patch in Remix runtime globals
 installGlobals();
 sourceMapSupport.install();
@@ -40,8 +42,9 @@ app.use(
   express.static("public/build", { immutable: true, maxAge: "1y" })
 );
 
-app.post("/access", (req, res) => {
-  console.log("Got to access");
+app.post("/access", async (req, res) => {
+  console.log(req.body);
+  getAccessKeys(req.body["idToken"]);
   res.send("Hi");
 });
 

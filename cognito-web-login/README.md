@@ -29,7 +29,12 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://www.color-hex.com/color-palette/30023>
 - <https://help.okta.com/oie/en-us/content/topics/deploymentguides/aws/aws-deployment.htm>
   
+## SDK References
+
+- <https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/cognito-identity/command/GetIdCommand/>
+
 ## Graphs
 
 - <https://youtu.be/996OiexHze0?t=1864>
 - <https://youtu.be/uv-EYcdGUuI?t=104>
+- <https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html>

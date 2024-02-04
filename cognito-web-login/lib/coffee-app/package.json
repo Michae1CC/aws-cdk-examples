@@ -12,6 +12,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity": "^3.504.0",
     "@remix-run/css-bundle": "^2.5.1",
     "@remix-run/express": "^2.5.1",
     "@remix-run/node": "^2.5.1",
