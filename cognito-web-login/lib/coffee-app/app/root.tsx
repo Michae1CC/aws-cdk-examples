@@ -43,12 +43,9 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [idToken, setIdToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    const searchParameters = new URLSearchParams(location.hash);
-    const id =
-      searchParameters.get("#id_token") ?? searchParameters.get("id_token");
-    setIdToken(id);
-  }, []);
+  const searchParameters = new URLSearchParams(location.hash);
+  const id =
+    searchParameters.get("#id_token") ?? searchParameters.get("id_token");
 
   const handleAuth = useCallback(async () => {
     console.log("idToken");
