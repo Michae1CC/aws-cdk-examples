@@ -32,5 +32,18 @@ export default function Route() {
     }
   }, [accessToken, idToken]);
 
-  return <div>redirecting</div>;
+  return <Await resolve={async () => {
+    if (accessToken !== null && idToken !== null) {
+      axios({
+        method: "post",
+        url: "/access",
+        data: {
+          accessToken,
+          idToken,
+        },
+      });
+    }
+  }}>
+    {(resolvedValue) => <p>{resolvedValue}</p>}
+  </Await>
 }
