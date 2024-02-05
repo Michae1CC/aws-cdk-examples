@@ -1,7 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import { useLocation } from "@remix-run/react";
-
 export default function Route() {
   const location = useLocation();
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -32,18 +28,5 @@ export default function Route() {
     }
   }, [accessToken, idToken]);
 
-  return <Await resolve={async () => {
-    if (accessToken !== null && idToken !== null) {
-      axios({
-        method: "post",
-        url: "/access",
-        data: {
-          accessToken,
-          idToken,
-        },
-      });
-    }
-  }}>
-    {(resolvedValue) => <p>{resolvedValue}</p>}
-  </Await>
+  return <p>Hey</p>;
 }
