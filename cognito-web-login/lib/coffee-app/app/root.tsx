@@ -1,5 +1,5 @@
 import { cssBundleHref } from "@remix-run/css-bundle";
-import type { LinksFunction } from "@remix-run/node";
+import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
 import {
   Await,
   Links,
@@ -8,6 +8,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from "@remix-run/react";
 import styles from "./tailwind.css";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
@@ -18,6 +19,21 @@ export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
   { rel: "stylesheet", href: styles },
 ];
+
+
+export async function loader({
+  params,
+}: LoaderFunctionArgs) {
+  // existing code
+  const res = axios({
+    method: "post",
+    url: "/access",
+    data: {
+      // params.idToken,
+    },
+  });
+  return (await res).data
+}
 
 export default function App() {
   const [awsAccessKeys, setAwsAccessKeys] = useState<AwsAccessKey | undefined>(
@@ -56,19 +72,8 @@ export default function App() {
     }
   }, [idToken, isLoggedIn]);
 
-  const hello = () => {
-    console.log("#############################");
-    console.log("Hello");
-    console.log("#############################");
-    return (
-      <>
-        <Outlet />
-        <ScrollRestoration />
-        <Scripts />
-        <LiveReload />
-      </>
-    );
-  };
+    const x =
+    useLoaderData<typeof loader>();
 
   return (
     <html lang="en">
@@ -80,9 +85,17 @@ export default function App() {
       </head>
       <body>
         <Suspense fallback={<div>Loading...</div>}>
-          <Await resolve={hello}>
+          <Await resolve={x} errorElement={<div>Errored</div>}>
             {(resolved) => {
-              return <>{resolved}</>;
+              return (
+                <>
+                  <div>{resolved}</div>
+                  {/* <Outlet />
+                  <ScrollRestoration />
+                  <Scripts />
+                  <LiveReload /> */}
+                </>
+              );
             }}
           </Await>
         </Suspense>

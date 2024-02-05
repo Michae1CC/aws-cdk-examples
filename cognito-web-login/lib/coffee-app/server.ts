@@ -44,7 +44,7 @@ app.use(
 
 app.post("/access", async (req, res) => {
   console.log(req.body);
-  getAccessKeys(req.body["idToken"]);
+  // getAccessKeys(req.body["idToken"]);
   res.send("Hi");
 });
 
