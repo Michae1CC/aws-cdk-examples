@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation } from "@remix-run/react";
 
@@ -19,7 +19,7 @@ export default function Route() {
     setIdToken(idTokenString);
   }, [location.hash]);
 
-  useMemo(async () => {
+  useEffect(() => {
     if (accessToken !== null && idToken !== null) {
       axios({
         method: "post",
