@@ -20,41 +20,27 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: styles },
 ];
 
-
-export async function loader({
-  params,
-}: LoaderFunctionArgs) {
-  // existing code
-  const res = axios({
-    method: "post",
-    url: "/access",
-    data: {
-      // params.idToken,
-    },
-  });
-  return (await res).data
-}
-
 export default function App() {
-  const [awsAccessKeys, setAwsAccessKeys] = useState<AwsAccessKey | undefined>(
+  const [awsAccessKeys, setAwsAccessKeys] = useState<AwsAccessKey | null>(
     undefined
   );
-  const [userInformation, setUserInformation] = useState<{}>({});
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [userInformation, setUserInformation] = useState<null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
-  const searchParameters = new URLSearchParams(location.hash);
-  const id =
-    searchParameters.get("#id_token") ?? searchParameters.get("id_token");
+  useEffect(() => {
+    const searchParameters = new URLSearchParams(location.hash);
+    const id =
+      searchParameters.get("#id_token") ?? searchParameters.get("id_token");
+    console.log(id);
+    setIdToken(id);
+  }, []);
 
-  const handleAuth = useCallback(async () => {
-    console.log("idToken");
-    console.log(idToken);
-    if (isLoggedIn) {
-      // We don't need new credentials. Return Immediately.
-      return;
-    }
-    if (idToken !== undefined) {
+  useEffect(() => {
+    const redirectedFromIdp = idToken !== null;
+    const guestUserNoAccessKeys = awsAccessKeys === null;
+    if (redirectedFromIdp) {
+      // Attempt to use the credentials to generate access tokens
       const res = axios({
         method: "post",
         url: "/access",
@@ -62,15 +48,19 @@ export default function App() {
           idToken,
         },
       });
-      setIsLoggedIn(true);
       // TODO:
       // Set aws access keys
       // Set user information
     }
-  }, [idToken, isLoggedIn]);
+    if (guestUserNoAccessKeys) {
+      // TODO:
+      // Ask backend for guest access keys
+    }
+  }, [awsAccessKeys, idToken]);
 
-    const x =
-    useLoaderData<typeof loader>();
+  useEffect(() => {
+    setIsLoggedIn(userInformation === null);
+  }, [userInformation]);
 
   return (
     <html lang="en">
@@ -81,21 +71,10 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Suspense fallback={<div>Loading...</div>}>
-          <Await resolve={x} errorElement={<div>Errored</div>}>
-            {(resolved) => {
-              return (
-                <>
-                  <div>{resolved}</div>
-                  {/* <Outlet />
-                  <ScrollRestoration />
-                  <Scripts />
-                  <LiveReload /> */}
-                </>
-              );
-            }}
-          </Await>
-        </Suspense>
+        <Outlet />
+        <ScrollRestoration />
+        <Scripts />
+        <LiveReload />
       </body>
     </html>
   );
