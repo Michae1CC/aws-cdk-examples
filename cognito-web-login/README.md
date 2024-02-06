@@ -19,6 +19,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://github.com/cloudcomponents/cdk-constructs/tree/master/packages/cdk-cloudfront-authorization>
 - <https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/loading-browser-credentials-cognito.html>
 - <https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-explicit.html>
+- <https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html>
 - <https://aws.amazon.com/blogs/compute/building-an-image-searching-solution-with-the-aws-cdk/>
 - <https://haydnjmorris.medium.com/uploading-photos-to-aws-s3-getting-started-with-cognito-and-iam-c96ba5b5496d>
 - <https://blog.bytebytego.com/p/what-is-sso-episode-7>
