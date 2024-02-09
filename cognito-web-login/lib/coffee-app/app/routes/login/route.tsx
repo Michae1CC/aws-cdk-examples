@@ -1,32 +1,8 @@
+import { useEffect } from "react";
+
 export default function Route() {
-  const location = useLocation();
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [idToken, setIdToken] = useState<string | null>(null);
-
-  useMemo(async () => {
-    const searchParameters = new URLSearchParams(location.hash);
-    console.log(location.hash);
-    const accessTokenString =
-      searchParameters.get("#access_token") ??
-      searchParameters.get("access_token");
-    setAccessToken(accessTokenString);
-    const idTokenString =
-      searchParameters.get("#id_token") ?? searchParameters.get("id_token");
-    setIdToken(idTokenString);
-  }, [location.hash]);
-
   useEffect(() => {
-    if (accessToken !== null && idToken !== null) {
-      axios({
-        method: "post",
-        url: "/access",
-        data: {
-          accessToken,
-          idToken,
-        },
-      });
-    }
-  }, [accessToken, idToken]);
-
-  return <p>Hey</p>;
+    document.cookie = "test1=Hi; SameSite=strict; Secure";
+    window.location.href = "/";
+  }, []);
 }

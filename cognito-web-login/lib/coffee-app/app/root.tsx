@@ -14,6 +14,20 @@ import styles from "./tailwind.css";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { AwsAccessKey } from "./types";
 import axios from "axios";
+import { Cookie, json } from "@remix-run/node";
+import { idToken } from "./utils/cookies";
+
+export const loader = async ({ request }: { request: Request }) => {
+  // const cookieHeader = request.headers.get("Cookie");
+
+  console.log("Executing remix backend");
+
+  return json({
+    headers: {
+      // "Set-Cookie": "Hi",
+    },
+  });
+};
 
 export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
@@ -26,41 +40,17 @@ export default function App() {
   );
   const [userInformation, setUserInformation] = useState<null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
-  useEffect(() => {
-    const searchParameters = new URLSearchParams(location.hash);
-    const id =
-      searchParameters.get("#id_token") ?? searchParameters.get("id_token");
-    console.log(id);
-    setIdToken(id);
-  }, []);
+  const hiCookie = useLoaderData<typeof loader>();
+  console.log(hiCookie);
 
-  useEffect(() => {
-    const redirectedFromIdp = idToken !== null;
-    const guestUserNoAccessKeys = awsAccessKeys === null;
-    if (redirectedFromIdp) {
-      // Attempt to use the credentials to generate access tokens
-      const res = axios({
-        method: "post",
-        url: "/access",
-        data: {
-          idToken,
-        },
-      });
-      // TODO:
-      // Set aws access keys
-      // Set user information
-    }
-    if (guestUserNoAccessKeys) {
-      // TODO:
-      // Ask backend for guest access keys
-    }
-  }, [awsAccessKeys, idToken]);
-
-  useEffect(() => {
-    setIsLoggedIn(userInformation === null);
-  }, [userInformation]);
+  // useEffect(() => {
+  //   const searchParameters = new URLSearchParams(location.hash);
+  //   const id =
+  //     searchParameters.get("#id_token") ?? searchParameters.get("id_token");
+  //   console.log(id);
+  //   setIdToken(id);
+  // }, []);
 
   return (
     <html lang="en">

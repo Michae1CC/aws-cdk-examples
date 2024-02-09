@@ -42,6 +42,11 @@ app.use(
   express.static("public/build", { immutable: true, maxAge: "1y" })
 );
 
+app.use(function (req, res, next) {
+  console.log("Executing express backend");
+  next();
+});
+
 app.post("/access", async (req, res) => {
   console.log(req.body);
   console.log("Got here");

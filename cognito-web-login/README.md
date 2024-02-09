@@ -30,6 +30,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://www.color-hex.com/color-palette/30023>
 - <https://help.okta.com/oie/en-us/content/topics/deploymentguides/aws/aws-deployment.htm>
 - <http://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0-cd-02.html#3.High-Level%20SAML%20Use%20Cases|outline>
+- <https://jonmeyers.io/blog/create-a-simple-cookie-with-remix/>
   
 ## SDK References
 
