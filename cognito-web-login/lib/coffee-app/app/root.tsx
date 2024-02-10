@@ -11,16 +11,30 @@ import {
   useLoaderData,
 } from "@remix-run/react";
 import styles from "./tailwind.css";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import type { AwsAccessKey } from "./types";
-import axios from "axios";
-import { Cookie, json } from "@remix-run/node";
-import { idToken } from "./utils/cookies";
+import { json } from "@remix-run/node";
+import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
+import { getAccessKeys } from "./utils/userAccessCredentials";
+import { useEffect } from "react";
+
+const getCookie = (name: string, cookieString: string): string => {
+  const cookieArray = cookieString.split("; ");
+  for (const item of cookieArray) {
+    if (item.startsWith(`${name}=`)) {
+      return item.substring(`${name}=`.length);
+    }
+  }
+  return "";
+};
 
 export const loader = async ({ request }: { request: Request }) => {
-  // const cookieHeader = request.headers.get("Cookie");
+  const cookieHeader = request.headers.get("Cookie");
 
   console.log("Executing remix backend");
+  const idTokenString = getCookie("idToken", cookieHeader || "");
+  console.log(cookieHeader);
+  console.log(idTokenString);
+
+  // await getAccessKeys(idTokenString);
 
   return json({
     headers: {
@@ -34,23 +48,21 @@ export const links: LinksFunction = () => [
   { rel: "stylesheet", href: styles },
 ];
 
+const REGION = "us-east-1";
+const ACCOUNT = "221318883170";
+const IDENTITY_POOL_ID = "us-east-1:7caadd62-7647-4b8b-86b8-e8bae192eaaf";
+const USER_POOL_PROVIDER =
+  "cognito-idp.us-east-1.amazonaws.com/us-east-1_2E6fWKuiW";
+
 export default function App() {
-  const [awsAccessKeys, setAwsAccessKeys] = useState<AwsAccessKey | null>(
-    undefined
-  );
-  const [userInformation, setUserInformation] = useState<null>(null);
-  const [idToken, setIdToken] = useState<string | null>(null);
-
-  const hiCookie = useLoaderData<typeof loader>();
-  console.log(hiCookie);
-
-  // useEffect(() => {
-  //   const searchParameters = new URLSearchParams(location.hash);
-  //   const id =
-  //     searchParameters.get("#id_token") ?? searchParameters.get("id_token");
-  //   console.log(id);
-  //   setIdToken(id);
-  // }, []);
+  useEffect(() => {
+    const creds = fromCognitoIdentityPool({
+      identityPoolId: IDENTITY_POOL_ID,
+      clientConfig: { region: REGION },
+    });
+    console.log("Got here");
+    console.log(creds());
+  });
 
   return (
     <html lang="en">
