@@ -14,16 +14,22 @@ import styles from "./tailwind.css";
 import { json } from "@remix-run/node";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
 import { getAccessKeys } from "./utils/userAccessCredentials";
-import { useEffect } from "react";
+import { useEffect, useState, createContext } from "react";
+import {
+  DynamoDBClient,
+  GetItemCommand,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import Cookies from "js-cookie";
 
-const getCookie = (name: string, cookieString: string): string => {
+const getCookie = (name: string, cookieString: string): string | undefined => {
   const cookieArray = cookieString.split("; ");
   for (const item of cookieArray) {
     if (item.startsWith(`${name}=`)) {
       return item.substring(`${name}=`.length);
     }
   }
-  return "";
+  return undefined;
 };
 
 export const loader = async ({ request }: { request: Request }) => {
@@ -31,8 +37,6 @@ export const loader = async ({ request }: { request: Request }) => {
 
   console.log("Executing remix backend");
   const idTokenString = getCookie("idToken", cookieHeader || "");
-  console.log(cookieHeader);
-  console.log(idTokenString);
 
   // await getAccessKeys(idTokenString);
 
@@ -54,15 +58,41 @@ const IDENTITY_POOL_ID = "us-east-1:7caadd62-7647-4b8b-86b8-e8bae192eaaf";
 const USER_POOL_PROVIDER =
   "cognito-idp.us-east-1.amazonaws.com/us-east-1_2E6fWKuiW";
 
+const DynamoDbClientContext = createContext<DynamoDBClient | undefined>(
+  undefined
+);
+
 export default function App() {
+  const [dynamodbClient, setDynamodbClient] = useState<
+    DynamoDBClient | undefined
+  >();
   useEffect(() => {
-    const creds = fromCognitoIdentityPool({
-      identityPoolId: IDENTITY_POOL_ID,
-      clientConfig: { region: REGION },
-    });
-    console.log("Got here");
-    console.log(creds());
+    const idTokenString = Cookies.get("idToken");
+    const logins: Record<string, string> = {};
+    if (idTokenString) {
+      logins[USER_POOL_PROVIDER] = idTokenString;
+    }
+    const createDynamoResources = async () => {
+      const creds = fromCognitoIdentityPool({
+        identityPoolId: IDENTITY_POOL_ID,
+        clientConfig: { region: REGION },
+        logins: logins,
+      });
+      setDynamodbClient(
+        new DynamoDBClient({
+          region: REGION,
+          credentials: creds,
+        })
+      );
+    };
+    createDynamoResources();
   });
+
+  const loading = dynamodbClient === undefined;
+
+  if (loading) {
+    return <h1>Loading</h1>;
+  }
 
   return (
     <html lang="en">

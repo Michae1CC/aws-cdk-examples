@@ -1,4 +1,6 @@
+import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { DateTime } from "luxon";
 import { useEffect } from "react";
 
 export default function Route() {
@@ -13,10 +15,22 @@ export default function Route() {
       searchParameters.get("access_token") ??
       "";
 
-    console.log(jwtDecode(idTokenString));
+    if (idTokenString) {
+      const idTokenDecoded = jwtDecode(idTokenString);
+      Cookies.set("idToken", idTokenString, {
+        expires: DateTime.fromSeconds(idTokenDecoded.exp!).toJSDate(),
+      });
+    } else {
+      window.location.href = "/";
+    }
 
-    document.cookie = `idToken=${idTokenString};`;
-    document.cookie = `accessToken=${accessTokenString};`;
-    // window.location.href = "/";
-  }, []);
+    if (accessTokenString) {
+      const accessToken = jwtDecode(accessTokenString);
+      Cookies.set("accessToken", accessTokenString, {
+        expires: DateTime.fromSeconds(accessToken.exp!).toJSDate(),
+      });
+    }
+
+    window.location.href = "/";
+  });
 }

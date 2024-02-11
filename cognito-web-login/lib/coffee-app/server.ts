@@ -42,18 +42,6 @@ app.use(
   express.static("public/build", { immutable: true, maxAge: "1y" })
 );
 
-app.use(function (req, res, next) {
-  console.log("Executing express backend");
-  next();
-});
-
-app.post("/access", async (req, res) => {
-  console.log(req.body);
-  console.log("Got here");
-  // getAccessKeys(req.body["idToken"]);
-  res.send("Hi");
-});
-
 // Everything else (like favicon.ico) is cached for an hour. You may want to be
 // more aggressive with this caching.
 app.use(express.static("public", { maxAge: "1h" }));
