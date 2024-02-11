@@ -8,6 +8,8 @@ import stylesUrl from "~/styles/index.css";
 import navigationBarStylesUrl from "~/styles/NavigationBar.css";
 import featuredPictureStylesUrl from "~/styles/FeaturedPicture.css";
 import featuredListStylesUrl from "~/styles/FeaturedList.css";
+import { useContext, useEffect, useMemo } from "react";
+import { DynamoDbClientContext, useInitialisedContext } from "~/utils/context";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
@@ -24,6 +26,13 @@ export const meta: MetaFunction = () => {
 };
 
 export default function Index() {
+  const ddb = useContext(DynamoDbClientContext);
+
+  useEffect(() => {
+    console.log("Updated ddb");
+    console.log(ddb);
+  }, [ddb]);
+
   return (
     <div>
       <NavigationBar />
