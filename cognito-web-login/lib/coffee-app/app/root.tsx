@@ -19,16 +19,6 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import Cookies from "js-cookie";
 import { DynamoDbClientContext } from "./utils/context";
 
-const getCookie = (name: string, cookieString: string): string | undefined => {
-  const cookieArray = cookieString.split("; ");
-  for (const item of cookieArray) {
-    if (item.startsWith(`${name}=`)) {
-      return item.substring(`${name}=`.length);
-    }
-  }
-  return undefined;
-};
-
 export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
   { rel: "stylesheet", href: styles },

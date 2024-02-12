@@ -1,18 +1,36 @@
+import { ScanCommand } from "@aws-sdk/client-dynamodb";
+import { useContext, useEffect, useState } from "react";
+import type { TableItem } from "~/types";
+import { DynamoDbClientContext } from "~/utils/context";
+
 export default function FeaturedList() {
-  const items: Array<{ id: string; title: string; description: string }> = [
-    {
-      id: "1",
-      title: "Cold Brews",
-      description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing edivt. Nam et",
-    },
-    {
-      id: "2",
-      title: "Arabica vs Robusta: The Differences",
-      description:
-        "Lorem ipsum dolor sit amet, consectetur adipiscing edivt. Nam et",
-    },
-  ];
+  const ddb = useContext(DynamoDbClientContext);
+  const [items, setItems] = useState<Array<{ description: string }>>([]);
+
+  useEffect(() => {
+    const getData = async () => {
+      if (ddb === undefined) {
+        return;
+      }
+      const response = await ddb.send(
+        new ScanCommand({
+          TableName: "cognitosamltest1",
+          Limit: 10,
+        })
+      );
+
+      const rawItems = response.Items;
+      if (rawItems !== undefined)
+        setItems(
+          rawItems.map((item) => {
+            return {
+              description: (item as TableItem).description.S,
+            };
+          })
+        );
+    };
+    getData();
+  }, [ddb]);
 
   return (
     <div className="featured-list">
@@ -22,7 +40,7 @@ export default function FeaturedList() {
         return (
           <div className="featured-list-item" key={`featured-list-${index}`}>
             <a href="/">
-              <h4>{item.title}</h4>
+              <h4>Filler title</h4>
               <div>{item.description}</div>
             </a>
           </div>
