@@ -6,6 +6,11 @@ import NavigationBar from "~/components/NavigationBar";
 import stylesUrl from "~/styles/index.css";
 import navigationBarStylesUrl from "~/styles/NavigationBar.css";
 import articlesStyles from "~/styles/articlesStyles.css";
+import { useParams, useSearchParams } from "@remix-run/react";
+import { useContext, useEffect, useState } from "react";
+import { DynamoDbClientContext } from "~/utils/context";
+import { GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { TableItem, TableJSObject } from "~/types";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
@@ -14,18 +19,45 @@ export const links: LinksFunction = () => [
 ];
 
 export default function Route() {
-  const articleText =
-    "### Intro\n\n" +
-    "---\n" +
-    "Some text\n" +
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam et" +
-    "venenatis risus. Integer at ipsum vehicula, laoreet enim a, varius" +
-    "purus. Cras at aliquam est, quis ultricies risus.\n" +
-    "* First Item in list\n" +
-    "* Second Item in list\n" +
-    "* Third Item in list\n";
+  const ddb = useContext(DynamoDbClientContext);
+  const params = useParams();
+  const [loading, setLoading] = useState<bool>(true);
+  const [articleItem, setArticleItem] = useState<TableJSObject | undefined>(
+    undefined
+  );
+  const [articleId, setArticleId] = useState<string | undefined>(() => {
+    return params.id ?? undefined;
+  });
 
-  const html = markdownit().render(articleText);
+  useEffect(() => {
+    const getArticle = async () => {
+      console.log(articleId);
+      if (ddb === undefined || articleId === undefined) {
+        return;
+      }
+      const response = await ddb.send(
+        new GetItemCommand({
+          TableName: "cognitosamltest1",
+          Key: {
+            email: {
+              S: articleId,
+            },
+          },
+        })
+      );
+      const item = response.Item as undefined | TableItem;
+      if (item === undefined) {
+        return;
+      }
+      setArticleItem({
+        description: item.description.S,
+      });
+      setLoading(false);
+    };
+    getArticle();
+  }, [ddb, articleId]);
+
+  const html = markdownit().render(articleItem?.description || "");
   return (
     <div>
       <NavigationBar />
