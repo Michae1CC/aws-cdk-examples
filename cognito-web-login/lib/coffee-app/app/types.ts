@@ -1,3 +1,7 @@
+import * as jwtDecode from "jwt-decode";
+
+export type JwtPayload = jwtDecode.JwtPayload & { email: string };
+
 export type AwsAccessKey = {
   AccessKeyId: string;
   SecretAccessKey: string;

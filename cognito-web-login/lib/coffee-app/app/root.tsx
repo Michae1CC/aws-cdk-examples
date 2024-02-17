@@ -1,23 +1,21 @@
 import { cssBundleHref } from "@remix-run/css-bundle";
 import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
 import {
-  Await,
   Links,
   LiveReload,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLoaderData,
 } from "@remix-run/react";
 import styles from "./tailwind.css";
-import { json } from "@remix-run/node";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
-import { getAccessKeys } from "./utils/userAccessCredentials";
-import { useEffect, useState, createContext, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import Cookies from "js-cookie";
-import { DynamoDbClientContext } from "./utils/context";
+import { DynamoDbClientContext, JwtDecodedContext } from "./utils/context";
+import { jwtDecode } from "jwt-decode";
+import type { JwtPayload } from "./types";
 
 export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
@@ -34,12 +32,16 @@ export default function App() {
   const [dynamodbClient, setDynamodbClient] = useState<
     DynamoDBClient | undefined
   >(undefined);
+  const [decodedJwt, setDecodedJwt] = useState<JwtPayload | undefined>(
+    undefined
+  );
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const idTokenString = Cookies.get("idToken");
     const logins: Record<string, string> = {};
     if (idTokenString) {
+      setDecodedJwt(jwtDecode(idTokenString));
       logins[USER_POOL_PROVIDER] = idTokenString;
     }
     const createDynamoResources = async () => {
@@ -59,27 +61,27 @@ export default function App() {
     setLoading(false);
   }, [loading]);
 
-  // if (loading) {
-  //   console.log("Hi");
-  //   return <h1>Hi</h1>;
-  // }
-
   return (
     <DynamoDbClientContext.Provider value={dynamodbClient}>
-      <html lang="en">
-        <head>
-          <meta charSet="utf-8" />
-          <meta name="viewport" content="width=device-width,initial-scale=1" />
-          <Meta />
-          <Links />
-        </head>
-        <body>
-          <Outlet />
-          <ScrollRestoration />
-          <Scripts />
-          <LiveReload />
-        </body>
-      </html>
+      <JwtDecodedContext.Provider value={decodedJwt}>
+        <html lang="en">
+          <head>
+            <meta charSet="utf-8" />
+            <meta
+              name="viewport"
+              content="width=device-width,initial-scale=1"
+            />
+            <Meta />
+            <Links />
+          </head>
+          <body>
+            <Outlet />
+            <ScrollRestoration />
+            <Scripts />
+            <LiveReload />
+          </body>
+        </html>
+      </JwtDecodedContext.Provider>
     </DynamoDbClientContext.Provider>
   );
 }

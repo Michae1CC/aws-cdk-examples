@@ -7,6 +7,9 @@ import stylesUrl from "~/styles/index.css";
 import navigationBarStylesUrl from "~/styles/NavigationBar.css";
 import createStyles from "~/styles/create.css";
 import buttonStyles from "~/styles/Button.css";
+import { useCallback, useContext } from "react";
+import { DynamoDbClientContext, JwtDecodedContext } from "~/utils/context";
+import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
@@ -16,6 +19,44 @@ export const links: LinksFunction = () => [
 ];
 
 export default function Route() {
+  const ddb = useContext(DynamoDbClientContext);
+  const jwtDecoded = useContext(JwtDecodedContext);
+
+  const submitCallback = useCallback(async () => {
+    if (jwtDecoded === undefined || ddb === undefined) {
+      return;
+    }
+    const description = (
+      document.getElementsByClassName(
+        "descriptionInput"
+      )[0] as HTMLTextAreaElement
+    ).value;
+    const title = (
+      document.getElementsByClassName("titleInput")[0] as HTMLInputElement
+    ).value;
+    const userEmail = jwtDecoded.email;
+    if (userEmail === undefined) {
+      return;
+    }
+    await ddb.send(
+      new PutItemCommand({
+        Item: {
+          email: {
+            S: userEmail,
+          },
+          title: {
+            S: title,
+          },
+          description: {
+            S: description,
+          },
+        },
+        TableName: "cognitosamltest1",
+      })
+    );
+    window.location.href = "/";
+  }, [ddb, jwtDecoded]);
+
   return (
     <div>
       <NavigationBar />
@@ -25,14 +66,14 @@ export default function Route() {
           <hr />
           <div className="property-edit">
             <h4>Title</h4>
-            <input type="text"></input>
+            <input className="titleInput" type="text" />
           </div>
           <div className="property-edit">
             <h4>Content</h4>
-            <textarea />
+            <textarea className="descriptionInput" />
           </div>
           <div className="property-edit">
-            <Button text="Submit"></Button>
+            <Button text="Submit" callback={submitCallback}></Button>
           </div>
         </div>
       </div>

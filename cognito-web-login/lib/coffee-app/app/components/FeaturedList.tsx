@@ -1,7 +1,7 @@
 import { ScanCommand } from "@aws-sdk/client-dynamodb";
 import { useContext, useEffect, useState } from "react";
-import type { TableItem } from "~/types";
 import { DynamoDbClientContext } from "~/utils/context";
+import type { TableItem } from "~/types";
 
 export default function FeaturedList() {
   const ddb = useContext(DynamoDbClientContext);

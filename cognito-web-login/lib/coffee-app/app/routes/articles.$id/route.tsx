@@ -6,11 +6,11 @@ import NavigationBar from "~/components/NavigationBar";
 import stylesUrl from "~/styles/index.css";
 import navigationBarStylesUrl from "~/styles/NavigationBar.css";
 import articlesStyles from "~/styles/articlesStyles.css";
-import { useParams, useSearchParams } from "@remix-run/react";
+import { useParams } from "@remix-run/react";
 import { useContext, useEffect, useState } from "react";
 import { DynamoDbClientContext } from "~/utils/context";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
-import { TableItem, TableJSObject } from "~/types";
+import type { TableItem, TableJSObject } from "~/types";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
