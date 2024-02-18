@@ -22,3 +22,4 @@ export default function NavigationBar() {
     </div>
   );
 }
+// https://testpoolauth01.auth.us-east-1.amazoncognito.com/logout?client_id=508cbe40iour98ka15km5c0uej&logout_uri=http%3A%2F%2Flocalhost:3000&redirect_uri=http%3A%2F%2Flocalhost:3000&response_type=token

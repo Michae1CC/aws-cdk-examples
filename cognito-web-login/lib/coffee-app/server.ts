@@ -5,6 +5,9 @@ import morgan from "morgan";
 import { createRequestHandler, type RequestHandler } from "@remix-run/express";
 import { broadcastDevReady, installGlobals } from "@remix-run/node";
 import sourceMapSupport from "source-map-support";
+import { getCookie } from "src/getCookie";
+import { jwtDecode } from "jwt-decode";
+import { DateTime } from "luxon";
 
 // patch in Remix runtime globals
 installGlobals();
@@ -33,6 +36,21 @@ app.use(express.json());
 
 // http://expressjs.com/en/advanced/best-practice-security.html#at-a-minimum-disable-x-powered-by-header
 app.disable("x-powered-by");
+
+app.use((req, res, next) => {
+  console.log("Im in the middle!");
+  const idTokenString = getCookie("idToken", req.headers.cookie || "");
+  const decodedIdTokenExp = jwtDecode(idTokenString).exp;
+  if (
+    decodedIdTokenExp === undefined ||
+    DateTime.fromSeconds(decodedIdTokenExp)
+  ) {
+    res.cookie("idToken", "");
+    res.cookie("accessToken", "");
+    res.redirect("/logout");
+  }
+  next();
+});
 
 // Remix fingerprints its assets so we can cache forever.
 app.use(
