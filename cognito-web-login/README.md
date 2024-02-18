@@ -42,3 +42,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 - <https://youtu.be/uv-EYcdGUuI?t=104>
 - <https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html>
 - <http://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0-cd-02.html#5.1.2.SP-Initiated%20SSO:%20%20Redirect/POST%20Bindings|outline>
+- <https://community.auth0.com/t/federated-logout-from-oidc-application-auth0-as-saml-sp/81086>

@@ -1,6 +1,6 @@
 interface FeaturedListProps {
   text: string;
-  callback: () => Promise<void>;
+  callback?: () => Promise<void>;
 }
 
 export default function FeaturedList(input: FeaturedListProps) {

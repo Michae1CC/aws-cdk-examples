@@ -13,7 +13,9 @@ export default function NavigationBar() {
             <a href="/search">Search</a>
           </li>
           <li>
-            <a href="/">Login</a>
+            <a href="https://testpoolauth01.auth.us-east-1.amazoncognito.com/authorize?identity_provider=auth0idp&client_id=508cbe40iour98ka15km5c0uej&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin">
+              Login
+            </a>
           </li>
         </ul>
       </div>
