@@ -10,6 +10,7 @@ import buttonStyles from "~/styles/Button.css";
 import { useCallback, useContext } from "react";
 import { DynamoDbClientContext, JwtDecodedContext } from "~/utils/context";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { TABLE_NAME } from "~/utils/envar";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
@@ -51,7 +52,7 @@ export default function Route() {
             S: description,
           },
         },
-        TableName: "cognitosamltest1",
+        TableName: TABLE_NAME,
       })
     );
     window.location.href = "/";

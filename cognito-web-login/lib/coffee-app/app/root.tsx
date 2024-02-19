@@ -16,17 +16,12 @@ import Cookies from "js-cookie";
 import { DynamoDbClientContext, JwtDecodedContext } from "./utils/context";
 import { jwtDecode } from "jwt-decode";
 import type { JwtPayload } from "./types";
+import { REGION, IDENTITY_POOL_ID, USER_POOL_PROVIDER } from "./utils/envar";
 
 export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
   { rel: "stylesheet", href: styles },
 ];
-
-const REGION = "us-east-1";
-const ACCOUNT = "221318883170";
-const IDENTITY_POOL_ID = "us-east-1:7caadd62-7647-4b8b-86b8-e8bae192eaaf";
-const USER_POOL_PROVIDER =
-  "cognito-idp.us-east-1.amazonaws.com/us-east-1_2E6fWKuiW";
 
 export default function App() {
   const [dynamodbClient, setDynamodbClient] = useState<

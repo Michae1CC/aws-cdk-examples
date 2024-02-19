@@ -3,6 +3,12 @@ import type { LinksFunction } from "@remix-run/node";
 import stylesUrl from "~/styles/index.css";
 import { useEffect } from "react";
 import Cookies from "js-cookie";
+import {
+  APP_DOMAIN,
+  OKTA_APP_CLIENT_ID,
+  REGION,
+  USER_POOL_NAME,
+} from "~/utils/envar";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
@@ -13,8 +19,7 @@ export default function Route() {
     const logoutProcess = async () => {
       Cookies.set("idToken", "");
       Cookies.set("accessToken", "");
-      window.location.href =
-        "https://testpoolauth01.auth.us-east-1.amazoncognito.com/logout?client_id=508cbe40iour98ka15km5c0uej&logout_uri=http%3A%2F%2Flocalhost:3000&redirect_uri=http%3A%2F%2Flocalhost:3000&response_type=token";
+      window.location.href = `https://${USER_POOL_NAME}.auth.${REGION}.amazoncognito.com/logout?client_id=${OKTA_APP_CLIENT_ID}&logout_uri=http%3A%2F%2F${APP_DOMAIN}&redirect_uri=http%3A%2F%2F${APP_DOMAIN}&response_type=token`;
     };
     logoutProcess();
   });

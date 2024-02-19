@@ -37,21 +37,6 @@ app.use(express.json());
 // http://expressjs.com/en/advanced/best-practice-security.html#at-a-minimum-disable-x-powered-by-header
 app.disable("x-powered-by");
 
-app.use((req, res, next) => {
-  console.log("Im in the middle!");
-  const idTokenString = getCookie("idToken", req.headers.cookie || "");
-  const decodedIdTokenExp = jwtDecode(idTokenString).exp;
-  if (
-    decodedIdTokenExp === undefined ||
-    DateTime.fromSeconds(decodedIdTokenExp)
-  ) {
-    res.cookie("idToken", "");
-    res.cookie("accessToken", "");
-    res.redirect("/logout");
-  }
-  next();
-});
-
 // Remix fingerprints its assets so we can cache forever.
 app.use(
   "/build",

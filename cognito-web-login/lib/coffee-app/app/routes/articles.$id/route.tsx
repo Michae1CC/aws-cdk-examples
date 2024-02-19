@@ -11,6 +11,7 @@ import { useContext, useEffect, useState } from "react";
 import { DynamoDbClientContext } from "~/utils/context";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
 import type { TableItem, TableJSObject } from "~/types";
+import { TABLE_NAME } from "~/utils/envar";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
@@ -37,7 +38,7 @@ export default function Route() {
       }
       const response = await ddb.send(
         new GetItemCommand({
-          TableName: "cognitosamltest1",
+          TableName: TABLE_NAME,
           Key: {
             email: {
               S: articleId,
