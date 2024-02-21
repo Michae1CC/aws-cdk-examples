@@ -14,11 +14,12 @@ const getEnvOrThrow = (name: string) => {
 export const REGION = "us-east-1";
 export const TABLE_NAME = "cognitosamltest1";
 export const ACCOUNT = "221318883170";
+
+export const APP_DOMAIN = "localhost:3000";
 export const IDENTITY_POOL_ID =
   "us-east-1:7caadd62-7647-4b8b-86b8-e8bae192eaaf";
 export const USER_POOL_NAME = "testpoolauth01";
 export const USER_POOL_PROVIDER =
   "cognito-idp.us-east-1.amazonaws.com/us-east-1_2E6fWKuiW";
 export const OKTA_APP_CLIENT_ID = "508cbe40iour98ka15km5c0uej";
-export const APP_DOMAIN = "localhost:3000";
 export const OKTA_ID_PROVIDER_NAME = "auth0idp";

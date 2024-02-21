@@ -1,6 +1,7 @@
 import { ScanCommand } from "@aws-sdk/client-dynamodb";
 import { useContext, useEffect, useState } from "react";
 import { DynamoDbClientContext } from "~/utils/context";
+import { TABLE_NAME } from "~/utils/envar";
 import type { TableItem } from "~/types";
 
 export default function FeaturedList() {
@@ -14,7 +15,7 @@ export default function FeaturedList() {
       }
       const response = await ddb.send(
         new ScanCommand({
-          TableName: "cognitosamltest1",
+          TableName: TABLE_NAME,
           Limit: 10,
         })
       );

@@ -27,18 +27,22 @@ export default function Route() {
     if (jwtDecoded === undefined || ddb === undefined) {
       return;
     }
+
     const description = (
       document.getElementsByClassName(
         "descriptionInput"
       )[0] as HTMLTextAreaElement
     ).value;
+
     const title = (
       document.getElementsByClassName("titleInput")[0] as HTMLInputElement
     ).value;
+
     const userEmail = jwtDecoded.email;
     if (userEmail === undefined) {
       return;
     }
+
     await ddb.send(
       new PutItemCommand({
         Item: {

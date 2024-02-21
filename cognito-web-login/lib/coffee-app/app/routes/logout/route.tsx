@@ -1,5 +1,4 @@
 import type { LinksFunction } from "@remix-run/node";
-
 import stylesUrl from "~/styles/index.css";
 import { useEffect } from "react";
 import Cookies from "js-cookie";

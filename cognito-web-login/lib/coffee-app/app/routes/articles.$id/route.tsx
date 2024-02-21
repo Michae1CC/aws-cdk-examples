@@ -1,8 +1,5 @@
 import markdownit from "markdown-it";
-import type { LinksFunction } from "@remix-run/node";
-
 import NavigationBar from "~/components/NavigationBar";
-
 import stylesUrl from "~/styles/index.css";
 import navigationBarStylesUrl from "~/styles/NavigationBar.css";
 import articlesStyles from "~/styles/articlesStyles.css";
@@ -10,8 +7,9 @@ import { useParams } from "@remix-run/react";
 import { useContext, useEffect, useState } from "react";
 import { DynamoDbClientContext } from "~/utils/context";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
-import type { TableItem, TableJSObject } from "~/types";
 import { TABLE_NAME } from "~/utils/envar";
+import type { TableItem, TableJSObject } from "~/types";
+import type { LinksFunction } from "@remix-run/node";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
@@ -22,7 +20,6 @@ export const links: LinksFunction = () => [
 export default function Route() {
   const ddb = useContext(DynamoDbClientContext);
   const params = useParams();
-  const [loading, setLoading] = useState<bool>(true);
   const [articleItem, setArticleItem] = useState<TableJSObject | undefined>(
     undefined
   );
@@ -32,7 +29,6 @@ export default function Route() {
 
   useEffect(() => {
     const getArticle = async () => {
-      console.log(articleId);
       if (ddb === undefined || articleId === undefined) {
         return;
       }
@@ -53,7 +49,6 @@ export default function Route() {
       setArticleItem({
         description: item.description.S,
       });
-      setLoading(false);
     };
     getArticle();
   }, [ddb, articleId]);
