@@ -5,9 +5,9 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
-export class CognitoSamlIdentityPoolsStack extends cdk.Stack {
-  public readonly hostedZone;
-  public readonly domainCertificate;
+export class Route53Stack extends cdk.Stack {
+  public readonly hostedZone: route53.IHostedZone;
+  public readonly domainCertificate: acm.Certificate;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
