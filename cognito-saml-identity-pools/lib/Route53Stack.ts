@@ -6,13 +6,12 @@ import {
 import { Construct } from "constructs";
 
 export class Route53Stack extends cdk.Stack {
+  public readonly domainName = "awscdkeg.net";
   public readonly hostedZone: route53.IHostedZone;
   public readonly domainCertificate: acm.Certificate;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-
-    const domainName = "awscdkeg.net";
 
     /**
      * Look up the hosted zone created using the registration process
@@ -21,12 +20,12 @@ export class Route53Stack extends cdk.Stack {
       this,
       "awscdkexamplehostedzone",
       {
-        domainName,
+        domainName: this.domainName,
       }
     );
 
     this.domainCertificate = new acm.Certificate(this, "exampleCertificate", {
-      domainName: domainName,
+      domainName: this.domainName,
       validation: acm.CertificateValidation.fromDns(this.hostedZone),
     });
   }

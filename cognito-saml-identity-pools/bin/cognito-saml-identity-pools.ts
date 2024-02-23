@@ -1,21 +1,23 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
-import { CognitoSamlIdentityPoolsStack } from '../lib/cognito-saml-identity-pools-stack';
+import "source-map-support/register";
+import * as cdk from "aws-cdk-lib";
+import { config } from "dotenv";
+import { Route53Stack } from "../lib/Route53Stack";
+import { DynamodbStack } from "../lib/DynamoStack";
+import { CognitoStack } from "../lib/CognitoStack";
+
+config();
 
 const app = new cdk.App();
-new CognitoSamlIdentityPoolsStack(app, 'CognitoSamlIdentityPoolsStack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
 
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+const env = {
+  account: process.env.ACCOUNT,
+  region: process.env.REGION,
+};
 
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
-
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+const route53Stack = new Route53Stack(app, "Route53Stack", { env });
+const dynamodbStack = new DynamodbStack(app, "DynamoStack", { env });
+const cognitoStack = new CognitoStack(app, "CognitoStack", {
+  env,
+  domainName: route53Stack.domainName,
 });

@@ -12,6 +12,7 @@ export class DynamodbStack extends cdk.Stack {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.DEFAULT,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
   }
 }
