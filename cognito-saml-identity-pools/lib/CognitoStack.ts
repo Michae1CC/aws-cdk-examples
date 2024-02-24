@@ -46,5 +46,28 @@ export class CognitoStack extends cdk.Stack {
         ],
       },
     });
+
+    const oktaSamlIdentityProviderMetadata =
+      cognito.UserPoolIdentityProviderSamlMetadata.url(
+        "https://dev-npaajtq6i6vncnr2.us.auth0.com/samlp/metadata/EjjqseDMDm7vmlxjRO9AeT8YB7xuHI4e"
+      );
+
+    const oktaSamlIdentityProvider = new cognito.UserPoolIdentityProviderSaml(
+      this,
+      "oktaSamlIdentityProvider",
+      {
+        userPool,
+        metadata: oktaSamlIdentityProviderMetadata,
+        idpSignout: true,
+        attributeMapping: {
+          email: cognito.ProviderAttribute.other("email"),
+          familyName: cognito.ProviderAttribute.other("family_name"),
+          givenName: cognito.ProviderAttribute.other("given_name"),
+          nickname: cognito.ProviderAttribute.other("name"),
+        },
+      }
+    );
+
+    userPool.registerIdentityProvider(oktaSamlIdentityProvider);
   }
 }
