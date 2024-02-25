@@ -5,8 +5,7 @@ import Cookies from "js-cookie";
 import {
   APP_DOMAIN,
   OKTA_APP_CLIENT_ID,
-  REGION,
-  USER_POOL_NAME,
+  USER_POOL_DOMAIN,
 } from "~/utils/envar";
 
 export const links: LinksFunction = () => [
@@ -18,7 +17,7 @@ export default function Route() {
     const logoutProcess = async () => {
       Cookies.set("idToken", "");
       Cookies.set("accessToken", "");
-      window.location.href = `https://${USER_POOL_NAME}.auth.${REGION}.amazoncognito.com/logout?client_id=${OKTA_APP_CLIENT_ID}&logout_uri=http%3A%2F%2F${APP_DOMAIN}&redirect_uri=http%3A%2F%2F${APP_DOMAIN}&response_type=token`;
+      window.location.href = `${USER_POOL_DOMAIN}/logout?client_id=${OKTA_APP_CLIENT_ID}&logout_uri=http%3A%2F%2F${APP_DOMAIN}&redirect_uri=http%3A%2F%2F${APP_DOMAIN}&response_type=token`;
     };
     logoutProcess();
   });

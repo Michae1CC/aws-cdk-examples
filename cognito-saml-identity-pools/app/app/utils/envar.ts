@@ -23,5 +23,7 @@ export const IDENTITY_POOL_ID =
 
 export const USER_POOL_NAME = "oktaSamlUserPool";
 export const USER_POOL_ID = "us-east-1_NZwKoasGU";
+export const USER_POOL_DOMAIN =
+  "https://oktasamltestuserpool.auth.us-east-1.amazoncognito.com";
 export const OKTA_APP_CLIENT_ID = "71cpe8n7lsdgfu2mdtalnriej";
 export const OKTA_ID_PROVIDER_NAME = "CognitoStacktityProviderA6699DD5";
