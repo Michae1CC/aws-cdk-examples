@@ -20,6 +20,7 @@
     "typescript": "~5.3.3"
   },
   "dependencies": {
+    "@aws-cdk/aws-cognito-identitypool-alpha": "^2.22.0-alpha.0",
     "aws-cdk-lib": "2.115.0",
     "constructs": "^10.0.0",
     "dotenv": "^16.4.5",

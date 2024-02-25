@@ -20,4 +20,5 @@ const dynamodbStack = new DynamodbStack(app, "DynamoStack", { env });
 const cognitoStack = new CognitoStack(app, "CognitoStack", {
   env,
   domainName: route53Stack.domainName,
+  articleTable: dynamodbStack.articleTable,
 });

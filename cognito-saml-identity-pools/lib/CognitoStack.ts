@@ -1,14 +1,27 @@
 import * as cdk from "aws-cdk-lib";
-import { aws_cognito as cognito } from "aws-cdk-lib";
+import {
+  aws_cognito as cognito,
+  aws_dynamodb as dynamodb,
+  aws_iam as iam,
+} from "aws-cdk-lib";
+import {
+  IdentityPool,
+  UserPoolAuthenticationProvider,
+} from "@aws-cdk/aws-cognito-identitypool-alpha";
 import { Construct } from "constructs";
 
 interface CognitoStackProps extends cdk.StackProps {
   domainName: string;
+  articleTable: dynamodb.Table;
 }
 
 export class CognitoStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: CognitoStackProps) {
+  constructor(scope: Construct, id: string, props: CognitoStackProps) {
     super(scope, id, props);
+
+    // *************************************************************************
+    // Create resources for user pool
+    // *************************************************************************
 
     const userPool = new cognito.UserPool(this, "oktaSamlUserPool", {
       userPoolName: "oktaSamlUserPool",
@@ -22,7 +35,6 @@ export class CognitoStack extends cdk.Stack {
         "https://dev-npaajtq6i6vncnr2.us.auth0.com/samlp/metadata/EjjqseDMDm7vmlxjRO9AeT8YB7xuHI4e"
       );
 
-    // Chnage 0auth grant types under host sign and sign up pages
     const oktaSamlIdentityProvider = new cognito.UserPoolIdentityProviderSaml(
       this,
       "oktaSamlIdentityProvider",
@@ -75,6 +87,76 @@ export class CognitoStack extends cdk.Stack {
     });
 
     userPool.registerIdentityProvider(oktaSamlIdentityProvider);
+
+    // *************************************************************************
+    // Create resources for identity pool
+    // *************************************************************************
+
+    const identityPool = new IdentityPool(this, "oktaSamlIdentityPool", {
+      // Allow the identity pool to automatically create the authenticated role
+      // and guest role since it's difficult to create the trust policies for
+      // these roles by hand. We can simply retrieve the automatically created
+      // layer and add our own policies to them.
+      identityPoolName: "oktaSamlIdentityPool",
+      allowUnauthenticatedIdentities: true,
+    });
+
+    identityPool.addUserPoolAuthentication(
+      new UserPoolAuthenticationProvider({
+        userPool,
+        disableServerSideTokenCheck: false,
+      })
+    );
+
+    const getCognitoCredentialsStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      resources: ["*"],
+      actions: ["cognito-identity:GetCredentialsForIdentity"],
+    });
+
+    const unauthenticatedUserStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      resources: [props.articleTable.tableArn],
+      actions: [
+        "dynamodb:BatchGetItem",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:Query",
+      ],
+    });
+
+    const authenticatedUserStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      resources: [props.articleTable.tableArn],
+      actions: [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:Query",
+        "dynamodb:UpdateItem",
+      ],
+    });
+
+    identityPool.authenticatedRole.addManagedPolicy(
+      new iam.ManagedPolicy(this, "authenticatedManagedPolicy", {
+        statements: [
+          getCognitoCredentialsStatement,
+          authenticatedUserStatement,
+        ],
+      })
+    );
+
+    identityPool.unauthenticatedRole.addManagedPolicy(
+      new iam.ManagedPolicy(this, "unauthenticatedManagedPolicy", {
+        statements: [
+          getCognitoCredentialsStatement,
+          unauthenticatedUserStatement,
+        ],
+      })
+    );
   }
 }
 
