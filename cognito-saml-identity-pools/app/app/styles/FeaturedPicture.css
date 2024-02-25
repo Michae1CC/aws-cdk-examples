@@ -1,0 +1,44 @@
+@import url("~/styles/common");
+
+.featured-picture-container {
+    width: 50%;
+    max-height: 90%;
+    overflow: hidden;
+    scrollbar-gutter: stable;
+}
+
+.featured-picture-container:hover {
+    overflow-y: auto;
+}
+
+.featured-picture {
+    background-color: var(--coffee-light);
+    box-shadow: 3px 3px 3px lightgray;
+    padding-top: 1em;
+    padding-left: 3em;
+    padding-right: 3em;
+    display: block;
+    width: 97%;
+    font-stretch: 100%;
+    margin-bottom: 2em;
+}
+
+.featured-picture img {
+    width: 60%;
+    display: block;
+    margin: 0 auto;
+}
+
+.featured-picture h2 {
+    color: var(--header-text);
+    padding-bottom: 1em;
+    padding-top: 1em;
+}
+
+.featured-picture div {
+    color: var(--header-text);
+    padding-bottom: 2em;
+    font-size: 1em;
+    font-weight: 300;
+    line-height: 1.2;
+}

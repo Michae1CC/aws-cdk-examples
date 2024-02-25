@@ -1,0 +1,38 @@
+@import url("~/styles/common");
+
+.navbar {
+    background-color: var(--coffee-light);
+    height: 80px;
+    width: 100%;
+}
+
+.nav-elements {
+   width: 100%;
+   max-width: 1080px;
+   margin: 0 auto;
+}
+
+.nav-elements li {
+    display: inline-block;
+    line-height: 80px;
+    margin: 0 1em;
+}
+
+.nav-elements li a {
+    font-size: 16px;
+    font-weight: 500;
+    font-stretch: 100%;
+    color: var(--list-description-color);
+}
+
+.nav-elements li a.nostyle:link {
+    text-decoration: inherit;
+    color: inherit;
+    cursor: auto;
+}
+
+.nav-elements li a.nostyle:visited {
+    text-decoration: inherit;
+    color: inherit;
+    cursor: auto;
+}

@@ -57,14 +57,14 @@ export class CognitoStack extends cdk.Stack {
       },
     });
 
-    userPool.addClient("oktaSamlClient", {
+    const oktaSamlClient = userPool.addClient("oktaSamlClient", {
       userPoolClientName: "oktaSamlClient",
       generateSecret: true,
       oAuth: {
         callbackUrls: [`https://${props?.domainName}/login`],
         // logoutUrls: [`https://${props?.domainName}`],
         flows: {
-          // This is not recommend for production settings
+          // This is not recommended for production settings
           authorizationCodeGrant: false,
           implicitCodeGrant: true,
         },
@@ -81,7 +81,7 @@ export class CognitoStack extends cdk.Stack {
       },
       supportedIdentityProviders: [
         cognito.UserPoolClientIdentityProvider.custom(
-          oktaSamlIdentityProvider.providerName.toString()
+          oktaSamlIdentityProvider.providerName
         ),
       ],
     });
@@ -99,14 +99,16 @@ export class CognitoStack extends cdk.Stack {
       // layer and add our own policies to them.
       identityPoolName: "oktaSamlIdentityPool",
       allowUnauthenticatedIdentities: true,
+      authenticationProviders: {
+        userPools: [
+          new UserPoolAuthenticationProvider({
+            userPool,
+            userPoolClient: oktaSamlClient,
+            disableServerSideTokenCheck: false,
+          }),
+        ],
+      },
     });
-
-    identityPool.addUserPoolAuthentication(
-      new UserPoolAuthenticationProvider({
-        userPool,
-        disableServerSideTokenCheck: false,
-      })
-    );
 
     const getCognitoCredentialsStatement = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,

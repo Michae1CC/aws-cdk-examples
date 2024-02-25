@@ -1,0 +1,21 @@
+.article-main {
+    padding: 1em;
+    width: 50%;
+    max-height: 90%;
+    overflow-y: auto;
+}
+
+.article-content {
+    padding-top: 2em;
+    font-stretch: 100%;
+    line-height: 2;
+}
+
+.article-main li {
+    text-indent: -5px;
+}
+
+.article-main li:before {
+    content: "- ";
+    text-indent: -5px;
+}
