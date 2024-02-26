@@ -20,6 +20,7 @@ export class CognitoStack extends cdk.Stack {
   public readonly userPoolDomainPrefix: string = "oktasamltestuserpool";
   public readonly oktaSamlClient: cognito.UserPoolClient;
   public readonly oktaSamlIdentityProvider: cognito.UserPoolIdentityProviderSaml;
+  public readonly identityPool: IdentityPool;
 
   constructor(scope: Construct, id: string, props: CognitoStackProps) {
     super(scope, id, props);
@@ -97,7 +98,7 @@ export class CognitoStack extends cdk.Stack {
     // Create resources for identity pool
     // *************************************************************************
 
-    const identityPool = new IdentityPool(this, "oktaSamlIdentityPool", {
+    this.identityPool = new IdentityPool(this, "oktaSamlIdentityPool", {
       // Allow the identity pool to automatically create the authenticated role
       // and guest role since it's difficult to create the trust policies for
       // these roles by hand. We can simply retrieve the automatically created
@@ -147,7 +148,7 @@ export class CognitoStack extends cdk.Stack {
       ],
     });
 
-    identityPool.authenticatedRole.addManagedPolicy(
+    this.identityPool.authenticatedRole.addManagedPolicy(
       new iam.ManagedPolicy(this, "authenticatedManagedPolicy", {
         statements: [
           getCognitoCredentialsStatement,
@@ -156,7 +157,7 @@ export class CognitoStack extends cdk.Stack {
       })
     );
 
-    identityPool.unauthenticatedRole.addManagedPolicy(
+    this.identityPool.unauthenticatedRole.addManagedPolicy(
       new iam.ManagedPolicy(this, "unauthenticatedManagedPolicy", {
         statements: [
           getCognitoCredentialsStatement,

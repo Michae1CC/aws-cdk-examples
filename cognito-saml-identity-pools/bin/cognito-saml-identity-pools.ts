@@ -32,6 +32,7 @@ const fargateStack = new FargateStack(app, "FargateStack", {
   hostedZone: route53Stack.hostedZone,
   userPool: cognitoStack.userPool,
   userPoolDomainPrefix: cognitoStack.userPoolDomainPrefix,
+  identityPool: cognitoStack.identityPool,
   oktaSamlClient: cognitoStack.oktaSamlClient,
   oktaSamlIdentityProvider: cognitoStack.oktaSamlIdentityProvider,
 });
