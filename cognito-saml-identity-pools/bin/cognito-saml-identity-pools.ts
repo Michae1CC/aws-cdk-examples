@@ -5,6 +5,7 @@ import { config } from "dotenv";
 import { Route53Stack } from "../lib/Route53Stack";
 import { DynamodbStack } from "../lib/DynamoStack";
 import { CognitoStack } from "../lib/CognitoStack";
+import { FargateStack } from "../lib/FargateStack";
 
 config();
 
@@ -21,4 +22,14 @@ const cognitoStack = new CognitoStack(app, "CognitoStack", {
   env,
   domainName: route53Stack.domainName,
   articleTable: dynamodbStack.articleTable,
+});
+const fargateStack = new FargateStack(app, "FargateStack", {
+  env,
+  articleTable: dynamodbStack.articleTable,
+  domainCertificate: route53Stack.domainCertificate,
+  domainName: route53Stack.domainName,
+  userPool: cognitoStack.userPool,
+  userPoolDomainPrefix: cognitoStack.userPoolDomainPrefix,
+  oktaSamlClient: cognitoStack.oktaSamlClient,
+  oktaSamlIdentityProvider: cognitoStack.oktaSamlIdentityProvider,
 });

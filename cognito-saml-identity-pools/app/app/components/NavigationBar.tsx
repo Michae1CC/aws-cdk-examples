@@ -13,8 +13,8 @@ export default function NavigationBar() {
     jwtDecoded !== undefined
   );
 
-  const loginUrl = `${USER_POOL_DOMAIN}/oauth2/authorize?client_id=${OKTA_APP_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=http%3A%2F%2F${encodeURI(
-    APP_DOMAIN
+  const loginUrl = `${USER_POOL_DOMAIN}/oauth2/authorize?client_id=${OKTA_APP_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURI(
+    `https://${APP_DOMAIN}`
   )}/login`;
 
   const logoutUrl = "/logout";

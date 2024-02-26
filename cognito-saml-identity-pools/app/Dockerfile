@@ -4,15 +4,13 @@ FROM node:21-slim
 # base image decides to change the user in future.
 USER root
 
-WORKDIR /coffee-app
+WORKDIR /app
 
 COPY . .
 
 RUN : \
     && npm i \
     && node --version \
-    && npm --version \
-    && npm run build:server \
-    && npm run build:remix
+    && npm --version
 
 ENTRYPOINT ["npm", "run", "start"]

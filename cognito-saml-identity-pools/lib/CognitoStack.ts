@@ -16,6 +16,11 @@ interface CognitoStackProps extends cdk.StackProps {
 }
 
 export class CognitoStack extends cdk.Stack {
+  public readonly userPool: cognito.UserPool;
+  public readonly userPoolDomainPrefix: string = "oktasamltestuserpool";
+  public readonly oktaSamlClient: cognito.UserPoolClient;
+  public readonly oktaSamlIdentityProvider: cognito.UserPoolIdentityProviderSaml;
+
   constructor(scope: Construct, id: string, props: CognitoStackProps) {
     super(scope, id, props);
 
@@ -23,7 +28,7 @@ export class CognitoStack extends cdk.Stack {
     // Create resources for user pool
     // *************************************************************************
 
-    const userPool = new cognito.UserPool(this, "oktaSamlUserPool", {
+    this.userPool = new cognito.UserPool(this, "oktaSamlUserPool", {
       userPoolName: "oktaSamlUserPool",
       mfa: cognito.Mfa.OFF,
       selfSignUpEnabled: false,
@@ -35,11 +40,11 @@ export class CognitoStack extends cdk.Stack {
         "https://dev-npaajtq6i6vncnr2.us.auth0.com/samlp/metadata/EjjqseDMDm7vmlxjRO9AeT8YB7xuHI4e"
       );
 
-    const oktaSamlIdentityProvider = new cognito.UserPoolIdentityProviderSaml(
+    this.oktaSamlIdentityProvider = new cognito.UserPoolIdentityProviderSaml(
       this,
       "oktaSamlIdentityProvider",
       {
-        userPool,
+        userPool: this.userPool,
         metadata: oktaSamlIdentityProviderMetadata,
         idpSignout: true,
         attributeMapping: {
@@ -51,13 +56,13 @@ export class CognitoStack extends cdk.Stack {
       }
     );
 
-    userPool.addDomain("okatSamlUserPoolDomain", {
+    this.userPool.addDomain("okatSamlUserPoolDomain", {
       cognitoDomain: {
-        domainPrefix: "oktasamltestuserpool",
+        domainPrefix: this.userPoolDomainPrefix,
       },
     });
 
-    const oktaSamlClient = userPool.addClient("oktaSamlClient", {
+    this.oktaSamlClient = this.userPool.addClient("oktaSamlClient", {
       userPoolClientName: "oktaSamlClient",
       generateSecret: true,
       oAuth: {
@@ -81,12 +86,12 @@ export class CognitoStack extends cdk.Stack {
       },
       supportedIdentityProviders: [
         cognito.UserPoolClientIdentityProvider.custom(
-          oktaSamlIdentityProvider.providerName
+          this.oktaSamlIdentityProvider.providerName
         ),
       ],
     });
 
-    userPool.registerIdentityProvider(oktaSamlIdentityProvider);
+    this.userPool.registerIdentityProvider(this.oktaSamlIdentityProvider);
 
     // *************************************************************************
     // Create resources for identity pool
@@ -102,8 +107,8 @@ export class CognitoStack extends cdk.Stack {
       authenticationProviders: {
         userPools: [
           new UserPoolAuthenticationProvider({
-            userPool,
-            userPoolClient: oktaSamlClient,
+            userPool: this.userPool,
+            userPoolClient: this.oktaSamlClient,
             disableServerSideTokenCheck: false,
           }),
         ],

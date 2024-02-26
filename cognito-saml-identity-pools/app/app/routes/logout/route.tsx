@@ -17,7 +17,11 @@ export default function Route() {
     const logoutProcess = async () => {
       Cookies.set("idToken", "");
       Cookies.set("accessToken", "");
-      window.location.href = `${USER_POOL_DOMAIN}/logout?client_id=${OKTA_APP_CLIENT_ID}&logout_uri=http%3A%2F%2F${APP_DOMAIN}&redirect_uri=http%3A%2F%2F${APP_DOMAIN}&response_type=token`;
+      window.location.href = `${USER_POOL_DOMAIN}/logout?client_id=${OKTA_APP_CLIENT_ID}&logout_uri=${encodeURI(
+        `https://${APP_DOMAIN}`
+      )}&redirect_uri=${encodeURI(
+        `https://${APP_DOMAIN}`
+      )}&response_type=token`;
     };
     logoutProcess();
   });
