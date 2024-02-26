@@ -6,6 +6,7 @@ import { Route53Stack } from "../lib/Route53Stack";
 import { DynamodbStack } from "../lib/DynamoStack";
 import { CognitoStack } from "../lib/CognitoStack";
 import { FargateStack } from "../lib/FargateStack";
+import { PropagatedTagSource } from "aws-cdk-lib/aws-ecs";
 
 config();
 
@@ -28,6 +29,7 @@ const fargateStack = new FargateStack(app, "FargateStack", {
   articleTable: dynamodbStack.articleTable,
   domainCertificate: route53Stack.domainCertificate,
   domainName: route53Stack.domainName,
+  hostedZone: route53Stack.hostedZone,
   userPool: cognitoStack.userPool,
   userPoolDomainPrefix: cognitoStack.userPoolDomainPrefix,
   oktaSamlClient: cognitoStack.oktaSamlClient,

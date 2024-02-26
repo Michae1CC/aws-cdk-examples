@@ -6,6 +6,7 @@ import {
   aws_ec2 as ec2,
   aws_ecs as ecs,
   aws_elasticloadbalancingv2 as elbv2,
+  aws_route53 as route53,
 } from "aws-cdk-lib";
 import { ApplicationLoadBalancedFargateService } from "aws-cdk-lib/aws-ecs-patterns";
 import { Construct } from "constructs";
@@ -15,6 +16,7 @@ interface FargateStackProps extends cdk.StackProps {
   articleTable: dynamodb.Table;
   domainCertificate: acm.Certificate;
   domainName: string;
+  hostedZone: route53.IHostedZone;
   userPool: cognito.UserPool;
   userPoolDomainPrefix: string;
   oktaSamlClient: cognito.UserPoolClient;
@@ -62,10 +64,11 @@ export class FargateStack extends cdk.Stack {
       this,
       "FargateService",
       {
-        assignPublicIp: true,
         cluster: cluster,
         cpu: 512,
         desiredCount: 1,
+        domainName: props.domainName,
+        domainZone: props.hostedZone,
         memoryLimitMiB: 1024,
         certificate: props.domainCertificate,
         protocol: elbv2.ApplicationProtocol.HTTPS,
@@ -73,6 +76,7 @@ export class FargateStack extends cdk.Stack {
           image: ecs.ContainerImage.fromAsset(join(__dirname, "..", "./app")),
           containerPort: 3000,
           environment,
+          enableLogging: true,
         },
       }
     );

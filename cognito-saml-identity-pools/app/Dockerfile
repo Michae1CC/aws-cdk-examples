@@ -1,4 +1,4 @@
-FROM node:21-slim
+FROM --platform=linux/amd64 node:21-slim
 
 # Docker defaults to the root user. This line is defensively added to ensure the image doesn't break if the
 # base image decides to change the user in future.
@@ -13,4 +13,5 @@ RUN : \
     && node --version \
     && npm --version
 
+EXPOSE 3000
 ENTRYPOINT ["npm", "run", "start"]
