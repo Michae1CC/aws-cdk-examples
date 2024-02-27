@@ -5,7 +5,7 @@ import coffeeImage3 from "~/img/coffee_image3.png";
 export default function FeaturedPicture() {
   const items: Array<{ title: string; description: string; image: string }> = [
     {
-      title: "Pouring the Perfect Latte Art",
+      title: "Latte Art Finals",
       description:
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam et" +
         "venenatis risus. Integer at ipsum vehicula, laoreet enim a, varius" +
@@ -13,7 +13,7 @@ export default function FeaturedPicture() {
       image: coffeeImage1,
     },
     {
-      title: "Pouring the Perfect Latte Art",
+      title: "Procuring the Perfect Pour Over",
       description:
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam et" +
         "venenatis risus. Integer at ipsum vehicula, laoreet enim a, varius" +

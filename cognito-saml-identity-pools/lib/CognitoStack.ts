@@ -167,10 +167,3 @@ export class CognitoStack extends cdk.Stack {
     );
   }
 }
-
-// "logout": {
-//   "callback": "https://oktaSamlUserPool.auth.us-east-1.amazoncognito.com/saml2/logout",
-//   "slo_enabled": false
-// },
-// "signingCert": "-----BEGIN CERTIFICATE-----\nMIICvTCCAaWgAwIBAgIJANP+xHTLPK+JMA0GCSqGSIb3DQEBCwUAMB4xHDAaBgNVBAMME3VzLWVhc3QtMV8yRTZmV0t1aVcwHhcNMjQwMjE4MDIwMDA2WhcNMzQwMjE3MTIxMjA2WjAeMRwwGgYDVQQDDBN1cy1lYXN0LTFfMkU2ZldLdWlXMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlMLnWAMqUT/+239DgwpOw7vl0IWXtiTkjpi3FZBL2DqnCYu9+sGRnM4nT1KR/Nuo6nFpZFB+aF9MIDXtVHx/Lkz7hMXF6SqlSnRf2wZaw/nXeRTFOvwgx1z47lFJor8jCDpwVl2ZejeY+hetVBIn0dbuUaBVgU4W8hKZLzjBddUfAduS38HEhP9wao4Fc7kN1RJIsVTR/VBKV4Od0Cr2QtrQqgnG1Jz4wDBELz9agtX17ZaJNbqiYXhe25Sf/thPIlqMY7Wz0/Y64FyroiIDuUkS8xOIAB2+QbsMmNJL3gHlWtd33u9xigOA2UWk8KTcyu6vdyTU+fB20owUqwDBYwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAb/Ze23fnIWUXwNHYTC8lMN+gSKE/v0GliVcNNjPp75WCoZL0VY2WsuQypnUQ347uh8hKJgx2ao2eYdP3529Zr1rat7LE+no0inMcDeaBKcIKJnb84puERgItid2xUiEivUAQ6LI0o1yXe5pv2fpkkeg7gLbb3mNgWJcD56QilK6Q5CcKIJC/cRe27161RBrirOWrocngWlqnLxUe1Dr8UchYkL+wdmPtHGjtO0xHfh+qhTX7qj7/aZioPnt2SoUoWznmfeBpFTlnHEst4t2Gpw5NnUBwh+9piZULfk5pAzRodd2zlD9er37cD5LmDxlkmYRomkHAof22m8iXuZw0k\n-----END CERTIFICATE-----",
-// "signResponse": true,
