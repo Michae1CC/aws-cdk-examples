@@ -1,23 +1,24 @@
 import { useContext, useEffect, useState } from "react";
-import { JwtDecodedContext } from "~/utils/context";
-import {
-  APP_DOMAIN,
-  OKTA_APP_CLIENT_ID,
-  USER_POOL_DOMAIN,
-} from "~/utils/envar";
+import { EnvContext, JwtDecodedContext } from "~/utils/context";
 
 export default function NavigationBar() {
   const jwtDecoded = useContext(JwtDecodedContext);
+  const env = useContext(EnvContext);
 
   const [userLoggedIn, setUserLoggedIn] = useState<boolean>(
     jwtDecoded !== undefined
   );
 
-  const loginUrl = `${USER_POOL_DOMAIN}/oauth2/authorize?client_id=${OKTA_APP_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURI(
-    `https://${APP_DOMAIN}`
+  const loginUrl = `${env.USER_POOL_DOMAIN}/oauth2/authorize?client_id=${
+    env.OKTA_APP_CLIENT_ID
+  }&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(
+    `https://${env.APP_DOMAIN}`
   )}/login`;
 
   const logoutUrl = "/logout";
+
+  console.log("Login URL");
+  console.log(loginUrl);
 
   useEffect(() => {
     setUserLoggedIn(jwtDecoded !== undefined);

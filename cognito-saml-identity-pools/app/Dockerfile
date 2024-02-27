@@ -9,9 +9,11 @@ WORKDIR /app
 COPY . .
 
 RUN : \
+    && set -eu pipefail \
     && npm i \
     && node --version \
-    && npm --version
+    && npm --version \
+    && npm run build
 
 EXPOSE 3000
 ENTRYPOINT ["npm", "run", "start"]

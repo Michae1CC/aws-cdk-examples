@@ -8,9 +8,12 @@ import navigationBarStylesUrl from "~/styles/NavigationBar.css";
 import createStyles from "~/styles/create.css";
 import buttonStyles from "~/styles/Button.css";
 import { useCallback, useContext } from "react";
-import { DynamoDbClientContext, JwtDecodedContext } from "~/utils/context";
+import {
+  DynamoDbClientContext,
+  EnvContext,
+  JwtDecodedContext,
+} from "~/utils/context";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
-import { TABLE_NAME } from "~/utils/envar";
 import type { TableItem } from "~/types";
 
 export const links: LinksFunction = () => [
@@ -22,6 +25,7 @@ export const links: LinksFunction = () => [
 
 export default function Route() {
   const ddb = useContext(DynamoDbClientContext);
+  const env = useContext(EnvContext);
   const jwtDecoded = useContext(JwtDecodedContext);
 
   const submitCallback = useCallback(async () => {
@@ -62,11 +66,11 @@ export default function Route() {
     await ddb.send(
       new PutItemCommand({
         Item: item,
-        TableName: TABLE_NAME,
+        TableName: env.TABLE_NAME,
       })
     );
     window.location.href = "/";
-  }, [ddb, jwtDecoded]);
+  }, [ddb, jwtDecoded, env]);
 
   return (
     <div>

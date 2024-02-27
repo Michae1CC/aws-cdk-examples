@@ -5,9 +5,8 @@ import navigationBarStylesUrl from "~/styles/NavigationBar.css";
 import articlesStyles from "~/styles/articlesStyles.css";
 import { useParams } from "@remix-run/react";
 import { useContext, useEffect, useState } from "react";
-import { DynamoDbClientContext } from "~/utils/context";
+import { DynamoDbClientContext, EnvContext } from "~/utils/context";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
-import { TABLE_NAME } from "~/utils/envar";
 import type { TableItem, TableJSObject } from "~/types";
 import type { LinksFunction } from "@remix-run/node";
 
@@ -20,6 +19,7 @@ export const links: LinksFunction = () => [
 export default function Route() {
   const ddb = useContext(DynamoDbClientContext);
   const params = useParams();
+  const env = useContext(EnvContext);
   const [articleItem, setArticleItem] = useState<TableJSObject | undefined>(
     undefined
   );
@@ -34,7 +34,7 @@ export default function Route() {
       }
       const response = await ddb.send(
         new GetItemCommand({
-          TableName: TABLE_NAME,
+          TableName: env.TABLE_NAME,
           Key: {
             id: {
               S: articleId,
@@ -54,7 +54,7 @@ export default function Route() {
       });
     };
     getArticle();
-  }, [ddb, articleId]);
+  }, [ddb, articleId, env]);
 
   const html = markdownit().render(articleItem?.body || "");
 

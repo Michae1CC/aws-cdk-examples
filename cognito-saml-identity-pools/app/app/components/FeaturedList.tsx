@@ -1,11 +1,11 @@
 import { ScanCommand } from "@aws-sdk/client-dynamodb";
 import { useContext, useEffect, useState } from "react";
-import { DynamoDbClientContext } from "~/utils/context";
-import { TABLE_NAME } from "~/utils/envar";
+import { DynamoDbClientContext, EnvContext } from "~/utils/context";
 import type { TableItem } from "~/types";
 
 export default function FeaturedList() {
   const ddb = useContext(DynamoDbClientContext);
+  const env = useContext(EnvContext);
   const [items, setItems] = useState<Array<TableItem>>([]);
 
   useEffect(() => {
@@ -15,7 +15,7 @@ export default function FeaturedList() {
       }
       const response = await ddb.send(
         new ScanCommand({
-          TableName: TABLE_NAME,
+          TableName: env.TABLE_NAME,
           Limit: 10,
         })
       );
@@ -24,7 +24,7 @@ export default function FeaturedList() {
       if (rawItems !== undefined) setItems(rawItems as Array<TableItem>);
     };
     getData();
-  }, [ddb]);
+  }, [ddb, env]);
 
   return (
     <div className="featured-list">
