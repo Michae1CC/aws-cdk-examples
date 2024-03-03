@@ -1,17 +1,170 @@
-# Welcome to your CDK TypeScript project
+# Cognito User Pools and Identity with SAML IDPs
 
-This is a blank project for CDK development with TypeScript.
+AWS Cognito provides a mechanism for both user authentication and user
+authorization within AWS managed applications. Cognito User Pools handle the
+authentication component, allowing one to integrate other Identity Providers
+(IDPs) which support SAML or OpenID Connect. Cognito Identity Pool provider
+authorization by degalting roles to both authenticated and unauthenticated
+users. This tutorial will go over how AWS Cognito can be used to authenticate
+user for a simple coffee-blog website where unauthenticated users may view
+articles and authenticated users may both submit and view articles.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Global Resources
 
-## Useful commands
+I'm using the domain `awscdkeg.net` I purchased through Route53 to host the
+coffee application as using the hosted zone to create domain certificate.
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+```typescript
+/**
+ * Look up the hosted zone created using the registration process
+ */
+this.hostedZone = route53.HostedZone.fromLookup(
+    this,
+    "awscdkexamplehostedzone",
+    {
+    domainName: this.domainName,
+    }
+);
+
+this.domainCertificate = new acm.Certificate(this, "exampleCertificate", {
+    domainName: this.domainName,
+    validation: acm.CertificateValidation.fromDns(this.hostedZone),
+});
+```
+
+A dynamo table will be used to store the submitted articles as items within the
+table. Each article will consist of the following information
+
+- A unique UUID identifier
+- The email of the user which submitted the article
+- The article title
+- The article content
+
+Each of these will be kept as string attributes with the table's items. The CDK
+used to produce the dynamodb table.
+
+```typescript
+this.articleTable = new dynamodb.Table(this, "articleTable", {
+    partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+    billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    encryption: dynamodb.TableEncryption.DEFAULT,
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+});
+```
+
+## Cognito User Pools
+
+User Pools provides an endpoint to authenticate users. From the perspective of
+your application, the User Pools is an OIDC IDP which issue identity tokens to
+users which successfully authenticate. The way this works is that you can add
+third-party IDPs to you User Pools as trusted identity providers. When a user
+attempts to authenticate with the User Pool, the User Pool will handling
+creating the authentication request to the third party identity provider as
+well as the response. The User Pool will then convert the response into an
+identity token JSON web token (JWT) as you would in a normal OIDC authentication
+transaction. The beauty of this is that even if you add to third-party IDPs
+that use different authenticate protocols, the User Pool will 'normalise' the
+authentication reponse as a JWT, meaning your application only ever to worry
+about needing to consume JWTs from the authentication process.
+
+To start we need to create a User Pool within CDK to act as our OIDC endpoint
+for authorising users.
+
+```typescript
+this.userPool = new cognito.UserPool(this, "oktaSamlUserPool", {
+    userPoolName: "oktaSamlUserPool",
+    mfa: cognito.Mfa.OFF,
+    selfSignUpEnabled: false,
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+});
+```
+
+For this tutorial, I'll add a third-party SAML IDP as a way for our User Pool
+to authenticate our users. To do this, I've created a free auth0 (owned by okta)
+web application and have enabled the SAML addon. We can add this as an identity
+provider through the following CDK code:
+
+```typescript
+const oktaSamlIdentityProviderMetadata =
+    cognito.UserPoolIdentityProviderSamlMetadata.url(
+        "https://dev-npaajtq6i6vncnr2.us.auth0.com/samlp/metadata/EjjqseDMDm7vmlxjRO9AeT8YB7xuHI4e"
+    );
+
+this.oktaSamlIdentityProvider = new cognito.UserPoolIdentityProviderSaml(
+    this,
+    "oktaSamlIdentityProvider",
+    {
+    userPool: this.userPool,
+    metadata: oktaSamlIdentityProviderMetadata,
+    idpSignout: true,
+    attributeMapping: {
+        email: cognito.ProviderAttribute.other("email"),
+        familyName: cognito.ProviderAttribute.other("family_name"),
+        givenName: cognito.ProviderAttribute.other("given_name"),
+        nickname: cognito.ProviderAttribute.other("name"),
+    },
+    }
+);
+
+this.userPool.registerIdentityProvider(this.oktaSamlIdentityProvider);
+```
+
+Adding the identity provider is required for Cognito to create SAML requests to
+our SAML IDP. The attribute mapping will map SAML claims from our SAML IDP to
+OIDC attributes.
+
+The following configures a domain for you application to make OIDC requests to,
+you can alternative use a domain that you have purchased, otherwise AWS will
+otherwise generate one for you. Adding a generated domain is done so with the
+following CDK:
+
+```typescript
+this.userPool.addDomain("okatSamlUserPoolDomain", {
+    cognitoDomain: {
+    domainPrefix: this.userPoolDomainPrefix,
+    },
+});
+```
+
+A User Pool client is used to identity and interect with a web or mobile
+application. It provides information information on what the application is
+permitted to read and modify, which identity providers are permitted to
+autheticate users what api calls can be made to authenticate and unauthenticate
+and where to redirect users after authentication and unauthentication take
+place. The CDK code used to generate our coffee-app client is shown below.
+It has permissions to read all our our user's attributes and will use our
+SAML IDP to authenticate them.
+
+```typescript
+this.oktaSamlClient = this.userPool.addClient("oktaSamlClient", {
+    userPoolClientName: "oktaSamlClient",
+    generateSecret: true,
+    oAuth: {
+    callbackUrls: [`https://${props?.domainName}/login`],
+    logoutUrls: [`https://${props?.domainName}`],
+    flows: {
+        // This is not recommended for production settings
+        authorizationCodeGrant: false,
+        implicitCodeGrant: true,
+    },
+    // When you authenticate user using the user pool OAuth 2.0
+    // authorization server to need to specify the scope of the attributes
+    // returned by the server.
+    //
+    // Here we are allowing all attributes the app client can read.
+    scopes: [
+        cognito.OAuthScope.OPENID,
+        cognito.OAuthScope.EMAIL,
+        cognito.OAuthScope.PROFILE,
+    ],
+    },
+    supportedIdentityProviders: [
+    cognito.UserPoolClientIdentityProvider.custom(
+        this.oktaSamlIdentityProvider.providerName
+    ),
+    ],
+});
+```
 
 ## How to Test
 
@@ -107,3 +260,9 @@ information. We can check that the item was created by going back to the home
 adding checking the right column for our new article.
 
 ![auth-home-page](./img/auth-home.png)
+
+Finally run, the following to destroy the resources from this example
+
+```bash
+cdk destroy
+```

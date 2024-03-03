@@ -57,6 +57,8 @@ export class CognitoStack extends cdk.Stack {
       }
     );
 
+    this.userPool.registerIdentityProvider(this.oktaSamlIdentityProvider);
+
     this.userPool.addDomain("okatSamlUserPoolDomain", {
       cognitoDomain: {
         domainPrefix: this.userPoolDomainPrefix,
@@ -91,8 +93,6 @@ export class CognitoStack extends cdk.Stack {
         ),
       ],
     });
-
-    this.userPool.registerIdentityProvider(this.oktaSamlIdentityProvider);
 
     // *************************************************************************
     // Create resources for identity pool
