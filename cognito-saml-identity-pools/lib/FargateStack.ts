@@ -85,6 +85,7 @@ export class FargateStack extends cdk.Stack {
         memoryLimitMiB: 1024,
         certificate: props.domainCertificate,
         protocol: elbv2.ApplicationProtocol.HTTPS,
+        redirectHTTP: true,
         taskSubnets: {
           subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
         },
