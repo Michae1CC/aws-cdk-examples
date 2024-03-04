@@ -4,9 +4,9 @@ AWS Cognito provides a mechanism for both user authentication and user
 authorization within AWS managed applications. Cognito User Pools handle the
 authentication component, allowing one to integrate other Identity Providers
 (IDPs) which support SAML or OpenID Connect. Cognito Identity Pool provider
-authorization by degalting roles to both authenticated and unauthenticated
+authorization by delegating roles to both authenticated and unauthenticated
 users. This tutorial will go over how AWS Cognito can be used to authenticate
-user for a simple coffee-blog website where unauthenticated users may view
+user for a simple coffee-blog website where guest users may view
 articles and authenticated users may both submit and view articles.
 
 ## Global Resources
@@ -55,10 +55,10 @@ this.articleTable = new dynamodb.Table(this, "articleTable", {
 ## Cognito User Pools
 
 User Pools provides an endpoint to authenticate users. From the perspective of
-your application, the User Pools is an OIDC IDP which issue identity tokens to
+your application, the User Pool is an OIDC IDP which issues identity tokens to
 users which successfully authenticate. The way this works is that you can add
 third-party IDPs to you User Pools as trusted identity providers. When a user
-attempts to authenticate with the User Pool, the User Pool will handling
+attempts to authenticate with the User Pool, the User Pool will handle
 creating the authentication request to the third party identity provider as
 well as the response. The User Pool will then convert the response into an
 identity token JSON web token (JWT) as you would in a normal OIDC authentication
@@ -87,6 +87,7 @@ provider through the following CDK code:
 ```typescript
 const oktaSamlIdentityProviderMetadata =
     cognito.UserPoolIdentityProviderSamlMetadata.url(
+        // Change this our your own metadata URL!
         "https://dev-npaajtq6i6vncnr2.us.auth0.com/samlp/metadata/EjjqseDMDm7vmlxjRO9AeT8YB7xuHI4e"
     );
 
@@ -98,11 +99,11 @@ this.oktaSamlIdentityProvider = new cognito.UserPoolIdentityProviderSaml(
     metadata: oktaSamlIdentityProviderMetadata,
     idpSignout: true,
     attributeMapping: {
-        email: cognito.ProviderAttribute.other("email"),
-        familyName: cognito.ProviderAttribute.other("family_name"),
-        givenName: cognito.ProviderAttribute.other("given_name"),
-        nickname: cognito.ProviderAttribute.other("name"),
-    },
+            email: cognito.ProviderAttribute.other("email"),
+            familyName: cognito.ProviderAttribute.other("family_name"),
+            givenName: cognito.ProviderAttribute.other("given_name"),
+            nickname: cognito.ProviderAttribute.other("name"),
+        },
     }
 );
 
@@ -121,15 +122,15 @@ following CDK:
 ```typescript
 this.userPool.addDomain("okatSamlUserPoolDomain", {
     cognitoDomain: {
-    domainPrefix: this.userPoolDomainPrefix,
+        domainPrefix: this.userPoolDomainPrefix,
     },
 });
 ```
 
-A User Pool client is used to identity and interect with a web or mobile
+A User Pool client is used to identify and interact with a web or mobile
 application. It provides information information on what the application is
 permitted to read and modify, which identity providers are permitted to
-autheticate users what api calls can be made to authenticate and unauthenticate
+authenticate users what api calls can be made to authenticate and unauthenticate
 and where to redirect users after authentication and unauthentication take
 place. The CDK code used to generate our coffee-app client is shown below.
 It has permissions to read all our our user's attributes and will use our
@@ -153,18 +154,147 @@ this.oktaSamlClient = this.userPool.addClient("oktaSamlClient", {
     //
     // Here we are allowing all attributes the app client can read.
     scopes: [
-        cognito.OAuthScope.OPENID,
-        cognito.OAuthScope.EMAIL,
-        cognito.OAuthScope.PROFILE,
-    ],
+            cognito.OAuthScope.OPENID,
+            cognito.OAuthScope.EMAIL,
+            cognito.OAuthScope.PROFILE,
+        ],
     },
     supportedIdentityProviders: [
-    cognito.UserPoolClientIdentityProvider.custom(
-        this.oktaSamlIdentityProvider.providerName
-    ),
+        cognito.UserPoolClientIdentityProvider.custom(
+            this.oktaSamlIdentityProvider.providerName
+        ),
     ],
 });
 ```
+
+## Cognito Identity Pools
+
+Identity pools allow us to grant AWS credentials to users on our website.
+Different levels can be granted depending on whether the user is authenticated
+or not as well as the values returned in the claims. In this example, we will
+create an Identity Pool which provides different levels of permissions for
+authenticated and unauthenticated users. The CDK code to create our Identity
+Pool can be found within the bottom half of our `CognitoStack`
+
+```typescript
+this.identityPool = new IdentityPool(this, "oktaSamlIdentityPool", {
+    // Allow the identity pool to automatically create the authenticated role
+    // and guest role since it's difficult to create the trust policies for
+    // these roles by hand. We can simply retrieve the automatically created
+    // layer and add our own policies to them.
+    identityPoolName: "oktaSamlIdentityPool",
+    allowUnauthenticatedIdentities: true,
+    authenticationProviders: {
+    userPools: [
+        new UserPoolAuthenticationProvider({
+        userPool: this.userPool,
+        userPoolClient: this.oktaSamlClient,
+        disableServerSideTokenCheck: false,
+        }),
+    ],
+    },
+});
+```
+
+This will create the authenticated and unauthenticated user roles with a
+pre-created trust policy which only allows Federated Web Identities that have
+authenticated through our User Pool client to assume these roles. As mentioned
+in the intro, we only want to provide unauthenticated users with
+read-only permissions to our article table. To this, we can create a new
+IAM policy with read-only permissions to the table and attach and add it to
+the pre-created unauthenticated Identity Pool user role.
+
+```typescript
+const getCognitoCredentialsStatement = new iam.PolicyStatement({
+    effect: iam.Effect.ALLOW,
+    resources: ["*"],
+    actions: ["cognito-identity:GetCredentialsForIdentity"],
+});
+
+const unauthenticatedUserStatement = new iam.PolicyStatement({
+    effect: iam.Effect.ALLOW,
+    resources: [props.articleTable.tableArn],
+    actions: [
+    "dynamodb:BatchGetItem",
+    "dynamodb:GetItem",
+    "dynamodb:Scan",
+    "dynamodb:Query",
+    ],
+});
+
+this.identityPool.unauthenticatedRole.addManagedPolicy(
+    new iam.ManagedPolicy(this, "unauthenticatedManagedPolicy", {
+    statements: [
+        getCognitoCredentialsStatement,
+        unauthenticatedUserStatement,
+    ],
+    })
+);
+```
+
+We will do something similar with our authenticated user except the role will
+also grant put item permission to submit articles.
+
+```typescript
+const authenticatedUserStatement = new iam.PolicyStatement({
+    effect: iam.Effect.ALLOW,
+    resources: [props.articleTable.tableArn],
+    actions: [
+    "dynamodb:BatchGetItem",
+    "dynamodb:BatchWriteItem",
+    "dynamodb:PutItem",
+    "dynamodb:DeleteItem",
+    "dynamodb:GetItem",
+    "dynamodb:Scan",
+    "dynamodb:Query",
+    "dynamodb:UpdateItem",
+    ],
+});
+
+this.identityPool.authenticatedRole.addManagedPolicy(
+    new iam.ManagedPolicy(this, "authenticatedManagedPolicy", {
+    statements: [
+        getCognitoCredentialsStatement,
+        authenticatedUserStatement,
+    ],
+    })
+);
+```
+
+Setting up the dynamodb client which uses these credentials to make API calls 
+takes place in the client-side `app/app/root.tsx` file.
+
+```typescript
+const idTokenString = Cookies.get("idToken");
+const logins: Record<string, string> = {};
+if (idTokenString) {
+    setDecodedJwt(jwtDecode(idTokenString));
+    logins[`cognito-idp.${env.REGION}.amazonaws.com/${env.USER_POOL_ID}`] =
+    idTokenString;
+}
+const createDynamoResources = async () => {
+    const creds = fromCognitoIdentityPool({
+    identityPoolId: env.IDENTITY_POOL_ID,
+    clientConfig: { region: env.REGION },
+    logins: logins,
+    });
+    setDynamodbClient(
+    new DynamoDBClient({
+        region: env.REGION,
+        credentials: creds,
+    })
+    );
+};
+createDynamoResources();
+```
+
+The identity token passed to the application duration when returning from
+authentication is stored as a cookie a retrieved here. If the cookie is set,
+it is passed in as login information to the `fromCognitionIdentityPool`
+which provides credentials for a particular identity pool. If the `logins`
+parameter is left as `undefined` then credentials for the unauthenticated user
+is provide. On the other hand, the identity token is present then credentials
+for the authenticated user role is given.
 
 ## How to Test
 

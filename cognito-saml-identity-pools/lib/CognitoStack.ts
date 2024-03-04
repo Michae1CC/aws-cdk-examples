@@ -38,6 +38,7 @@ export class CognitoStack extends cdk.Stack {
 
     const oktaSamlIdentityProviderMetadata =
       cognito.UserPoolIdentityProviderSamlMetadata.url(
+        // Change this our your own metadata URL!
         "https://dev-npaajtq6i6vncnr2.us.auth0.com/samlp/metadata/EjjqseDMDm7vmlxjRO9AeT8YB7xuHI4e"
       );
 
@@ -133,6 +134,15 @@ export class CognitoStack extends cdk.Stack {
       ],
     });
 
+    this.identityPool.unauthenticatedRole.addManagedPolicy(
+      new iam.ManagedPolicy(this, "unauthenticatedManagedPolicy", {
+        statements: [
+          getCognitoCredentialsStatement,
+          unauthenticatedUserStatement,
+        ],
+      })
+    );
+
     const authenticatedUserStatement = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       resources: [props.articleTable.tableArn],
@@ -153,15 +163,6 @@ export class CognitoStack extends cdk.Stack {
         statements: [
           getCognitoCredentialsStatement,
           authenticatedUserStatement,
-        ],
-      })
-    );
-
-    this.identityPool.unauthenticatedRole.addManagedPolicy(
-      new iam.ManagedPolicy(this, "unauthenticatedManagedPolicy", {
-        statements: [
-          getCognitoCredentialsStatement,
-          unauthenticatedUserStatement,
         ],
       })
     );
