@@ -1,4 +1,4 @@
-# Cognito User Pools and Identity with SAML IDPs
+# Cognito User Pools and Identity Pools with SAML IDPs
 
 AWS Cognito provides a mechanism for both user authentication and user
 authorization within AWS managed applications. Cognito User Pools handle the
