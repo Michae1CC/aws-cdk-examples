@@ -64,8 +64,17 @@ well as the response. The User Pool will then convert the response into an
 identity token JSON web token (JWT) as you would in a normal OIDC authentication
 transaction. The beauty of this is that even if you add to third-party IDPs
 that use different authenticate protocols, the User Pool will 'normalise' the
-authentication reponse as a JWT, meaning your application only ever to worry
-about needing to consume JWTs from the authentication process.
+authentication response as a JWT, meaning your application only ever to worry
+about needing to consume JWTs from the authentication process. Here is what
+a typical login and logout flows look like using Cognito with SAML authentication.
+
+Login:
+
+![login work flow](/img/cognito-saml-login-request-flow.png)
+
+Logout:
+
+![login work flow](/img/cognito-saml-logout-request-flow.png)
 
 To start we need to create a User Pool within CDK to act as our OIDC endpoint
 for authorising users.
