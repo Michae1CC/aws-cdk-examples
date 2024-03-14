@@ -70,11 +70,11 @@ a typical login and logout flows look like using Cognito with SAML authenticatio
 
 Login:
 
-![login work flow](/img/cognito-saml-login-request-flow.png)
+![login work flow](./img/cognito-saml-login-request-flow.png)
 
 Logout:
 
-![login work flow](/img/cognito-saml-logout-request-flow.png)
+![login work flow](./img/cognito-saml-logout-request-flow.png)
 
 To start we need to create a User Pool within CDK to act as our OIDC endpoint
 for authorising users.
