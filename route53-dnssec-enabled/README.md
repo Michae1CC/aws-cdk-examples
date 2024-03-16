@@ -15,5 +15,6 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 ## References
 
-- <https://learn.cantrill.io/courses/1820301/lectures/43460378>
-- <https://www.cloudflare.com/dns/dnssec/how-dnssec-works/>
+* <https://learn.cantrill.io/courses/1820301/lectures/43460378>
+* <https://www.cloudflare.com/dns/dnssec/how-dnssec-works/>
+* <https://github.com/GemeenteNijmegen/modules-dnssec-record>
