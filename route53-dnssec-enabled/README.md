@@ -13,6 +13,15 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * `npx cdk diff`    compare deployed stack with current state
 * `npx cdk synth`   emits the synthesized CloudFormation template
 
+## Deployment Strategy
+
+* Enable monitoring for DNSSEC failures
+* Reduce both zone's maximum TTL [see](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-enable-signing-step-1)
+* Lower the SOA TTL and SOA minimum field
+* Make sure TTL and SOA changes are effective
+* Add DNSSEC signing and create KSK via Cloudformation [see](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-enable)
+
+
 ## References
 
 * <https://learn.cantrill.io/courses/1820301/lectures/43460378>
