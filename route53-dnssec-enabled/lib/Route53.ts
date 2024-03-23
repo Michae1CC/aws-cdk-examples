@@ -1,5 +1,6 @@
-import { aws_route53 as route53 } from "aws-cdk-lib";
+import { aws_kms as kms, aws_route53 as route53 } from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib";
+import { KeySpec, KeyUsage } from "aws-cdk-lib/aws-kms";
 import { Construct } from "constructs";
 
 export class Route53 extends cdk.Stack {
@@ -39,5 +40,19 @@ export class Route53 extends cdk.Stack {
       ],
       ttl: cdk.Duration.minutes(5),
     });
+
+    /**
+     * Create the Key Signing Keys for both the apex and service hosted zones.
+     *
+     * The key must be an asymmetric key with an ECC_NIST_P256 key spec,
+     * see: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-cmk-requirements.html.
+     * These keys are used for signing and verifying.
+     */
+    const apexKey = new kms.Key(this, "apexKSK", {
+      keySpec: kms.KeySpec.ECC_NIST_P256,
+      keyUsage: kms.KeyUsage.SIGN_VERIFY,
+    });
+
+    // Must specify the kms:SigningAlgorithm in the policy condition, see: https://docs.aws.amazon.com/kms/latest/developerguide/asymmetric-key-specs.html#key-spec-ecc
   }
 }
