@@ -21,9 +21,13 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * Make sure TTL and SOA changes are effective
 * Add DNSSEC signing and create KSK via Cloudformation [see](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-enable)
 
+- Original min SOA was 86400
+- Original CNAME was 900
+
 ## References
 
 * <https://learn.cantrill.io/courses/1820301/lectures/43460378>
 * <https://www.cloudflare.com/dns/dnssec/how-dnssec-works/>
 * <https://github.com/GemeenteNijmegen/modules-dnssec-record>
 * <https://repost.aws/knowledge-center/create-subdomain-route-53>
+* <https://deepdive.codiply.com/enable-dnssec-signing-in-amazon-route-53-using-aws-cdk>
