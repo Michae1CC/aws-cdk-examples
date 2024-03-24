@@ -39,7 +39,10 @@ export class Route53 extends cdk.Stack {
       // constructs will return undefined for the hostedZoneNameServers if the
       // hosted zone was not created in this stack.
       values: [
-        // TODO: Add the name servers
+        process.env.APEX_NS_1!,
+        process.env.APEX_NS_2!,
+        process.env.APEX_NS_3!,
+        process.env.APEX_NS_4!,
       ],
       ttl: cdk.Duration.minutes(5),
     });
@@ -51,27 +54,27 @@ export class Route53 extends cdk.Stack {
      * see: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-cmk-requirements.html.
      * These keys are used for signing and verifying.
      */
-    const apexKey = new kms.Key(this, "apexKSK", {
+    const apexKmsKey = new kms.Key(this, "apexKSK", {
       keySpec: kms.KeySpec.ECC_NIST_P256,
       keyUsage: kms.KeyUsage.SIGN_VERIFY,
     });
 
     // Add to the resources policy of the KMS key to allow AWS route53 to use the customer managed
     // keys, see: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/access-control-managing-permissions.html#KMS-key-policy-for-DNSSEC
-    apexKey.addToResourcePolicy(
+    apexKmsKey.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
-        resources: [apexKey.keyArn],
+        resources: [apexKmsKey.keyArn],
         actions: ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"],
       })
     );
 
-    apexKey.addToResourcePolicy(
+    apexKmsKey.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
-        resources: [apexKey.keyArn],
+        resources: [apexKmsKey.keyArn],
         actions: ["kms:CreateGrant"],
         conditions: {
           Bool: {
@@ -82,25 +85,25 @@ export class Route53 extends cdk.Stack {
     );
 
     // Create a KSK for the service hosted zone and provide the same permissions
-    const serviceKey = new kms.Key(this, "apexKSK", {
+    const serviceKmsKey = new kms.Key(this, "serviceKmsKey", {
       keySpec: kms.KeySpec.ECC_NIST_P256,
       keyUsage: kms.KeyUsage.SIGN_VERIFY,
     });
 
-    serviceKey.addToResourcePolicy(
+    serviceKmsKey.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
-        resources: [serviceKey.keyArn],
+        resources: [serviceKmsKey.keyArn],
         actions: ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"],
       })
     );
 
-    serviceKey.addToResourcePolicy(
+    serviceKmsKey.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
-        resources: [serviceKey.keyArn],
+        resources: [serviceKmsKey.keyArn],
         actions: ["kms:CreateGrant"],
         conditions: {
           Bool: {
@@ -118,7 +121,7 @@ export class Route53 extends cdk.Stack {
       name: "apexKsk",
       status: "ACTIVE",
       hostedZoneId: apexHostedZone.hostedZoneId,
-      keyManagementServiceArn: apexKey.keyArn,
+      keyManagementServiceArn: apexKmsKey.keyArn,
     });
 
     const apexDnssec = new route53.CfnDNSSEC(this, "apexDnssec", {
@@ -130,7 +133,7 @@ export class Route53 extends cdk.Stack {
       name: "serviceKsk",
       status: "ACTIVE",
       hostedZoneId: serviceHostedZone.hostedZoneId,
-      keyManagementServiceArn: serviceKey.keyArn,
+      keyManagementServiceArn: serviceKmsKey.keyArn,
     });
 
     const serviceDnssec = new route53.CfnDNSSEC(this, "serviceDnssec", {
