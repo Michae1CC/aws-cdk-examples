@@ -21,7 +21,6 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * Make sure TTL and SOA changes are effective
 * Add DNSSEC signing and create KSK via Cloudformation [see](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-enable)
 
-
 ## References
 
 * <https://learn.cantrill.io/courses/1820301/lectures/43460378>

@@ -1,6 +1,9 @@
-import { aws_kms as kms, aws_route53 as route53 } from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib";
-import { KeySpec, KeyUsage } from "aws-cdk-lib/aws-kms";
+import {
+  aws_iam as iam,
+  aws_kms as kms,
+  aws_route53 as route53,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 export class Route53 extends cdk.Stack {
@@ -53,6 +56,86 @@ export class Route53 extends cdk.Stack {
       keyUsage: kms.KeyUsage.SIGN_VERIFY,
     });
 
-    // Must specify the kms:SigningAlgorithm in the policy condition, see: https://docs.aws.amazon.com/kms/latest/developerguide/asymmetric-key-specs.html#key-spec-ecc
+    // Add to the resources policy of the KMS key to allow AWS route53 to use the customer managed
+    // keys, see: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/access-control-managing-permissions.html#KMS-key-policy-for-DNSSEC
+    apexKey.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
+        resources: [apexKey.keyArn],
+        actions: ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"],
+      })
+    );
+
+    apexKey.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
+        resources: [apexKey.keyArn],
+        actions: ["kms:CreateGrant"],
+        conditions: {
+          Bool: {
+            "kms:GrantIsForAWSResource": true,
+          },
+        },
+      })
+    );
+
+    // Create a KSK for the service hosted zone and provide the same permissions
+    const serviceKey = new kms.Key(this, "apexKSK", {
+      keySpec: kms.KeySpec.ECC_NIST_P256,
+      keyUsage: kms.KeyUsage.SIGN_VERIFY,
+    });
+
+    serviceKey.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
+        resources: [serviceKey.keyArn],
+        actions: ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"],
+      })
+    );
+
+    serviceKey.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
+        resources: [serviceKey.keyArn],
+        actions: ["kms:CreateGrant"],
+        conditions: {
+          Bool: {
+            "kms:GrantIsForAWSResource": true,
+          },
+        },
+      })
+    );
+
+    /**
+     * Enable DNSSEC for our hosted zones, using the customer managed keys
+     * created above as the KSKs.
+     */
+    const apexKsk = new route53.CfnKeySigningKey(this, "apexKsk", {
+      name: "apexKsk",
+      status: "ACTIVE",
+      hostedZoneId: apexHostedZone.hostedZoneId,
+      keyManagementServiceArn: apexKey.keyArn,
+    });
+
+    const apexDnssec = new route53.CfnDNSSEC(this, "apexDnssec", {
+      hostedZoneId: apexHostedZone.hostedZoneId,
+    });
+    apexDnssec.node.addDependency(apexKsk);
+
+    const serviceKsk = new route53.CfnKeySigningKey(this, "serviceKsk", {
+      name: "serviceKsk",
+      status: "ACTIVE",
+      hostedZoneId: serviceHostedZone.hostedZoneId,
+      keyManagementServiceArn: serviceKey.keyArn,
+    });
+
+    const serviceDnssec = new route53.CfnDNSSEC(this, "serviceDnssec", {
+      hostedZoneId: serviceHostedZone.hostedZoneId,
+    });
+    serviceDnssec.node.addDependency(serviceKsk);
   }
 }
