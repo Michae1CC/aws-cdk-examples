@@ -1,0 +1,16 @@
+{
+  "module": "es2022",
+  "name": "ds-custom-resource",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-route-53": "^3.540.0",
+    "@types/aws-lambda": "^8.10.136"
+  }
+}
