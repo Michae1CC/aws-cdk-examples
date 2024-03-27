@@ -1,9 +1,6 @@
 import {
   Route53Client,
   GetDNSSECCommand,
-  ChangeResourceRecordSetsCommand,
-  GetChangeCommand,
-  ChangeStatus,
   KeySigningKey,
 } from "@aws-sdk/client-route-53";
 import {
@@ -11,36 +8,73 @@ import {
   CloudFormationCustomResourceResponse,
 } from "aws-lambda";
 
-const handler = async () => {
-  const route53Client = new Route53Client({});
+const route53Client = new Route53Client({});
 
-  const hostedZoneId = "Z0783675306OVK0GW6SL9";
-  const keySigningKeyName = "serviceKsk";
+export const getDsRecord = async (
+  event: CloudFormationCustomResourceEvent
+): Promise<CloudFormationCustomResourceResponse> => {
+  const keySigningKeyName = event.ResourceProperties
+    .keySigningKeyName as string;
+  const hostedZoneId = event.ResourceProperties.hostedZoneId as string;
+  // const hostedZoneId = "Z0783675306OVK0GW6SL9";
+  // const keySigningKeyName = "serviceKsk";
 
   const dnssecCommandOutput = await route53Client.send(
     new GetDNSSECCommand({
       HostedZoneId: hostedZoneId,
     })
   );
+
   const filteredKeys = dnssecCommandOutput.KeySigningKeys?.filter(
     (key: KeySigningKey) => key.Name === keySigningKeyName
   );
 
   if (filteredKeys === undefined || filteredKeys?.length === 0) {
-    throw new Error(
-      `Key Signed Key for HostedZoneId ${hostedZoneId} was not found.`
-    );
+    return {
+      Status: "FAILED",
+      Reason: `Key Signed Key for HostedZoneId ${hostedZoneId} was not found.`,
+      LogicalResourceId: event.LogicalResourceId,
+      PhysicalResourceId: event.ResourceProperties.PhysicalResourceId,
+      RequestId: event.RequestId,
+      StackId: event.StackId,
+    };
   }
 
   const dsRecord = filteredKeys[0].DSRecord;
 
   if (dsRecord === undefined) {
-    throw new Error(`No DSRecord found for ${keySigningKeyName}`);
+    return {
+      Status: "FAILED",
+      Reason: `No DSRecord found for ${keySigningKeyName}`,
+      LogicalResourceId: event.LogicalResourceId,
+      PhysicalResourceId: event.ResourceProperties.PhysicalResourceId,
+      RequestId: event.RequestId,
+      StackId: event.StackId,
+    };
   }
 
-  console.log(dsRecord);
-
-  return dsRecord;
+  return {
+    Status: "SUCCESS",
+    Reason: "",
+    Data: {
+      dsRecord,
+    },
+    LogicalResourceId: event.LogicalResourceId,
+    PhysicalResourceId: event.ResourceProperties.PhysicalResourceId,
+    RequestId: event.RequestId,
+    StackId: event.StackId,
+  };
 };
 
-handler();
+export const handler = async (
+  event: CloudFormationCustomResourceEvent
+): Promise<CloudFormationCustomResourceResponse> => {
+  switch (event.RequestType) {
+    case "Create":
+      return getDsRecord(event);
+    case "Update":
+      return getDsRecord(event);
+    case "Delete":
+      return getDsRecord(event);
+  }
+};
