@@ -7,6 +7,10 @@ import {
 import { Construct } from "constructs";
 
 export class Route53 extends cdk.Stack {
+  public readonly apexHostedZone: route53.IHostedZone;
+  public readonly serviceHostedZone: route53.IHostedZone;
+  public readonly serviceKsk: route53.CfnKeySigningKey;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -14,7 +18,7 @@ export class Route53 extends cdk.Stack {
     const subDomainName =
       "service.awscdkeg.net" satisfies `${string}.${typeof domainName}`;
 
-    const apexHostedZone = route53.HostedZone.fromLookup(
+    this.apexHostedZone = route53.HostedZone.fromLookup(
       this,
       "apexHostedZone",
       {
@@ -22,23 +26,19 @@ export class Route53 extends cdk.Stack {
       }
     );
 
-    const serviceHostedZone = new route53.HostedZone(
-      this,
-      "serviceHostedZone",
-      {
-        zoneName: subDomainName,
-      }
-    );
+    this.serviceHostedZone = new route53.HostedZone(this, "serviceHostedZone", {
+      zoneName: subDomainName,
+    });
 
     // Add an NS record in our apex hosted zone to delegate queries for
     // our service domain to our service hosted zone
     new route53.NsRecord(this, "serviceNsRecord", {
-      zone: apexHostedZone,
+      zone: this.apexHostedZone,
       recordName: subDomainName,
       // I've had to manually type in the name servers since the hostedZone
       // constructs will return undefined for the hostedZoneNameServers if the
       // hosted zone was not created in this stack.
-      values: serviceHostedZone.hostedZoneNameServers!,
+      values: this.serviceHostedZone.hostedZoneNameServers!,
       ttl: cdk.Duration.minutes(5),
     });
 
@@ -139,25 +139,25 @@ export class Route53 extends cdk.Stack {
     const apexKsk = new route53.CfnKeySigningKey(this, "apexKsk", {
       name: "apexKsk",
       status: "ACTIVE",
-      hostedZoneId: apexHostedZone.hostedZoneId,
+      hostedZoneId: this.apexHostedZone.hostedZoneId,
       keyManagementServiceArn: apexKmsKey.keyArn,
     });
 
     const apexDnssec = new route53.CfnDNSSEC(this, "apexDnssec", {
-      hostedZoneId: apexHostedZone.hostedZoneId,
+      hostedZoneId: this.apexHostedZone.hostedZoneId,
     });
     apexDnssec.node.addDependency(apexKsk);
 
-    const serviceKsk = new route53.CfnKeySigningKey(this, "serviceKsk", {
+    this.serviceKsk = new route53.CfnKeySigningKey(this, "serviceKsk", {
       name: "serviceKsk",
       status: "ACTIVE",
-      hostedZoneId: serviceHostedZone.hostedZoneId,
+      hostedZoneId: this.serviceHostedZone.hostedZoneId,
       keyManagementServiceArn: serviceKmsKey.keyArn,
     });
 
     const serviceDnssec = new route53.CfnDNSSEC(this, "serviceDnssec", {
-      hostedZoneId: serviceHostedZone.hostedZoneId,
+      hostedZoneId: this.serviceHostedZone.hostedZoneId,
     });
-    serviceDnssec.node.addDependency(serviceKsk);
+    serviceDnssec.node.addDependency(this.serviceKsk);
   }
 }

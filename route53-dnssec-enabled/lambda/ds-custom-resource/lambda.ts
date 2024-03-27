@@ -11,7 +11,7 @@ import {
 const route53Client = new Route53Client({});
 
 export const getDsRecord = async (
-  event: CloudFormationCustomResourceEvent
+  event: CloudFormationCustomResourceEvent,
 ): Promise<CloudFormationCustomResourceResponse> => {
   const keySigningKeyName = event.ResourceProperties
     .keySigningKeyName as string;
@@ -22,11 +22,11 @@ export const getDsRecord = async (
   const dnssecCommandOutput = await route53Client.send(
     new GetDNSSECCommand({
       HostedZoneId: hostedZoneId,
-    })
+    }),
   );
 
   const filteredKeys = dnssecCommandOutput.KeySigningKeys?.filter(
-    (key: KeySigningKey) => key.Name === keySigningKeyName
+    (key: KeySigningKey) => key.Name === keySigningKeyName,
   );
 
   if (filteredKeys === undefined || filteredKeys?.length === 0) {
@@ -67,7 +67,7 @@ export const getDsRecord = async (
 };
 
 export const handler = async (
-  event: CloudFormationCustomResourceEvent
+  event: CloudFormationCustomResourceEvent,
 ): Promise<CloudFormationCustomResourceResponse> => {
   switch (event.RequestType) {
     case "Create":
