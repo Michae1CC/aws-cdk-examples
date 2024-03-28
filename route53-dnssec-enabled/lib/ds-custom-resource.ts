@@ -1,4 +1,5 @@
 import {
+  aws_iam as iam,
   aws_lambda_nodejs as lambdaJs,
   aws_lambda as lambda,
 } from "aws-cdk-lib";
@@ -6,7 +7,7 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
 
-export interface DsRecordValuesProps {
+export interface DsRecordValueProps {
   /**
    * The hostZoneId containing the KSK.
    */
@@ -21,7 +22,7 @@ export interface DsRecordValuesProps {
  * Gets a string representation of the DsRecord corresponding to a KSK
  * created within a hosted zone.
  */
-export class DsRecordValues extends Construct {
+export class DsRecordValue extends Construct {
   /**
    * The CloudFormation resource type.
    */
@@ -29,7 +30,7 @@ export class DsRecordValues extends Construct {
 
   private _resource: cdk.CustomResource;
 
-  constructor(scope: Construct, id: string, props: DsRecordValuesProps) {
+  constructor(scope: Construct, id: string, props: DsRecordValueProps) {
     super(scope, id);
 
     const provider = this.createProvider();
@@ -38,13 +39,13 @@ export class DsRecordValues extends Construct {
       this,
       "GenerateTokenGeneratorResource",
       {
-        resourceType: DsRecordValues.RESOURCE_TYPE,
+        resourceType: DsRecordValue.RESOURCE_TYPE,
         serviceToken: provider.serviceToken,
         properties: {
           hostedZoneId: props.hostedZoneId,
           keySigningKeyName: props.keySigningKeyName,
         },
-      },
+      }
     );
   }
 
@@ -60,21 +61,36 @@ export class DsRecordValues extends Construct {
         NODE_OPTIONS: "--enable-source-maps",
       },
       description: "Generates a secure random string",
-      entry: path.join(__dirname, "..", "ds-custom-resource", "lambda.ts"),
+      entry: path.join(
+        __dirname,
+        "..",
+        "lambda",
+        "ds-custom-resource",
+        "lambda.ts"
+      ),
       handler: "handler",
     });
+
+    handler.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["route53:GetDNSSEC"],
+        resources: ["*"],
+      })
+    );
+
     const provider = new cdk.custom_resources.Provider(
       this,
       "GenerateStringProvider",
       {
         onEventHandler: handler,
-      },
+      }
     );
 
     return provider;
   }
 
-  public get value(): string {
-    return cdk.Token.asString(this._resource.getAtt("Value"));
+  public get dsRecordValue(): string {
+    return cdk.Token.asString(this._resource.getAtt("dsRecordValue"));
   }
 }

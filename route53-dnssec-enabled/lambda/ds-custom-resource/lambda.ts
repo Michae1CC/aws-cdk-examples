@@ -11,28 +11,28 @@ import {
 const route53Client = new Route53Client({});
 
 export const getDsRecord = async (
-  event: CloudFormationCustomResourceEvent,
+  event: CloudFormationCustomResourceEvent
 ): Promise<CloudFormationCustomResourceResponse> => {
+  const hostedZoneId = event.ResourceProperties.hostedZoneId as string;
   const keySigningKeyName = event.ResourceProperties
     .keySigningKeyName as string;
-  const hostedZoneId = event.ResourceProperties.hostedZoneId as string;
   // const hostedZoneId = "Z0783675306OVK0GW6SL9";
   // const keySigningKeyName = "serviceKsk";
 
   const dnssecCommandOutput = await route53Client.send(
     new GetDNSSECCommand({
       HostedZoneId: hostedZoneId,
-    }),
+    })
   );
 
   const filteredKeys = dnssecCommandOutput.KeySigningKeys?.filter(
-    (key: KeySigningKey) => key.Name === keySigningKeyName,
+    (key: KeySigningKey) => key.Name === keySigningKeyName
   );
 
   if (filteredKeys === undefined || filteredKeys?.length === 0) {
     return {
       Status: "FAILED",
-      Reason: `Key Signed Key for HostedZoneId ${hostedZoneId} was not found.`,
+      Reason: `Key Signing Key for HostedZoneId ${hostedZoneId} was not found.`,
       LogicalResourceId: event.LogicalResourceId,
       PhysicalResourceId: event.ResourceProperties.PhysicalResourceId,
       RequestId: event.RequestId,
@@ -40,9 +40,9 @@ export const getDsRecord = async (
     };
   }
 
-  const dsRecord = filteredKeys[0].DSRecord;
+  const dsRecordValue = filteredKeys[0].DSRecord;
 
-  if (dsRecord === undefined) {
+  if (dsRecordValue === undefined) {
     return {
       Status: "FAILED",
       Reason: `No DSRecord found for ${keySigningKeyName}`,
@@ -57,7 +57,7 @@ export const getDsRecord = async (
     Status: "SUCCESS",
     Reason: "",
     Data: {
-      dsRecord,
+      dsRecordValue,
     },
     LogicalResourceId: event.LogicalResourceId,
     PhysicalResourceId: event.ResourceProperties.PhysicalResourceId,
@@ -67,7 +67,7 @@ export const getDsRecord = async (
 };
 
 export const handler = async (
-  event: CloudFormationCustomResourceEvent,
+  event: CloudFormationCustomResourceEvent
 ): Promise<CloudFormationCustomResourceResponse> => {
   switch (event.RequestType) {
     case "Create":
