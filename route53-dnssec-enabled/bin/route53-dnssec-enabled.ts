@@ -4,6 +4,7 @@ import * as cdk from "aws-cdk-lib";
 import { config } from "dotenv";
 import { Route53 } from "../lib/Route53";
 import { DnssecStack } from "../lib/DnssecStack";
+import { LambdaServiceStack } from "../lib/LambdaServiceStack";
 
 config();
 
@@ -20,4 +21,9 @@ new DnssecStack(app, "DnssecStack", {
   serviceHostedZone: route53Stack.serviceHostedZone,
   serviceKsk: route53Stack.serviceKsk,
   env,
+});
+new LambdaServiceStack(app, "LambdaServiceStack", {
+  env,
+  serviceDomainName: route53Stack.subDomainName,
+  serviceHostedZone: route53Stack.serviceHostedZone,
 });

@@ -63,7 +63,6 @@ export class DsRecordValue extends Construct {
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
       },
-      description: "Generates a secure random string",
       entry: path.join(
         __dirname,
         "..",

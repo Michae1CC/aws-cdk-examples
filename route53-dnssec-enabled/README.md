@@ -31,3 +31,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://github.com/GemeenteNijmegen/modules-dnssec-record>
 * <https://repost.aws/knowledge-center/create-subdomain-route-53>
 * <https://deepdive.codiply.com/enable-dnssec-signing-in-amazon-route-53-using-aws-cdk>
+* <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-custom-domain-names.html>
