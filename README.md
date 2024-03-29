@@ -9,6 +9,7 @@ Examples of small services I've put together to help learn about the products aw
 | [cognito-saml-identity-pools](./cognito-saml-identity-pools/)       | ![cognito-saml-identity-pools](./cognito-saml-identity-pools/img/cognito-saml-identity-pools-architecture.png)          | dynamodb, cognito, fargate                            |
 | [lambda-to-fargate](./lambda-to-fargate/)       | ![lambda-to-fargate](./lambda-to-fargate/img/lambda-to-fargate-architecture.png)          | apigw, fargate, lambda                                  |
 | [rekcognition-text](./rekognition-text/)        | ![rekcognition-text](./rekognition-text/img/rekognition-text-architecture.png)            | s3, lambda, rekognition, dynamodb                       |
+| [route53-dnssec-enabled](./route53-dnssec-enabled/)        | ![route53-dnssec-enabled](./route53-dnssec-enabled/img/route53-dnssec-enabled-architecture.png)            | route53, lambda, kms, api-gateway                       |
 | [step-function-map-io](./step-function-map-io/) | ![step-function-map-io](./step-function-map-io/img/step-function-map-io-architecture.png) | stepfunction, s3, lambda, dynamodb                      |
 | [vpc-cloudwatch](./vpc-cloudwatch/)             | ![vpc-cloudwatch](./vpc-cloudwatch/img/vpc-cloudwatch-architecture.png)                   | vpc, cloudwatch, flow logs, ec2                         |
 | [waf-cloudfront-ssm](./waf-cloudfront-ssm/)     | ![waf-cloudfront-ssm](./waf-cloudfront-ssm/img/waf-cloudfront-ssm-architecture.png)       | waf, cloudfront, ssm, vpc, ec2, fargate                 |
