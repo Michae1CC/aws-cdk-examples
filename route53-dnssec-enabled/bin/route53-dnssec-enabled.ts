@@ -15,6 +15,7 @@ const env = {
 const app = new cdk.App();
 const route53Stack = new Route53(app, "Route53", { env });
 new DnssecStack(app, "DnssecStack", {
+  subDomainName: route53Stack.subDomainName,
   apexHostedZone: route53Stack.apexHostedZone,
   serviceHostedZone: route53Stack.serviceHostedZone,
   serviceKsk: route53Stack.serviceKsk,

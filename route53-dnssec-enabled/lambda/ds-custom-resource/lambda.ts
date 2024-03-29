@@ -16,8 +16,6 @@ export const getDsRecord = async (
   const hostedZoneId = event.ResourceProperties.hostedZoneId as string;
   const keySigningKeyName = event.ResourceProperties
     .keySigningKeyName as string;
-  // const hostedZoneId = "Z0783675306OVK0GW6SL9";
-  // const keySigningKeyName = "serviceKsk";
 
   const dnssecCommandOutput = await route53Client.send(
     new GetDNSSECCommand({

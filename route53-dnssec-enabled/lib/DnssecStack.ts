@@ -5,6 +5,7 @@ import { Construct } from "constructs";
 import { DsRecordValue } from "./ds-custom-resource";
 
 interface DnssecStackProps extends cdk.StackProps {
+  subDomainName: string;
   apexHostedZone: route53.IHostedZone;
   serviceHostedZone: route53.IHostedZone;
   serviceKsk: route53.CfnKeySigningKey;
@@ -18,13 +19,20 @@ export class DnssecStack extends cdk.Stack {
       this,
       "serviceDsRecordValue",
       {
-        hostedZoneId: props.serviceHostedZone.hostedZoneId,
+        hostedZone: props.serviceHostedZone,
         keySigningKeyName: props.serviceKsk.name,
       }
     );
 
     new cdk.CfnOutput(this, "serviceDsRecordValueOutput", {
       value: serviceDsRecordValue.dsRecordValue,
+    });
+
+    new route53.DsRecord(this, "serviceDsRecord", {
+      zone: props.apexHostedZone,
+      recordName: props.subDomainName,
+      values: [serviceDsRecordValue.dsRecordValue],
+      ttl: cdk.Duration.minutes(5),
     });
   }
 }

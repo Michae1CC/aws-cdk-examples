@@ -10,31 +10,30 @@ export class Route53 extends cdk.Stack {
   public readonly apexHostedZone: route53.IHostedZone;
   public readonly serviceHostedZone: route53.IHostedZone;
   public readonly serviceKsk: route53.CfnKeySigningKey;
+  public readonly domainName = "awscdkeg.net" as const;
+  public readonly subDomainName =
+    "service.awscdkeg.net" satisfies `${string}.${typeof this.domainName}`;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-
-    const domainName = "awscdkeg.net" as const;
-    const subDomainName =
-      "service.awscdkeg.net" satisfies `${string}.${typeof domainName}`;
 
     this.apexHostedZone = route53.HostedZone.fromLookup(
       this,
       "apexHostedZone",
       {
-        domainName,
+        domainName: this.domainName,
       }
     );
 
     this.serviceHostedZone = new route53.HostedZone(this, "serviceHostedZone", {
-      zoneName: subDomainName,
+      zoneName: this.subDomainName,
     });
 
     // Add an NS record in our apex hosted zone to delegate queries for
     // our service domain to our service hosted zone
     new route53.NsRecord(this, "serviceNsRecord", {
       zone: this.apexHostedZone,
-      recordName: subDomainName,
+      recordName: this.subDomainName,
       // I've had to manually type in the name servers since the hostedZone
       // constructs will return undefined for the hostedZoneNameServers if the
       // hosted zone was not created in this stack.
