@@ -113,6 +113,23 @@ A similar process to used to create the service sub domain KSK.
 
 ## Enabling DNSSEC on Hosted Zones
 
+The last part of the `Route53Stack` add the aforementioned KMS key to its
+respective hosted zone and enables DNSSEC on that hostedzone.
+
+```typescript
+this.serviceKsk = new route53.CfnKeySigningKey(this, "serviceKsk", {
+    name: "serviceKsk",
+    status: "ACTIVE",
+    hostedZoneId: this.serviceHostedZone.hostedZoneId,
+    keyManagementServiceArn: serviceKmsKey.keyArn,
+});
+
+const serviceDnssec = new route53.CfnDNSSEC(this, "serviceDnssec", {
+    hostedZoneId: this.serviceHostedZone.hostedZoneId,
+});
+serviceDnssec.node.addDependency(this.serviceKsk);
+```
+
 ## Deployment Strategy
 
 * Enable monitoring for DNSSEC failures
