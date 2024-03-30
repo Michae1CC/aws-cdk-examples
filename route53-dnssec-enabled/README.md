@@ -315,7 +315,7 @@ First clone the repository
 git clone https://github.com/Michae1CC/aws-cdk-examples
 ```
 
-and change directory into the `step-function-map-io` folder.
+and change directory into the `route53-dnssec-enabled` folder.
 
 ```bash
 cd route53-dnssec-enabled
@@ -337,7 +337,7 @@ cdk bootstrap && cdk deploy Route53Stack
 Make sure you have docker running during each step.
 
 ---
-Tip: If you're `podman`, or some other image building client, you can specify
+Tip: If you're using `podman`, or some other image building client, you can specify
 the alternative client for cdk by setting the environment variable `CDK_DOCKER`
 to the name of the image building command. In the case for podman
 
@@ -382,7 +382,7 @@ Then run
 cdk deploy Route53Stack && cdk deploy LambdaServiceStack
 ```
 
-If all goes according to plan, you can type in `https://service.awscdkeg.net`
+If all goes according to plan, you can type `https://service.awscdkeg.net`
 into your favourite browser, where you will be greeted with the following web-page!
 
 ![service-web-page](./img/service-web-page.png)
