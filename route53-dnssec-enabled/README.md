@@ -1,17 +1,56 @@
-# Welcome to your CDK TypeScript project
+# Enabling DNSSEC in Route53 using Cfn Custom Resources
 
-This is a blank project for CDK development with TypeScript.
+DNSSEC is a security feature of DNS which allows owners of DNS zones to
+sign records preventing attacks such as DNS cache poisoning and DNS spoofing.
+AWS Route53 allows owners of hosted zones to enable DNSSEC. This can be a little
+tricky to do with teams that are managing infrastructure with code since
+enabling DNSSEC involves liaising with with top level domains that are outside
+the control of AWS. This tutorial outlines a method that keeps as much of the
+DNSSEC setup within CDK.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Creating the Apex Domain and Service Sub-Domain
 
-## Useful commands
+The following cdk loads in a hosted zone from AWS Route53 hosts the domain used
+in this demo. This domain was registered manually through the Route53 console
+and is imported into cdk using the `route53.HostedZone.fromLookup` method.
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+```typescript
+this.apexHostedZone = route53.HostedZone.fromLookup(
+    this,
+    "apexHostedZone",
+    {
+        domainName: this.domainName,
+    }
+);
+```
+
+We can create a new hosted zone for the service sub-domain easily enough.
+
+```typescript
+this.serviceHostedZone = new route53.HostedZone(this, "serviceHostedZone", {
+    zoneName: this.subDomainName,
+});
+```
+
+However we will need new `NS` DNS records in our apex domain to point to our
+sub domain so that service domain specific DNS queries are delegated to the
+appropriate servers.
+
+```typescript
+new route53.NsRecord(this, "serviceNsRecord", {
+    zone: this.apexHostedZone,
+    recordName: this.subDomainName,
+    values: this.serviceHostedZone.hostedZoneNameServers!,
+    ttl: cdk.Duration.minutes(5),
+});
+```
+
+I've pre-emptively lowered each of the zone's maximum to 5mins as a recommendation
+from the AWS documentation: <https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html>.
+The idea is to reduce the wait time between enabling signing and and inserting
+DS records into the parent zones. It also means you can act more swiftly in the
+event of a rollback. The end goal will be to have DNSSEC enabled for both our
+apex and service sub-domain.
 
 ## Deployment Strategy
 
@@ -27,6 +66,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## References
 
 * <https://learn.cantrill.io/courses/1820301/lectures/43460378>
+* <https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html>
 * <https://www.cloudflare.com/dns/dnssec/how-dnssec-works/>
 * <https://github.com/GemeenteNijmegen/modules-dnssec-record>
 * <https://repost.aws/knowledge-center/create-subdomain-route-53>

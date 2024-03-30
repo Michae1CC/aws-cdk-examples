@@ -34,9 +34,6 @@ export class Route53 extends cdk.Stack {
     new route53.NsRecord(this, "serviceNsRecord", {
       zone: this.apexHostedZone,
       recordName: this.subDomainName,
-      // I've had to manually type in the name servers since the hostedZone
-      // constructs will return undefined for the hostedZoneNameServers if the
-      // hosted zone was not created in this stack.
       values: this.serviceHostedZone.hostedZoneNameServers!,
       ttl: cdk.Duration.minutes(5),
     });
