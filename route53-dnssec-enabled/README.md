@@ -130,37 +130,10 @@ const serviceDnssec = new route53.CfnDNSSEC(this, "serviceDnssec", {
 serviceDnssec.node.addDependency(this.serviceKsk);
 ```
 
-## Adding DS Records to Parent Zones
+## Adding DS Records
 
-### Adding a DS Record to the Apex Domain's Parent Zone
-
-Now comes perhaps the most complex part of enabling DNSSEC, adding a DS Record
-for the apex domain to it's parent domain. Since I'm using an apex domain of
-`awscdkeg.net`, the parent domain will be the `.net` top level domain. This
-step will vary on the domain's registrar. This AWS dev docs page provides details
-on how the DS Records should be added for different registrars: <https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-chain-of-trust>.
-Remember to wait for at least the previous zone’s maximum TTL.
-If you've used Route53 as a registrar (like me), to enter a DS Record simply
-open the hosted zone in Route 53 and select the 'View information to create a DS Record'.
-
-![ds-record-info](./img/ds-record-info.png)
-
-In a separate tab, open Route53 -> Registered Domains -> Your Domain -> DNSSEC Keys.
-
-![domains-dnssec-key](./img/domains-dnssec-keys.png)
-
-Select 'Add' and copy the information for creating DS Record in the hosted zone
-into their respective fields.
-
-![add-dnssec-key](./img/add-dnssec-key.png)
-
-AWS should notify your account's email new this DS Record has successfully been
-add to the TLD.
-
-### Adding a DS Record to the Service Sub-Domain
-
-This process is fortunately a lot more simple and is completely managed in the
-`DnssecStack`. Again, remember to wait for at least the previous zone’s maximum TTL.
+Adding DS Records for the apex domain will be a very manual and is detailed in
+the 'How to test' section of this article.
 The `DnssecStack` adds the DS Record for the service sub-domain to the apex domain
 by first using a custom resource to retrieve the DS Record value for the
 sub-domain via a Cfn Custom Resource.
@@ -414,7 +387,7 @@ into your favourite browser, where you will be greeted with the following web-pa
 
 ![service-web-page](./img/service-web-page.png)
 
-We can visit tool provide by verisign: <https://dnssec-debugger.verisignlabs.com/>
+You can use this tool provide by verisign: <https://dnssec-debugger.verisignlabs.com/>
 to confirm DNSSEC has successfully been enabled.
 
 ![verisign-dnssec-debugger](./img/verisign-dnssec-debugger.png)
