@@ -52,6 +52,67 @@ DS records into the parent zones. It also means you can act more swiftly in the
 event of a rollback. The end goal will be to have DNSSEC enabled for both our
 apex and service sub-domain.
 
+## Creating Key Signing Keys
+
+We can use asymmetric AWS KMS to use as Key Signing Keys (KSKs) within our DNSSEC setup.
+To read more on KSKs (what they are and their importance in DNSSEC) I'd recommend
+reading through this cloudflare article: <https://www.cloudflare.com/dns/dnssec/how-dnssec-works/>.
+From the AWS docs, the KSKs must be an asymmetric key with an `ECC_NIST_P256` key spec.
+
+```typescript
+const apexKmsKey = new kms.Key(this, "apexKmsKey", {
+    enableKeyRotation: false,
+    keySpec: kms.KeySpec.ECC_NIST_P256,
+    keyUsage: kms.KeyUsage.SIGN_VERIFY,
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+});
+```
+
+The `dnssec-route53.amazonaws.com` principal will require a number of different
+permissions to our KSKs (created through KMS) to sign new records entered into
+hosted zones. These permissions can be attached through the KMS key's resource policy.
+
+```typescript
+// Add to the resources policy of the KMS key to allow AWS route53 to use the customer managed
+// keys, see: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/access-control-managing-permissions.html#KMS-key-policy-for-DNSSEC
+apexKmsKey.addToResourcePolicy(
+    new iam.PolicyStatement({
+    sid: "Allow Route 53 DNSSEC Service for apex domain KSK",
+    effect: iam.Effect.ALLOW,
+    principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
+    actions: ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"],
+    resources: ["*"],
+    conditions: {
+        StringEquals: {
+        "aws:SourceAccount": this.account,
+        },
+        ArnLike: {
+        "aws:SourceArn": "arn:aws:route53:::hostedzone/*",
+        },
+    },
+    })
+);
+
+apexKmsKey.addToResourcePolicy(
+    new iam.PolicyStatement({
+    sid: "Allow Route 53 DNSSEC Service to CreateGrant for apex domain KSK",
+    effect: iam.Effect.ALLOW,
+    principals: [new iam.ServicePrincipal("dnssec-route53.amazonaws.com")],
+    actions: ["kms:CreateGrant"],
+    resources: ["*"],
+    conditions: {
+        Bool: {
+        "kms:GrantIsForAWSResource": true,
+        },
+    },
+    })
+);
+```
+
+A similar process to used to create the service sub domain KSK.
+
+## Enabling DNSSEC on Hosted Zones
+
 ## Deployment Strategy
 
 * Enable monitoring for DNSSEC failures
