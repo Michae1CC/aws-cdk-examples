@@ -332,6 +332,98 @@ const apiGatewayARecord = new route53.ARecord(this, "apiGatewayARecord", {
 });
 ```
 
+AWS should automatically handle adding RRSet and RRSig Records to secure this A Record.
+
+## How To Test
+
+First clone the repository
+
+```bash
+git clone https://github.com/Michae1CC/aws-cdk-examples
+```
+
+and change directory into the `step-function-map-io` folder.
+
+```bash
+cd route53-dnssec-enabled
+```
+
+Obviously, if you're deploying this yourself, you will need to replace
+instances of the domain names I've used with your own. Run
+
+```bash
+npm install
+```
+
+to install the required packages to create our Cloudformation template and then
+
+```bash
+cdk bootstrap && cdk deploy Route53Stack
+```
+
+Make sure you have docker running during each step.
+
+---
+Tip: If you're `podman`, or some other image building client, you can specify
+the alternative client for cdk by setting the environment variable `CDK_DOCKER`
+to the name of the image building command. In the case for podman
+
+```bash
+export CDK_DOCKER=podman
+```
+
+---
+
+### Adding a DS Record to the Apex Domain's Parent Zone
+
+Now comes perhaps the most complex part of enabling DNSSEC, adding a DS Record
+for the apex domain to it's parent domain. Since I'm using an apex domain of
+`awscdkeg.net`, the parent domain will be the `.net` top level domain. This
+step will vary on the domain's registrar. This AWS dev docs page provides details
+on how the DS Records should be added for different registrars: <https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-chain-of-trust>.
+Remember to wait for at least the previous zone’s maximum TTL.
+If you've used Route53 as a registrar (like me), to enter a DS Record simply
+open the hosted zone in Route 53 and select the 'View information to create a DS Record'.
+
+![ds-record-info](./img/ds-record-info.png)
+
+In a separate tab, open Route53 -> Registered Domains -> Your Domain -> DNSSEC Keys.
+
+![domains-dnssec-key](./img/domains-dnssec-keys.png)
+
+Select 'Add' and copy the information for creating DS Record in the hosted zone
+into their respective fields.
+
+![add-dnssec-key](./img/add-dnssec-key.png)
+
+AWS should notify your account's email new this DS Record has successfully been
+add to the TLD.
+
+### Adding a DS Record to the Service Sub-Domain
+
+This process is fortunately a lot more simple and is completely managed in the
+`DnssecStack`. Again, remember to wait for at least the previous zone’s maximum TTL.
+Then run
+
+```bash
+cdk deploy Route53Stack && cdk deploy LambdaServiceStack
+```
+
+If all goes according to plan, you can type in `https://service.awscdkeg.net`
+into your favourite browser, where you will be greeted with the following web-page!
+
+![service-web-page](./img/service-web-page.png)
+
+We can visit tool provide by verisign: <https://dnssec-debugger.verisignlabs.com/>
+to confirm DNSSEC has successfully been enabled.
+
+![verisign-dnssec-debugger](./img/verisign-dnssec-debugger.png)
+
+We can also use this tool to get a better tree representation of the DNSSEC check:
+<https://dnsviz.net/>
+
+![dns-vis](./img/dns-vis.png)
+
 ## Deployment Strategy
 
 * Enable monitoring for DNSSEC failures
