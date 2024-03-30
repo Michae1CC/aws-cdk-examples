@@ -248,6 +248,90 @@ new route53.DsRecord(this, "serviceDsRecord", {
 });
 ```
 
+## Using the Service Sub-Domain in a Simple Service
+
+The `LambdaServiceStack` defines a very bare-bones service that uses a HTTP
+api gateway to return the response of a lambda invocation for the root domain.
+The api gateway will use service sub-domain as custom domain.
+
+```typescript
+const handler = new lambdaJs.NodejsFunction(this, "serviceLambda", {
+    memorySize: 256,
+    runtime: lambda.Runtime.NODEJS_20_X,
+    architecture: lambda.Architecture.X86_64,
+    bundling: {
+        sourceMap: true,
+    },
+    environment: {
+        NODE_OPTIONS: "--enable-source-maps",
+    },
+    entry: path.join(__dirname, "..", "lambda", "service", "lambda.ts"),
+    handler: "handler",
+});
+
+const serviceDomainCertificate = new acm.Certificate(
+    this,
+    "serviceDomainCertificate",
+    {
+        domainName: props.serviceDomainName,
+        validation: acm.CertificateValidation.fromDns(props.serviceHostedZone),
+    }
+);
+
+const serviceApiGatewayDomainName = new apigatewayv2.DomainName(
+    this,
+    "serviceApiGatewayDomainName",
+    {
+        domainName: props.serviceDomainName,
+        certificate: serviceDomainCertificate,
+    }
+);
+
+const httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {
+    defaultDomainMapping: {
+    domainName: serviceApiGatewayDomainName,
+    // Leave this as undefined to use the domain root
+    mappingKey: undefined,
+    },
+    defaultIntegration: new apigatewayv2_integrations.HttpLambdaIntegration(
+        "serviceLambdaHttpApiGatewayIntegration",
+        handler
+    ),
+});
+```
+
+The lambda simply returns a static html response.
+
+```typescript
+export const handler: Handler = async (event) => {
+  return {
+    statusCode: 200,
+    isBase64Encoded: false,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+    },
+    body: "<h2>Hello From DNSSEC enabled lambda!<h2/>",
+  };
+};
+```
+
+To have our service sub-domain point the root of the domain to our api gateway,
+we need to add the following A Record to the sub-domain hosted zone.
+
+```typescript
+const apiGatewayARecord = new route53.ARecord(this, "apiGatewayARecord", {
+    recordName: props.serviceDomainName,
+    zone: props.serviceHostedZone,
+    target: route53.RecordTarget.fromAlias(
+    new route53_targets.ApiGatewayv2DomainProperties(
+            serviceApiGatewayDomainName.regionalDomainName,
+            serviceApiGatewayDomainName.regionalHostedZoneId
+    )
+    ),
+    ttl: cdk.Duration.minutes(5),
+});
+```
+
 ## Deployment Strategy
 
 * Enable monitoring for DNSSEC failures
