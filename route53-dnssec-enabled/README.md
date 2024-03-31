@@ -1,7 +1,7 @@
 # Enabling DNSSEC in Route53 using Cfn Custom Resources
 
 DNSSEC is a security feature of DNS which allows owners of DNS zones to
-sign records preventing attacks such as DNS cache poisoning and DNS spoofing.
+sign records thwarting attacks such as DNS cache poisoning and DNS spoofing.
 AWS Route53 allows owners of hosted zones to enable DNSSEC. This can be a little
 tricky to do with teams that are managing infrastructure with code since
 enabling DNSSEC involves liaising with with top level domains that are outside
@@ -33,7 +33,7 @@ this.serviceHostedZone = new route53.HostedZone(this, "serviceHostedZone", {
 ```
 
 However we will need new `NS` DNS records in our apex domain to point to our
-sub domain so that service domain specific DNS queries are delegated to the
+sub-domain so that sub-domain specific DNS queries are delegated to the
 appropriate servers.
 
 ```typescript
@@ -84,10 +84,10 @@ apexKmsKey.addToResourcePolicy(
     resources: ["*"],
     conditions: {
         StringEquals: {
-        "aws:SourceAccount": this.account,
+          "aws:SourceAccount": this.account,
         },
         ArnLike: {
-        "aws:SourceArn": "arn:aws:route53:::hostedzone/*",
+          "aws:SourceArn": "arn:aws:route53:::hostedzone/*",
         },
     },
     })
@@ -102,19 +102,19 @@ apexKmsKey.addToResourcePolicy(
     resources: ["*"],
     conditions: {
         Bool: {
-        "kms:GrantIsForAWSResource": true,
+          "kms:GrantIsForAWSResource": true,
         },
     },
     })
 );
 ```
 
-A similar process to used to create the service sub domain KSK.
+A similar process is used to create the service sub-domain KSK.
 
 ## Enabling DNSSEC on Hosted Zones
 
-The last part of the `Route53Stack` add the aforementioned KMS key to its
-respective hosted zone and enables DNSSEC on that hostedzone.
+The last part of the `Route53Stack` add the aforementioned KMS key as a KSK
+to its respective hosted zone and enables DNSSEC on that hostedzone.
 
 ```typescript
 this.serviceKsk = new route53.CfnKeySigningKey(this, "serviceKsk", {
@@ -225,7 +225,7 @@ new route53.DsRecord(this, "serviceDsRecord", {
 
 The `LambdaServiceStack` defines a very bare-bones service that uses a HTTP
 api gateway to return the response of a lambda invocation for the root domain.
-The api gateway will use service sub-domain as custom domain.
+The api gateway will use the service sub-domain as custom domain.
 
 ```typescript
 const handler = new lambdaJs.NodejsFunction(this, "serviceLambda", {
@@ -305,7 +305,8 @@ const apiGatewayARecord = new route53.ARecord(this, "apiGatewayARecord", {
 });
 ```
 
-AWS should automatically handle adding RRSet and RRSig Records to secure this A Record.
+AWS should automatically handle adding the required RRSet and RRSig Records
+to secure this A Record.
 
 ## How To Test
 
@@ -322,7 +323,7 @@ cd route53-dnssec-enabled
 ```
 
 Obviously, if you're deploying this yourself, you will need to replace
-instances of the domain names I've used with your own. Run
+the domain names I've used with your own. Run
 
 ```bash
 npm install
@@ -347,14 +348,12 @@ export CDK_DOCKER=podman
 
 ---
 
-### Adding a DS Record to the Apex Domain's Parent Zone
-
 Now comes perhaps the most complex part of enabling DNSSEC, adding a DS Record
 for the apex domain to it's parent domain. Since I'm using an apex domain of
 `awscdkeg.net`, the parent domain will be the `.net` top level domain. This
 step will vary on the domain's registrar. This AWS dev docs page provides details
 on how the DS Records should be added for different registrars: <https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-chain-of-trust>.
-Remember to wait for at least the previous zone’s maximum TTL.
+Remember to wait for at least the zone’s maximum TTL.
 If you've used Route53 as a registrar (like me), to enter a DS Record simply
 open the hosted zone in Route 53 and select the 'View information to create a DS Record'.
 
@@ -372,14 +371,13 @@ into their respective fields.
 AWS should notify your account's email new this DS Record has successfully been
 add to the TLD.
 
-### Adding a DS Record to the Service Sub-Domain
-
+Next we need to add a DS Record to the service sub-domain.
 This process is fortunately a lot more simple and is completely managed in the
-`DnssecStack`. Again, remember to wait for at least the previous zone’s maximum TTL.
+`DnssecStack`. Again, remember to wait for at least the zone’s maximum TTL.
 Then run
 
 ```bash
-cdk deploy Route53Stack && cdk deploy LambdaServiceStack
+cdk deploy DnssecStack LambdaServiceStack
 ```
 
 If all goes according to plan, you can type `https://service.awscdkeg.net`
@@ -396,17 +394,6 @@ We can also use this tool to get a better tree representation of the DNSSEC chec
 <https://dnsviz.net/>
 
 ![dns-vis](./img/dns-vis.png)
-
-## Deployment Strategy
-
-* Enable monitoring for DNSSEC failures
-* Reduce both zone's maximum TTL [see](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-enable-signing-step-1)
-* Lower the SOA TTL and SOA minimum field
-* Make sure TTL and SOA changes are effective
-* Add DNSSEC signing and create KSK via Cloudformation [see](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-enable-signing.html#dns-configuring-dnssec-enable)
-
-- Original min SOA was 86400
-- Original CNAME was 900
 
 ## References
 
