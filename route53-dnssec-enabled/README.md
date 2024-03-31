@@ -32,7 +32,7 @@ this.serviceHostedZone = new route53.HostedZone(this, "serviceHostedZone", {
 });
 ```
 
-However we will need new `NS` DNS records in our apex domain to point to our
+However we will need new NS DNS records in our apex domain to point to our
 sub-domain so that sub-domain specific DNS queries are delegated to the
 appropriate servers.
 
