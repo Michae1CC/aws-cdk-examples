@@ -2,7 +2,7 @@
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { config } from "dotenv";
-import { Route53 } from "../lib/Route53";
+import { Route53Stack } from "../lib/Route53Stack";
 import { DnssecStack } from "../lib/DnssecStack";
 import { LambdaServiceStack } from "../lib/LambdaServiceStack";
 
@@ -14,7 +14,7 @@ const env = {
 };
 
 const app = new cdk.App();
-const route53Stack = new Route53(app, "Route53", { env });
+const route53Stack = new Route53Stack(app, "Route53Stack", { env });
 new DnssecStack(app, "DnssecStack", {
   subDomainName: route53Stack.subDomainName,
   apexHostedZone: route53Stack.apexHostedZone,

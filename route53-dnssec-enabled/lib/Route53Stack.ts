@@ -6,7 +6,7 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
-export class Route53 extends cdk.Stack {
+export class Route53Stack extends cdk.Stack {
   public readonly apexHostedZone: route53.IHostedZone;
   public readonly serviceHostedZone: route53.IHostedZone;
   public readonly serviceKsk: route53.CfnKeySigningKey;
@@ -42,7 +42,7 @@ export class Route53 extends cdk.Stack {
      * Create the Key Signing Keys for both the apex and service hosted zones.
      *
      * The key must be an asymmetric key with an ECC_NIST_P256 key spec,
-     * see: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-cmk-requirements.html.
+     * see: https://docs.aws.amazon.com/Route53Stack/latest/DeveloperGuide/dns-configuring-dnssec-cmk-requirements.html.
      * These keys are used for signing and verifying.
      */
     const apexKmsKey = new kms.Key(this, "apexKmsKey", {
@@ -53,7 +53,7 @@ export class Route53 extends cdk.Stack {
     });
 
     // Add to the resources policy of the KMS key to allow AWS route53 to use the customer managed
-    // keys, see: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/access-control-managing-permissions.html#KMS-key-policy-for-DNSSEC
+    // keys, see: https://docs.aws.amazon.com/Route53Stack/latest/DeveloperGuide/access-control-managing-permissions.html#KMS-key-policy-for-DNSSEC
     apexKmsKey.addToResourcePolicy(
       new iam.PolicyStatement({
         sid: "Allow Route 53 DNSSEC Service for apex domain KSK",

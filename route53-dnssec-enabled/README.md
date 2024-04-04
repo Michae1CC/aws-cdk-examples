@@ -395,6 +395,25 @@ We can also use this tool to get a better tree representation of the DNSSEC chec
 
 ![dns-vis](./img/dns-vis.png)
 
+## Teardown
+
+First run
+
+```bash
+cdk destroy LambdaServiceStack
+```
+
+followed by
+
+```bash
+cdk destroy DnssecStack
+```
+
+next go into your registered domains and delete the DNSSEC key created for
+your apex domain. Once you receive an email confirming its deletion you will
+manually delete all records within the subdomain apart from the generated `NS`
+and `SOA` record. Then, delete the `Route53Stack` from the console.
+
 ## References
 
 * <https://learn.cantrill.io/courses/1820301/lectures/43460378>
