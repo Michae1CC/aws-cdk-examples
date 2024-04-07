@@ -5,12 +5,12 @@ import { Construct } from "constructs";
 interface DynamoStackProps extends cdk.StackProps {}
 
 export class DynamoStack extends cdk.Stack {
-  public readonly flagTable = dynamodb.Table;
+  public readonly flagTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: DynamoStackProps) {
     super(scope, id, props);
 
-    const flagTable = new dynamodb.Table(scope, "flagTable", {
+    this.flagTable = new dynamodb.Table(this, "flagTable", {
       partitionKey: {
         name: "feature",
         type: dynamodb.AttributeType.STRING,
