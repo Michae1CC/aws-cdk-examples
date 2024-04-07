@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/dynamo-vpc-interface-endpoint.ts",
+  "app": "npx ts-node --prefer-ts-exts bin/dynamo-vpc-gateway-endpoint.ts",
   "watch": {
     "include": [
       "**"

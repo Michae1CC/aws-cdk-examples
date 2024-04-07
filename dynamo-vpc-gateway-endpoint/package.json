@@ -1,8 +1,8 @@
 {
-  "name": "dynamo-vpc-interface-endpoint",
+  "name": "dynamo-vpc-gateway-endpoint",
   "version": "0.1.0",
   "bin": {
-    "dynamo-vpc-interface-endpoint": "bin/dynamo-vpc-interface-endpoint.js"
+    "dynamo-vpc-gateway-endpoint": "bin/dynamo-vpc-gateway-endpoint.js"
   },
   "scripts": {
     "build": "tsc",
