@@ -6,15 +6,27 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
-interface VpcStackProps extends cdk.StackProps {
-  flagTable: dynamodb.Table;
-}
+interface ServiceStackProps extends cdk.StackProps {}
 
-export class VpcStack extends cdk.Stack {
+export class ServiceStack extends cdk.Stack {
   public readonly vpc: ec2.Vpc;
+  public readonly flagTable: dynamodb.Table;
 
-  constructor(scope: Construct, id: string, props: VpcStackProps) {
+  constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
+
+    this.flagTable = new dynamodb.Table(this, "flagTable", {
+      partitionKey: {
+        name: "feature",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "client",
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
 
     this.vpc = new ec2.Vpc(this, "serviceVpc", {
       natGateways: 0,
@@ -38,7 +50,7 @@ export class VpcStack extends cdk.Stack {
       new iam.PolicyStatement({
         principals: [new iam.AnyPrincipal()],
         actions: ["dynamodb:*"],
-        resources: [props.flagTable.tableArn],
+        resources: [this.flagTable.tableArn],
       })
     );
   }
