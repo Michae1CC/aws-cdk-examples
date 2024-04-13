@@ -9,6 +9,9 @@ import {
 import { Construct } from "constructs";
 import * as path from "path";
 
+const HTTPS_PORT = 443;
+const HTTP_PORT = 80;
+
 interface ServiceStackProps extends cdk.StackProps {}
 
 export class ServiceStack extends cdk.Stack {
@@ -52,27 +55,53 @@ export class ServiceStack extends cdk.Stack {
     dynamoDbEndpoint.addToPolicy(
       new iam.PolicyStatement({
         principals: [new iam.AnyPrincipal()],
+        effect: iam.Effect.ALLOW,
         actions: ["dynamodb:*"],
         resources: [this.flagTable.tableArn],
       })
+    );
+
+    const lambdaSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "lambdaSecurityGroup",
+      {
+        vpc: this.vpc,
+        allowAllOutbound: true,
+      }
+    );
+
+    lambdaSecurityGroup.addIngressRule(
+      ec2.Peer.prefixList("pl-02cd2c6b"),
+      ec2.Port.tcp(HTTPS_PORT)
     );
 
     const handler = new lambdaJs.NodejsFunction(this, "serviceLambda", {
       memorySize: 256,
       runtime: lambda.Runtime.NODEJS_20_X,
       architecture: lambda.Architecture.X86_64,
-      allowAllOutbound: true,
       allowPublicSubnet: false,
       vpc: this.vpc,
+      securityGroups: [lambdaSecurityGroup],
       bundling: {
         sourceMap: true,
       },
       environment: {
+        FEATURE_FLAG_TABLE_NAME: this.flagTable.tableName,
+        CLIENT_ID: "Client1",
+        STAGE: "prod",
         NODE_OPTIONS: "--enable-source-maps",
       },
       entry: path.join(__dirname, "..", "lambda", "service", "lambda.ts"),
       handler: "handler",
     });
+
+    handler.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:*"],
+        resources: [this.flagTable.tableArn],
+      })
+    );
 
     /**
      * Might have to add a security group for any compute to access these
