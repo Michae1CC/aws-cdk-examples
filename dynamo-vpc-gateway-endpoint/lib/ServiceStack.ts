@@ -3,8 +3,11 @@ import {
   aws_ec2 as ec2,
   aws_iam as iam,
   aws_dynamodb as dynamodb,
+  aws_lambda_nodejs as lambdaJs,
+  aws_lambda as lambda,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
+import * as path from "path";
 
 interface ServiceStackProps extends cdk.StackProps {}
 
@@ -53,5 +56,29 @@ export class ServiceStack extends cdk.Stack {
         resources: [this.flagTable.tableArn],
       })
     );
+
+    const handler = new lambdaJs.NodejsFunction(this, "serviceLambda", {
+      memorySize: 256,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      architecture: lambda.Architecture.X86_64,
+      allowAllOutbound: true,
+      allowPublicSubnet: false,
+      vpc: this.vpc,
+      bundling: {
+        sourceMap: true,
+      },
+      environment: {
+        NODE_OPTIONS: "--enable-source-maps",
+      },
+      entry: path.join(__dirname, "..", "lambda", "service", "lambda.ts"),
+      handler: "handler",
+    });
+
+    /**
+     * Might have to add a security group for any compute to access these
+     * gateway endpoint, see:
+     * https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html
+     * https://docs.aws.amazon.com/vpc/latest/userguide/working-with-aws-managed-prefix-lists.html
+     */
   }
 }
