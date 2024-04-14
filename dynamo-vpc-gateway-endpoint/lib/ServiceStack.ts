@@ -23,11 +23,11 @@ export class ServiceStack extends cdk.Stack {
 
     this.flagTable = new dynamodb.Table(this, "flagTable", {
       partitionKey: {
-        name: "feature",
+        name: "Feature",
         type: dynamodb.AttributeType.STRING,
       },
       sortKey: {
-        name: "client",
+        name: "Target",
         type: dynamodb.AttributeType.STRING,
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -87,8 +87,8 @@ export class ServiceStack extends cdk.Stack {
       },
       environment: {
         FEATURE_FLAG_TABLE_NAME: this.flagTable.tableName,
-        CLIENT_ID: "Client1",
-        STAGE: "prod",
+        CLIENT_ID: "CLIENT1",
+        STAGE: "Prod",
         NODE_OPTIONS: "--enable-source-maps",
       },
       entry: path.join(__dirname, "..", "lambda", "service", "lambda.ts"),

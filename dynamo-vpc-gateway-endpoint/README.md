@@ -17,3 +17,6 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html>
 * <https://docs.aws.amazon.com/vpc/latest/userguide/working-with-aws-managed-prefix-lists.html>
+* <https://aws.amazon.com/blogs/compute/understanding-vpc-links-in-amazon-api-gateway-private-integrations/>
+* <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-private.html>
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations-readme.html#private-integration>

@@ -24,6 +24,10 @@ export const handler = async () => {
       ? false
       : getFeatureFlagCommand.Item.Value.BOOL!;
 
+  console.log(
+    `Got a flag value of ${flagValue} for SK: ${process.env.CLIENT_ID}#${process.env.STAGE}`
+  );
+
   if (flagValue) {
     return {
       statusCode: 200,
