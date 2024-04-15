@@ -1,6 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import {
   aws_ec2 as ec2,
+  aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_dynamodb as dynamodb,
   aws_lambda_nodejs as lambdaJs,
@@ -102,6 +103,80 @@ export class ServiceStack extends cdk.Stack {
         resources: [this.flagTable.tableArn],
       })
     );
+
+    const albSecurityGroup = new ec2.SecurityGroup(this, "albSecurityGroup", {
+      vpc: this.vpc,
+      allowAllOutbound: true,
+    });
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv4"
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv6"
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(HTTP_PORT),
+      "Allow HTTP traffic from Ipv4"
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.tcp(HTTP_PORT),
+      "Allow HTTP from Ipv6"
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(HTTPS_PORT),
+      "Allow HTTPS traffic from Ipv4"
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.tcp(HTTPS_PORT),
+      "Allow HTTPS from Ipv6"
+    );
+
+    albSecurityGroup.addEgressRule(
+      lambdaSecurityGroup,
+      ec2.Port.tcp(HTTP_PORT)
+    );
+
+    lambdaSecurityGroup.addIngressRule(
+      albSecurityGroup,
+      ec2.Port.tcp(HTTP_PORT)
+    );
+
+    const applicationLoadBalancer = new elbv2.ApplicationLoadBalancer(
+      this,
+      "internalApplicationLoadBalancer",
+      {
+        vpc: this.vpc,
+        internetFacing: false,
+        ipAddressType: elbv2.IpAddressType.IPV4,
+        securityGroup: albSecurityGroup,
+        http2Enabled: true,
+      }
+    );
+
+    const targetGroup = new elbv2.ApplicationTargetGroup(this, "targetGroup", {
+      vpc: this.vpc,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      port: HTTP_PORT,
+    });
+
+    applicationLoadBalancer.addListener("httpListener", {
+      port: HTTP_PORT,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+    });
 
     /**
      * Might have to add a security group for any compute to access these
