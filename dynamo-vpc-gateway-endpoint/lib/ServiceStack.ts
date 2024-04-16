@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import {
   aws_ec2 as ec2,
   aws_elasticloadbalancingv2 as elbv2,
+  aws_elasticloadbalancingv2_targets as elbv2_targets,
   aws_iam as iam,
   aws_dynamodb as dynamodb,
   aws_lambda_nodejs as lambdaJs,
@@ -9,6 +10,7 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
+import { StatusCodes } from "http-status-codes";
 
 const HTTPS_PORT = 443;
 const HTTP_PORT = 80;
@@ -18,6 +20,9 @@ interface ServiceStackProps extends cdk.StackProps {}
 export class ServiceStack extends cdk.Stack {
   public readonly vpc: ec2.Vpc;
   public readonly flagTable: dynamodb.Table;
+  public readonly applicationLoadBalancer: elbv2.IApplicationLoadBalancer;
+  public readonly albSecurityGroup: ec2.ISecurityGroup;
+  public readonly lambdaListener: elbv2.IApplicationListener;
 
   constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
@@ -104,79 +109,80 @@ export class ServiceStack extends cdk.Stack {
       })
     );
 
-    const albSecurityGroup = new ec2.SecurityGroup(this, "albSecurityGroup", {
+    this.albSecurityGroup = new ec2.SecurityGroup(this, "albSecurityGroup", {
       vpc: this.vpc,
       allowAllOutbound: true,
     });
 
-    albSecurityGroup.addIngressRule(
+    this.albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
       "Allow Pings from Ipv4"
     );
 
-    albSecurityGroup.addIngressRule(
+    this.albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.icmpPing(),
       "Allow Pings from Ipv6"
     );
 
-    albSecurityGroup.addIngressRule(
+    this.albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(HTTP_PORT),
       "Allow HTTP traffic from Ipv4"
     );
 
-    albSecurityGroup.addIngressRule(
+    this.albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.tcp(HTTP_PORT),
       "Allow HTTP from Ipv6"
     );
 
-    albSecurityGroup.addIngressRule(
+    this.albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(HTTPS_PORT),
       "Allow HTTPS traffic from Ipv4"
     );
 
-    albSecurityGroup.addIngressRule(
+    this.albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.tcp(HTTPS_PORT),
       "Allow HTTPS from Ipv6"
     );
 
-    albSecurityGroup.addEgressRule(
-      lambdaSecurityGroup,
-      ec2.Port.tcp(HTTP_PORT)
-    );
-
     lambdaSecurityGroup.addIngressRule(
-      albSecurityGroup,
+      this.albSecurityGroup,
       ec2.Port.tcp(HTTP_PORT)
     );
 
-    const applicationLoadBalancer = new elbv2.ApplicationLoadBalancer(
+    this.applicationLoadBalancer = new elbv2.ApplicationLoadBalancer(
       this,
       "internalApplicationLoadBalancer",
       {
         vpc: this.vpc,
         internetFacing: false,
         ipAddressType: elbv2.IpAddressType.IPV4,
-        securityGroup: albSecurityGroup,
+        securityGroup: this.albSecurityGroup,
         http2Enabled: true,
       }
     );
 
     const targetGroup = new elbv2.ApplicationTargetGroup(this, "targetGroup", {
       vpc: this.vpc,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      port: HTTP_PORT,
     });
 
-    applicationLoadBalancer.addListener("httpListener", {
-      port: HTTP_PORT,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-    });
+    this.lambdaListener = this.applicationLoadBalancer.addListener(
+      "httpListener",
+      {
+        port: HTTP_PORT,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        defaultAction: elbv2.ListenerAction.fixedResponse(
+          StatusCodes.NOT_FOUND
+        ),
+      }
+    );
+
+    targetGroup.addTarget(new elbv2_targets.LambdaTarget(handler));
 
     /**
      * Might have to add a security group for any compute to access these
