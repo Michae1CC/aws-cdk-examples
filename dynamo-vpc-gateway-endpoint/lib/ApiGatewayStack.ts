@@ -23,6 +23,10 @@ export class ApiGatewayStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApiGatewayStackProps) {
     super(scope, id, props);
 
+    /**
+    * TODO: Add a security group to the vpc link to allow outbound traffic
+    */
+
     const httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
 
     httpApiGateway.addRoutes({
