@@ -29,12 +29,63 @@ export class ApiGatewayStack extends cdk.Stack {
 
     const httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
 
+    const vpcLinkSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "albSecurityGroup",
+      {
+        vpc: props.vpc,
+        allowAllOutbound: true,
+      }
+    );
+
+    vpcLinkSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv4"
+    );
+
+    vpcLinkSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv6"
+    );
+
+    vpcLinkSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(HTTP_PORT),
+      "Allow HTTP traffic from Ipv4"
+    );
+
+    vpcLinkSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.tcp(HTTP_PORT),
+      "Allow HTTP from Ipv6"
+    );
+
+    vpcLinkSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(HTTPS_PORT),
+      "Allow HTTPS traffic from Ipv4"
+    );
+
+    vpcLinkSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.tcp(HTTPS_PORT),
+      "Allow HTTPS from Ipv6"
+    );
+
     httpApiGateway.addRoutes({
       path: "/service",
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new apigatewayv2_integrations.HttpAlbIntegration(
         "albIntegration",
-        props.lambdaListener
+        props.lambdaListener,
+        {
+          vpcLink: new apigatewayv2.VpcLink(this, "albVpcLink", {
+            vpc: props.vpc,
+            securityGroups: [vpcLinkSecurityGroup],
+          }),
+        }
       ),
     });
   }

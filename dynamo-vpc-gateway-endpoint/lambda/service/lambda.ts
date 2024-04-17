@@ -35,7 +35,7 @@ export const handler = async () => {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
       },
-      body: "<h2>No feature enabled<h2/>",
+      body: '<h2 style="color:red;">Hello feature enabled!<h2/>',
     };
   }
 
@@ -45,6 +45,6 @@ export const handler = async () => {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
     },
-    body: '<h2 style="color:red;">Hello feature enabled!<h2/>',
+    body: "<h2>No feature enabled<h2/>",
   };
 };

@@ -155,6 +155,16 @@ export class ServiceStack extends cdk.Stack {
       ec2.Port.tcp(HTTP_PORT)
     );
 
+    lambdaSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(HTTP_PORT)
+    );
+
+    lambdaSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(HTTPS_PORT)
+    );
+
     this.applicationLoadBalancer = new elbv2.ApplicationLoadBalancer(
       this,
       "internalApplicationLoadBalancer",
@@ -167,28 +177,19 @@ export class ServiceStack extends cdk.Stack {
       }
     );
 
-    const targetGroup = new elbv2.ApplicationTargetGroup(this, "targetGroup", {
-      vpc: this.vpc,
-    });
-
     this.lambdaListener = this.applicationLoadBalancer.addListener(
       "httpListener",
       {
         port: HTTP_PORT,
         protocol: elbv2.ApplicationProtocol.HTTP,
-        defaultAction: elbv2.ListenerAction.fixedResponse(
-          StatusCodes.NOT_FOUND
-        ),
       }
     );
 
-    targetGroup.addTarget(new elbv2_targets.LambdaTarget(handler));
-
-    /**
-     * Might have to add a security group for any compute to access these
-     * gateway endpoint, see:
-     * https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html
-     * https://docs.aws.amazon.com/vpc/latest/userguide/working-with-aws-managed-prefix-lists.html
-     */
+    this.lambdaListener.addTargets("serviceTarget", {
+      targets: [new elbv2_targets.LambdaTarget(handler)],
+      healthCheck: {
+        enabled: false,
+      },
+    });
   }
 }
