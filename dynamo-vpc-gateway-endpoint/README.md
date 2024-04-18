@@ -21,3 +21,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-private.html>
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2_integrations-readme.html#private-integration>
 * <https://repost.aws/knowledge-center/api-gateway-application-load-balancers>
+* <https://aws.amazon.com/blogs/security/how-to-secure-api-gateway-http-endpoints-with-jwt-authorizer/>
