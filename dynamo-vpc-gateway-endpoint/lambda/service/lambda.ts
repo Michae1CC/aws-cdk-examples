@@ -19,13 +19,22 @@ export const handler = async () => {
     })
   );
 
-  const flagValue: boolean =
-    getFeatureFlagCommand.Item === undefined
-      ? false
-      : getFeatureFlagCommand.Item.Value.BOOL!;
+  let flagValue: boolean = false;
+
+  try {
+    flagValue =
+      getFeatureFlagCommand.Item === undefined
+        ? false
+        : getFeatureFlagCommand.Item.Value.BOOL!;
+  } catch (error) {
+    console.log(
+      "There was an error retrieving the feature flag from dynamo using a default value of false."
+    );
+    console.log(error);
+  }
 
   console.log(
-    `Got a flag value of ${flagValue} for SK: ${process.env.CLIENT_ID}#${process.env.STAGE}`
+    `Using a flag value of ${flagValue} for SK: ${process.env.CLIENT_ID}#${process.env.STAGE}`
   );
 
   if (flagValue) {
@@ -45,6 +54,6 @@ export const handler = async () => {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
     },
-    body: "<h2>No feature enabled<h2/>",
+    body: "<h2>Feature not enabled.<h2/>",
   };
 };

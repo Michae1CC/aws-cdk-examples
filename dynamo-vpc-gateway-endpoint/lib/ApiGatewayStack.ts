@@ -23,12 +23,17 @@ export class ApiGatewayStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApiGatewayStackProps) {
     super(scope, id, props);
 
-    /**
-    * TODO: Add a security group to the vpc link to allow outbound traffic
-    */
-
     const httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
 
+    /**
+     * Traffic originating from the api-gateway is tunnelled into the vpc
+     * via a vpc link. This vpc link is injected into the vpc through an
+     * elastic network interface (ENI). Security groups need to be configured
+     * on the ENI to communicate with other resources
+     * within the vpc. From the perspective of the vpc link's ENI, traffic is
+     * routed out to other resources in the vpc. Since security groups are
+     * stateful this is why we only need egress rules for tcp traffic.
+     */
     const vpcLinkSecurityGroup = new ec2.SecurityGroup(
       this,
       "albSecurityGroup",
@@ -48,30 +53,6 @@ export class ApiGatewayStack extends cdk.Stack {
       ec2.Peer.anyIpv6(),
       ec2.Port.icmpPing(),
       "Allow Pings from Ipv6"
-    );
-
-    vpcLinkSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(HTTP_PORT),
-      "Allow HTTP traffic from Ipv4"
-    );
-
-    vpcLinkSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(HTTP_PORT),
-      "Allow HTTP from Ipv6"
-    );
-
-    vpcLinkSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(HTTPS_PORT),
-      "Allow HTTPS traffic from Ipv4"
-    );
-
-    vpcLinkSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(HTTPS_PORT),
-      "Allow HTTPS from Ipv6"
     );
 
     httpApiGateway.addRoutes({

@@ -10,7 +10,6 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
-import { StatusCodes } from "http-status-codes";
 
 const HTTPS_PORT = 443;
 const HTTP_PORT = 80;
