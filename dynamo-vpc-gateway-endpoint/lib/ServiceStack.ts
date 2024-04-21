@@ -22,6 +22,41 @@ export class ServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
 
+    /**
+     * A regional mapping from the region name to the aws managed prefix list
+     * names and ids for dynamodb. You may need to add an entry if you
+     * are deploying to a region that I haven't included. You can find the name key
+     * and ID value in the vpc console under the "Managed prefix lists" sub section.
+     */
+    const cfnRegionToManagedPrefixList = new cdk.CfnMapping(
+      this,
+      "cfnRegionToManagedPrefixList",
+      {
+        mapping: {
+          "us-east-1": {
+            prefixListName: "com.amazonaws.us-east-1.dynamodb",
+            prefixListId: "pl-02cd2c6b",
+          },
+          "us-east-2": {
+            prefixListName: "com.amazonaws.us-east-2.dynamodb",
+            prefixListId: "pl-4ca54025",
+          },
+          "us-west-1": {
+            prefixListName: "com.amazonaws.us-west-1.dynamodb",
+            prefixListId: "pl-6ea54007",
+          },
+          "us-west-2": {
+            prefixListName: "com.amazonaws.us-west-2.dynamodb",
+            prefixListId: "pl-00a54069",
+          },
+          "ap-southeast-2": {
+            prefixListName: "com.amazonaws.ap-southeast-2.dynamodb",
+            prefixListId: "pl-62a5400b",
+          },
+        },
+      }
+    );
+
     const flagTable = new dynamodb.Table(this, "flagTable", {
       partitionKey: {
         name: "Feature",
@@ -72,7 +107,9 @@ export class ServiceStack extends cdk.Stack {
     );
 
     lambdaSecurityGroup.addIngressRule(
-      ec2.Peer.prefixList("pl-02cd2c6b"),
+      ec2.Peer.prefixList(
+        cfnRegionToManagedPrefixList.findInMap(this.region, "prefixListId")
+      ),
       ec2.Port.tcp(HTTPS_PORT)
     );
 
