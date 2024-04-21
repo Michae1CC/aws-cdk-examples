@@ -1,5 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import {
+  aws_apigatewayv2 as apigatewayv2,
+  aws_apigatewayv2_integrations as apigatewayv2_integrations,
   aws_ec2 as ec2,
   aws_elasticloadbalancingv2 as elbv2,
   aws_elasticloadbalancingv2_targets as elbv2_targets,
@@ -17,16 +19,10 @@ const HTTP_PORT = 80;
 interface ServiceStackProps extends cdk.StackProps {}
 
 export class ServiceStack extends cdk.Stack {
-  public readonly vpc: ec2.Vpc;
-  public readonly flagTable: dynamodb.Table;
-  public readonly applicationLoadBalancer: elbv2.IApplicationLoadBalancer;
-  public readonly albSecurityGroup: ec2.ISecurityGroup;
-  public readonly lambdaListener: elbv2.IApplicationListener;
-
   constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
 
-    this.flagTable = new dynamodb.Table(this, "flagTable", {
+    const flagTable = new dynamodb.Table(this, "flagTable", {
       partitionKey: {
         name: "Feature",
         type: dynamodb.AttributeType.STRING,
@@ -39,7 +35,7 @@ export class ServiceStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    this.vpc = new ec2.Vpc(this, "serviceVpc", {
+    const vpc = new ec2.Vpc(this, "serviceVpc", {
       natGateways: 0,
       maxAzs: 2,
       subnetConfiguration: [
@@ -51,7 +47,7 @@ export class ServiceStack extends cdk.Stack {
       ],
     });
 
-    const dynamoDbEndpoint = this.vpc.addGatewayEndpoint("dynamoDbEndpoint", {
+    const dynamoDbEndpoint = vpc.addGatewayEndpoint("dynamoDbEndpoint", {
       service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
     });
 
@@ -62,7 +58,7 @@ export class ServiceStack extends cdk.Stack {
         principals: [new iam.AnyPrincipal()],
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:*"],
-        resources: [this.flagTable.tableArn],
+        resources: [flagTable.tableArn],
       })
     );
 
@@ -70,7 +66,7 @@ export class ServiceStack extends cdk.Stack {
       this,
       "lambdaSecurityGroup",
       {
-        vpc: this.vpc,
+        vpc: vpc,
         allowAllOutbound: true,
       }
     );
@@ -85,13 +81,13 @@ export class ServiceStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       architecture: lambda.Architecture.X86_64,
       allowPublicSubnet: false,
-      vpc: this.vpc,
+      vpc: vpc,
       securityGroups: [lambdaSecurityGroup],
       bundling: {
         sourceMap: true,
       },
       environment: {
-        FEATURE_FLAG_TABLE_NAME: this.flagTable.tableName,
+        FEATURE_FLAG_TABLE_NAME: flagTable.tableName,
         CLIENT_ID: "CLIENT1",
         STAGE: "Prod",
         NODE_OPTIONS: "--enable-source-maps",
@@ -104,53 +100,29 @@ export class ServiceStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:*"],
-        resources: [this.flagTable.tableArn],
+        resources: [flagTable.tableArn],
       })
     );
 
-    this.albSecurityGroup = new ec2.SecurityGroup(this, "albSecurityGroup", {
-      vpc: this.vpc,
+    const albSecurityGroup = new ec2.SecurityGroup(this, "albSecurityGroup", {
+      vpc: vpc,
       allowAllOutbound: true,
     });
 
-    this.albSecurityGroup.addIngressRule(
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
       "Allow Pings from Ipv4"
     );
 
-    this.albSecurityGroup.addIngressRule(
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
       ec2.Port.icmpPing(),
       "Allow Pings from Ipv6"
     );
 
-    this.albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(HTTP_PORT),
-      "Allow HTTP traffic from Ipv4"
-    );
-
-    this.albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(HTTP_PORT),
-      "Allow HTTP from Ipv6"
-    );
-
-    this.albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(HTTPS_PORT),
-      "Allow HTTPS traffic from Ipv4"
-    );
-
-    this.albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(HTTPS_PORT),
-      "Allow HTTPS from Ipv6"
-    );
-
     lambdaSecurityGroup.addIngressRule(
-      this.albSecurityGroup,
+      albSecurityGroup,
       ec2.Port.tcp(HTTP_PORT)
     );
 
@@ -164,31 +136,104 @@ export class ServiceStack extends cdk.Stack {
       ec2.Port.tcp(HTTPS_PORT)
     );
 
-    this.applicationLoadBalancer = new elbv2.ApplicationLoadBalancer(
+    const applicationLoadBalancer = new elbv2.ApplicationLoadBalancer(
       this,
       "internalApplicationLoadBalancer",
       {
-        vpc: this.vpc,
+        vpc: vpc,
         internetFacing: false,
+        // Denying GW traffic is needed for two reasons:
+        // - Since this alb sits in a vpc with no public subnet, there is no
+        //    IG that can route traffic to it.
+        // - If this is set to true, an ingress rule to allow all in bound
+        //    Ipv4 tcp traffic on port 80 is added to the LB security group.
+        //    This could be a security risk later on down the track.
+        denyAllIgwTraffic: true,
         ipAddressType: elbv2.IpAddressType.IPV4,
-        securityGroup: this.albSecurityGroup,
+        securityGroup: albSecurityGroup,
         http2Enabled: true,
       }
     );
 
-    this.lambdaListener = this.applicationLoadBalancer.addListener(
-      "httpListener",
-      {
-        port: HTTP_PORT,
-        protocol: elbv2.ApplicationProtocol.HTTP,
-      }
-    );
+    // For some reason, if denyAllIgwTraffic is set while ipAddressType
+    // is set to Ipv4 only, then we need to explicity remove the
+    // "ipv6.deny_all_igw_traffic" attribute, otherwise stack creation fails
+    // with:
+    //  "Load balancer attribute key 'ipv6.deny_all igw traffic' is not
+    //   supported on load balancers with IP address type 'ipv4'."
+    // Likely an oversight of this construct's implementation.
+    // For more on attributes, see:
+    //  https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html#load-balancer-attributes
+    applicationLoadBalancer.removeAttribute("ipv6.deny_all_igw_traffic");
 
-    this.lambdaListener.addTargets("serviceTarget", {
+    const lambdaListener = applicationLoadBalancer.addListener("httpListener", {
+      port: HTTP_PORT,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+    });
+
+    lambdaListener.addTargets("serviceTarget", {
       targets: [new elbv2_targets.LambdaTarget(handler)],
       healthCheck: {
         enabled: false,
       },
+    });
+
+    const httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
+
+    /**
+     * Traffic originating from the api-gateway is tunnelled into the vpc
+     * via a vpc link. This vpc link is injected into the vpc through an
+     * elastic network interface (ENI). Security groups need to be configured
+     * on the ENI to communicate with other resources
+     * within the vpc. From the perspective of the vpc link's ENI, traffic is
+     * routed out to other resources in the vpc. Since security groups are
+     * stateful, we only need egress rules for tcp traffic.
+     */
+    const vpcLinkSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "vpcLinkSecurityGroup",
+      {
+        vpc: vpc,
+        allowAllOutbound: true,
+      }
+    );
+
+    vpcLinkSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv4"
+    );
+
+    vpcLinkSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv6"
+    );
+
+    albSecurityGroup.addIngressRule(
+      vpcLinkSecurityGroup,
+      ec2.Port.tcp(HTTP_PORT),
+      "Allows inbound traffic from api gateway vpc link"
+    );
+
+    httpApiGateway.addRoutes({
+      path: "/service",
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new apigatewayv2_integrations.HttpAlbIntegration(
+        "albIntegration",
+        lambdaListener,
+        {
+          vpcLink: new apigatewayv2.VpcLink(this, "albVpcLink", {
+            vpc: vpc,
+            securityGroups: [vpcLinkSecurityGroup],
+          }),
+        }
+      ),
+    });
+
+    new cdk.CfnOutput(this, "apiGatewayRootUrl", {
+      description: "The root URL for the HttpApi Gateway.",
+      value: httpApiGateway.url!,
     });
   }
 }
