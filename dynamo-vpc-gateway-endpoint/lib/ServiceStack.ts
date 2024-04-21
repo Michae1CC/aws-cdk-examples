@@ -126,16 +126,6 @@ export class ServiceStack extends cdk.Stack {
       ec2.Port.tcp(HTTP_PORT)
     );
 
-    lambdaSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(HTTP_PORT)
-    );
-
-    lambdaSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(HTTPS_PORT)
-    );
-
     const applicationLoadBalancer = new elbv2.ApplicationLoadBalancer(
       this,
       "internalApplicationLoadBalancer",
