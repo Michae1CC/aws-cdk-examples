@@ -192,7 +192,9 @@ export class ServiceStack extends cdk.Stack {
     // For more on attributes, see:
     //  https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html#load-balancer-attributes
     applicationLoadBalancer.removeAttribute("ipv6.deny_all_igw_traffic");
-
+    
+    // TODO: Set the open property to false
+    //   https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_elasticloadbalancingv2.BaseApplicationListenerProps.html
     const lambdaListener = applicationLoadBalancer.addListener("httpListener", {
       port: HTTP_PORT,
       protocol: elbv2.ApplicationProtocol.HTTP,
