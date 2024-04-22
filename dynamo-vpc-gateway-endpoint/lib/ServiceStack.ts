@@ -168,35 +168,19 @@ export class ServiceStack extends cdk.Stack {
       "internalApplicationLoadBalancer",
       {
         vpc: vpc,
+        // When internetFacing is set to true, denyAllIgwTraffic is set to false
         internetFacing: false,
-        // Denying GW traffic is needed for two reasons:
-        // - Since this alb sits in a vpc with no public subnet, there is no
-        //    IG that can route traffic to it.
-        // - If this is set to true, an ingress rule to allow all in bound
-        //    Ipv4 tcp traffic on port 80 is added to the LB security group.
-        //    This could be a security risk later on down the track.
-        denyAllIgwTraffic: true,
         ipAddressType: elbv2.IpAddressType.IPV4,
         securityGroup: albSecurityGroup,
         http2Enabled: true,
       }
     );
 
-    // For some reason, if denyAllIgwTraffic is set while ipAddressType
-    // is set to Ipv4 only, then we need to explicity remove the
-    // "ipv6.deny_all_igw_traffic" attribute, otherwise stack creation fails
-    // with:
-    //  "Load balancer attribute key 'ipv6.deny_all igw traffic' is not
-    //   supported on load balancers with IP address type 'ipv4'."
-    // Likely an oversight of this construct's implementation.
-    // For more on attributes, see:
-    //  https://docs.aws.amazon.com/elasticloadbalancing/latest/application/application-load-balancers.html#load-balancer-attributes
-    applicationLoadBalancer.removeAttribute("ipv6.deny_all_igw_traffic");
-    
-    // TODO: Set the open property to false
-    //   https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_elasticloadbalancingv2.BaseApplicationListenerProps.html
     const lambdaListener = applicationLoadBalancer.addListener("httpListener", {
       port: HTTP_PORT,
+      // We do not want traffic from any other sources other the ones defined
+      // in our security group.
+      open: false,
       protocol: elbv2.ApplicationProtocol.HTTP,
     });
 
