@@ -23,3 +23,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://repost.aws/knowledge-center/api-gateway-application-load-balancers>
 * <https://aws.amazon.com/blogs/security/how-to-secure-api-gateway-http-endpoints-with-jwt-authorizer/>
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.Annotations.html>
+* <https://sst.dev/examples/how-to-add-github-login-to-your-cognito-user-pool.html>
