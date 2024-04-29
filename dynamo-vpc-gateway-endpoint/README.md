@@ -25,3 +25,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.Annotations.html>
 * <https://sst.dev/examples/how-to-add-github-login-to-your-cognito-user-pool.html>
 * <https://docs.aws.amazon.com/lambda/latest/dg/urls-invocation.html>
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2.HttpIntegration.html>
