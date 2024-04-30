@@ -19,6 +19,9 @@ const HTTP_PORT = 80;
 interface ServiceStackProps extends cdk.StackProps {}
 
 export class ServiceStack extends cdk.Stack {
+  public readonly flagTable: dynamodb.Table;
+  public readonly httpApiGateway: apigatewayv2.HttpApi;
+
   constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
 
@@ -57,7 +60,7 @@ export class ServiceStack extends cdk.Stack {
       }
     );
 
-    const flagTable = new dynamodb.Table(this, "flagTable", {
+    this.flagTable = new dynamodb.Table(this, "flagTable", {
       partitionKey: {
         name: "Feature",
         type: dynamodb.AttributeType.STRING,
@@ -93,7 +96,7 @@ export class ServiceStack extends cdk.Stack {
         principals: [new iam.AnyPrincipal()],
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:*"],
-        resources: [flagTable.tableArn],
+        resources: [this.flagTable.tableArn],
       })
     );
 
@@ -124,7 +127,7 @@ export class ServiceStack extends cdk.Stack {
         sourceMap: true,
       },
       environment: {
-        FEATURE_FLAG_TABLE_NAME: flagTable.tableName,
+        FEATURE_FLAG_TABLE_NAME: this.flagTable.tableName,
         CLIENT_ID: "CLIENT1",
         STAGE: "Prod",
         NODE_OPTIONS: "--enable-source-maps",
@@ -137,7 +140,7 @@ export class ServiceStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:*"],
-        resources: [flagTable.tableArn],
+        resources: [this.flagTable.tableArn],
       })
     );
 
@@ -191,7 +194,7 @@ export class ServiceStack extends cdk.Stack {
       },
     });
 
-    const httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
+    this.httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
 
     /**
      * Traffic originating from the api-gateway is tunnelled into the vpc
@@ -229,7 +232,7 @@ export class ServiceStack extends cdk.Stack {
       "Allows inbound traffic from api gateway vpc link"
     );
 
-    httpApiGateway.addRoutes({
+    this.httpApiGateway.addRoutes({
       path: "/service",
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new apigatewayv2_integrations.HttpAlbIntegration(
@@ -246,7 +249,7 @@ export class ServiceStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, "apiGatewayRootUrl", {
       description: "The root URL for the HttpApi Gateway.",
-      value: httpApiGateway.url!,
+      value: this.httpApiGateway.url!,
     });
   }
 }

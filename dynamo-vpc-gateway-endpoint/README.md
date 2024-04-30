@@ -26,3 +26,5 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://sst.dev/examples/how-to-add-github-login-to-your-cognito-user-pool.html>
 * <https://docs.aws.amazon.com/lambda/latest/dg/urls-invocation.html>
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2.HttpIntegration.html>
+* <https://blog.ducthinh.net/github-openid-idp-aws-cognito/>
+* <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#2-users-are-redirected-back-to-your-site-by-github>
