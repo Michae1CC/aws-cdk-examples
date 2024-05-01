@@ -2,6 +2,8 @@ import * as cdk from "aws-cdk-lib";
 import {
   aws_apigatewayv2 as apigatewayv2,
   aws_apigatewayv2_integrations as apigatewayv2_integrations,
+  aws_apigatewayv2_authorizers as apigatewayv2_authorizers,
+  aws_cognito as cognito,
   aws_ec2 as ec2,
   aws_elasticloadbalancingv2 as elbv2,
   aws_elasticloadbalancingv2_targets as elbv2_targets,
@@ -19,11 +21,17 @@ const HTTP_PORT = 80;
 interface ServiceStackProps extends cdk.StackProps {}
 
 export class ServiceStack extends cdk.Stack {
-  public readonly flagTable: dynamodb.Table;
-  public readonly httpApiGateway: apigatewayv2.HttpApi;
-
   constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
+
+    if (
+      process.env.GITHUB_CLIENT_ID === undefined ||
+      process.env.GITHUB_CLIENT_SECRET === undefined
+    ) {
+      cdk.Annotations.of(this).addError(
+        "Must provide GitHub client ID and GitHub client secret."
+      );
+    }
 
     /**
      * A regional mapping from the region name to the aws managed prefix list
@@ -60,7 +68,7 @@ export class ServiceStack extends cdk.Stack {
       }
     );
 
-    this.flagTable = new dynamodb.Table(this, "flagTable", {
+    const flagTable = new dynamodb.Table(this, "flagTable", {
       partitionKey: {
         name: "Feature",
         type: dynamodb.AttributeType.STRING,
@@ -96,7 +104,7 @@ export class ServiceStack extends cdk.Stack {
         principals: [new iam.AnyPrincipal()],
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:*"],
-        resources: [this.flagTable.tableArn],
+        resources: [flagTable.tableArn],
       })
     );
 
@@ -127,7 +135,7 @@ export class ServiceStack extends cdk.Stack {
         sourceMap: true,
       },
       environment: {
-        FEATURE_FLAG_TABLE_NAME: this.flagTable.tableName,
+        FEATURE_FLAG_TABLE_NAME: flagTable.tableName,
         CLIENT_ID: "CLIENT1",
         STAGE: "Prod",
         NODE_OPTIONS: "--enable-source-maps",
@@ -140,7 +148,7 @@ export class ServiceStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["dynamodb:*"],
-        resources: [this.flagTable.tableArn],
+        resources: [flagTable.tableArn],
       })
     );
 
@@ -194,7 +202,7 @@ export class ServiceStack extends cdk.Stack {
       },
     });
 
-    this.httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
+    const httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
 
     /**
      * Traffic originating from the api-gateway is tunnelled into the vpc
@@ -232,7 +240,7 @@ export class ServiceStack extends cdk.Stack {
       "Allows inbound traffic from api gateway vpc link"
     );
 
-    this.httpApiGateway.addRoutes({
+    httpApiGateway.addRoutes({
       path: "/service",
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new apigatewayv2_integrations.HttpAlbIntegration(
@@ -247,9 +255,94 @@ export class ServiceStack extends cdk.Stack {
       ),
     });
 
+    const userPool = new cognito.UserPool(this, "serviceUserPool", {
+      userPoolName: "serviceUserPool",
+      mfa: cognito.Mfa.OFF,
+      selfSignUpEnabled: false,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const githubOidcProvider = new cognito.UserPoolIdentityProviderOidc(
+      this,
+      "githubOidcProvider",
+      {
+        userPool: userPool,
+        clientId: process.env.GITHUB_CLIENT_ID!,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        issuerUrl: "https://github.com",
+        scopes: ["openid", "user"],
+        attributeRequestMethod: cognito.OidcAttributeRequestMethod.POST,
+        endpoints: {
+          authorization: "https://github.com/login/oauth/authorize",
+          token: `${httpApiGateway.url}/access_token`,
+          jwksUri: `${httpApiGateway.url}/access_token`,
+          userInfo: `${httpApiGateway.url}/user`,
+        },
+      }
+    );
+
+    userPool.registerIdentityProvider(githubOidcProvider);
+
+    // TODO: Add a client
+
+    const tokenHandler = new lambdaJs.NodejsFunction(this, "tokenLambda", {
+      memorySize: 256,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      architecture: lambda.Architecture.X86_64,
+      bundling: {
+        sourceMap: true,
+      },
+      entry: path.join(__dirname, "..", "lambda", "token", "lambda.ts"),
+      handler: "handler",
+    });
+
+    httpApiGateway.addRoutes({
+      path: "/access_token",
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: new apigatewayv2_integrations.HttpLambdaIntegration(
+        "accessTokenIntegration",
+        tokenHandler
+      ),
+    });
+
+    const userHandler = new lambdaJs.NodejsFunction(this, "userLambda", {
+      memorySize: 256,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      architecture: lambda.Architecture.X86_64,
+      bundling: {
+        sourceMap: true,
+      },
+      entry: path.join(__dirname, "..", "lambda", "user", "lambda.ts"),
+      handler: "handler",
+    });
+
+    httpApiGateway.addRoutes({
+      path: "/user",
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new apigatewayv2_integrations.HttpLambdaIntegration(
+        "userIntegration",
+        userHandler
+      ),
+    });
+
+    const githubAuthorizer =
+      new apigatewayv2_authorizers.HttpUserPoolAuthorizer(
+        "githubAuthorizer",
+        userPool
+      );
+
+    httpApiGateway.addRoutes({
+      integration: new apigatewayv2_integrations.HttpUrlIntegration(
+        "testIntegration",
+        "https://react.dev"
+      ),
+      path: "/react",
+      authorizer: githubAuthorizer,
+    });
+
     new cdk.CfnOutput(this, "apiGatewayRootUrl", {
       description: "The root URL for the HttpApi Gateway.",
-      value: this.httpApiGateway.url!,
+      value: httpApiGateway.url!,
     });
   }
 }
