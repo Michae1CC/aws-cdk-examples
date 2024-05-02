@@ -25,11 +25,11 @@ export class ServiceStack extends cdk.Stack {
     super(scope, id, props);
 
     if (
-      process.env.GITHUB_CLIENT_ID === undefined ||
-      process.env.GITHUB_CLIENT_SECRET === undefined
+      process.env.OKTA_CLIENT_ID === undefined ||
+      process.env.OKTA_CLIENT_SECRET === undefined
     ) {
       cdk.Annotations.of(this).addError(
-        "Must provide GitHub client ID and GitHub client secret."
+        "Must provide okta client ID and GitHub client secret."
       );
     }
 
@@ -262,82 +262,68 @@ export class ServiceStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    const githubOidcProvider = new cognito.UserPoolIdentityProviderOidc(
+    const oktaOidcProvider = new cognito.UserPoolIdentityProviderOidc(
       this,
-      "githubOidcProvider",
+      "oktaOidcProvider",
       {
         userPool: userPool,
-        clientId: process.env.GITHUB_CLIENT_ID!,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-        issuerUrl: "https://github.com",
-        scopes: ["openid", "user"],
-        attributeRequestMethod: cognito.OidcAttributeRequestMethod.POST,
+        clientId: process.env.OKTA_CLIENT_ID!,
+        clientSecret: process.env.OKTA_CLIENT_SECRET!,
+        issuerUrl: "https://dev-79485661.okta.com/oauth2/default",
+        scopes: ["openid"],
+        attributeRequestMethod: cognito.OidcAttributeRequestMethod.GET,
         endpoints: {
-          authorization: "https://github.com/login/oauth/authorize",
-          token: `${httpApiGateway.url}/access_token`,
-          jwksUri: `${httpApiGateway.url}/access_token`,
-          userInfo: `${httpApiGateway.url}/user`,
+          authorization:
+            "https://dev-79485661.okta.com/oauth2/default/v1/authorize",
+          token: "https://dev-79485661.okta.com/oauth2/default/v1/token",
+          jwksUri: "https://dev-79485661.okta.com/oauth2/default/v1/keys",
+          userInfo: "https://dev-79485661.okta.com/oauth2/default/v1/userinfo",
         },
       }
     );
 
-    userPool.registerIdentityProvider(githubOidcProvider);
+    userPool.registerIdentityProvider(oktaOidcProvider);
 
-    // TODO: Add a client
-
-    const tokenHandler = new lambdaJs.NodejsFunction(this, "tokenLambda", {
-      memorySize: 256,
-      runtime: lambda.Runtime.NODEJS_20_X,
-      architecture: lambda.Architecture.X86_64,
-      bundling: {
-        sourceMap: true,
+    userPool.addDomain("oktaOidcUserPoolDomain", {
+      cognitoDomain: {
+        domainPrefix: "oktaoidcuserpooldomain",
       },
-      entry: path.join(__dirname, "..", "lambda", "token", "lambda.ts"),
-      handler: "handler",
     });
 
-    httpApiGateway.addRoutes({
-      path: "/access_token",
-      methods: [apigatewayv2.HttpMethod.POST],
-      integration: new apigatewayv2_integrations.HttpLambdaIntegration(
-        "accessTokenIntegration",
-        tokenHandler
-      ),
-    });
-
-    const userHandler = new lambdaJs.NodejsFunction(this, "userLambda", {
-      memorySize: 256,
-      runtime: lambda.Runtime.NODEJS_20_X,
-      architecture: lambda.Architecture.X86_64,
-      bundling: {
-        sourceMap: true,
+    const oktaOidcClient = userPool.addClient("oktaOidcClient", {
+      userPoolClientName: "oktaOidcClient",
+      generateSecret: true,
+      oAuth: {
+        callbackUrls: [`https://jwt.io`],
+        flows: {
+          authorizationCodeGrant: false,
+          implicitCodeGrant: true,
+        },
+        scopes: [cognito.OAuthScope.OPENID],
       },
-      entry: path.join(__dirname, "..", "lambda", "user", "lambda.ts"),
-      handler: "handler",
+      supportedIdentityProviders: [
+        cognito.UserPoolClientIdentityProvider.custom(
+          oktaOidcProvider.providerName
+        ),
+      ],
     });
 
-    httpApiGateway.addRoutes({
-      path: "/user",
-      methods: [apigatewayv2.HttpMethod.GET],
-      integration: new apigatewayv2_integrations.HttpLambdaIntegration(
-        "userIntegration",
-        userHandler
-      ),
-    });
-
-    const githubAuthorizer =
-      new apigatewayv2_authorizers.HttpUserPoolAuthorizer(
-        "githubAuthorizer",
-        userPool
-      );
+    const oktaAuthorizer = new apigatewayv2_authorizers.HttpUserPoolAuthorizer(
+      "oktaAuthorizer",
+      userPool,
+      {
+        userPoolClients: [oktaOidcClient],
+        userPoolRegion: this.region,
+      }
+    );
 
     httpApiGateway.addRoutes({
       integration: new apigatewayv2_integrations.HttpUrlIntegration(
         "testIntegration",
-        "https://react.dev"
+        "https://jwt.io"
       ),
-      path: "/react",
-      authorizer: githubAuthorizer,
+      path: "/jwt",
+      authorizer: oktaAuthorizer,
     });
 
     new cdk.CfnOutput(this, "apiGatewayRootUrl", {
