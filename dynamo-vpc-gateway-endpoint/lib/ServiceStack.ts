@@ -284,7 +284,7 @@ export class ServiceStack extends cdk.Stack {
 
     userPool.registerIdentityProvider(oktaOidcProvider);
 
-    userPool.addDomain("oktaOidcUserPoolDomain", {
+    const userPoolDomain = userPool.addDomain("oktaOidcUserPoolDomain", {
       cognitoDomain: {
         domainPrefix: "oktaoidcuserpooldomain",
       },
@@ -316,6 +316,18 @@ export class ServiceStack extends cdk.Stack {
         userPoolRegion: this.region,
       }
     );
+
+    httpApiGateway.addRoutes({
+      integration: new apigatewayv2_integrations.HttpUrlIntegration(
+        "token",
+        `${userPoolDomain.baseUrl()}/oauth2/authorize?client_id=${
+          oktaOidcClient.userPoolClientId
+        }&response_type=token&scope=openid&redirect_uri=${encodeURI(
+          "https://jwt.io"
+        )}`
+      ),
+      path: "/token",
+    });
 
     httpApiGateway.addRoutes({
       integration: new apigatewayv2_integrations.HttpUrlIntegration(
