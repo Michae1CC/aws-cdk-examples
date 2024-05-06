@@ -10,6 +10,11 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.554.0",
+    "@aws-sdk/util-dynamodb": "^3.569.0",
+    "aws-lambda": "^1.0.7",
     "aws-sdk": "^2.1599.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.137"
   }
 }

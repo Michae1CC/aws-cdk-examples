@@ -1,8 +1,116 @@
-# Welcome to your CDK TypeScript project
+# Dynamo Tables to Control Feature Flags
 
-This is a blank project for CDK development with TypeScript.
+Dynamodb is a NoSQL key-value pair database. The simplicity and flexibility it
+offers makes it good for storing ideal for storing data for deployment
+configurations of our applications. This tutorial shows how dynamodb may be
+set up provide feature flag information to our running applications.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Dynamo Gateway Endpoint
+
+The structure of our dynamo items will take the following form
+
+```json
+{
+    "<FeatureName>": string,
+    "<ClientId>#<Stage>": string,
+    "Value": boolean
+}
+```
+
+where `FeatureName` will be the primary key and `<ClientId>#<Stage>` is that
+if we know the feature and client id then a query can still be made using the
+sort key by checking if the sort key begins with the client id.
+
+Compute within the private subnet will be able to query the table for feature
+flags via a Gateway Endpoint. An Gateway Endpoint provides network access to
+S3 or Dynamo without the need for a NAT gateway. This work by attaching
+new routes to the designated subnet route tables. The CDK used to create the
+dynamo table and Gateway Endpoint are shown below.
+
+```typescript
+/**
+ * A regional mapping from the region name to the aws managed prefix list
+ * names and ids for dynamodb. You may need to add an entry if you
+ * are deploying to a region that I haven't included. You can find the name key
+ * and ID value in the vpc console under the "Managed prefix lists" sub section.
+ */
+const cfnRegionToManagedPrefixList = new cdk.CfnMapping(
+    this,
+    "cfnRegionToManagedPrefixList",
+    {
+    mapping: {
+        "us-east-1": {
+        prefixListName: "com.amazonaws.us-east-1.dynamodb",
+        prefixListId: "pl-02cd2c6b",
+        },
+        "us-east-2": {
+        prefixListName: "com.amazonaws.us-east-2.dynamodb",
+        prefixListId: "pl-4ca54025",
+        },
+        "us-west-1": {
+        prefixListName: "com.amazonaws.us-west-1.dynamodb",
+        prefixListId: "pl-6ea54007",
+        },
+        "us-west-2": {
+        prefixListName: "com.amazonaws.us-west-2.dynamodb",
+        prefixListId: "pl-00a54069",
+        },
+        "ap-southeast-2": {
+        prefixListName: "com.amazonaws.ap-southeast-2.dynamodb",
+        prefixListId: "pl-62a5400b",
+        },
+    },
+    }
+);
+
+const flagTable = new dynamodb.Table(this, "flagTable", {
+    partitionKey: {
+    name: "Feature",
+    type: dynamodb.AttributeType.STRING,
+    },
+    sortKey: {
+    name: "Target",
+    type: dynamodb.AttributeType.STRING,
+    },
+    billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+});
+
+const vpc = new ec2.Vpc(this, "serviceVpc", {
+    natGateways: 0,
+    maxAzs: 2,
+    subnetConfiguration: [
+    {
+        name: "service",
+        cidrMask: 24,
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+    },
+    ],
+});
+
+const dynamoDbEndpoint = vpc.addGatewayEndpoint("dynamoDbEndpoint", {
+    service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+    // All subnets in the VPC
+    subnets: undefined,
+});
+
+dynamoDbEndpoint.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
+```
+
+Additionally a policy will need to be configured on the endpoint to specify
+exacts what API calls can be made and to what resource.
+
+```typescript
+dynamoDbEndpoint.addToPolicy(
+    new iam.PolicyStatement({
+    principals: [new iam.AnyPrincipal()],
+    effect: iam.Effect.ALLOW,
+    actions: ["dynamodb:*"],
+    resources: [flagTable.tableArn],
+    })
+);
+```
+
 
 ## Useful commands
 

@@ -95,6 +95,8 @@ export class ServiceStack extends cdk.Stack {
 
     const dynamoDbEndpoint = vpc.addGatewayEndpoint("dynamoDbEndpoint", {
       service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+      // All subnets in the VPC
+      subnets: undefined,
     });
 
     dynamoDbEndpoint.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
@@ -329,13 +331,38 @@ export class ServiceStack extends cdk.Stack {
       path: "/token",
     });
 
+    const flagTableHandler = new lambdaJs.NodejsFunction(
+      this,
+      "flagTableHandler",
+      {
+        memorySize: 256,
+        runtime: lambda.Runtime.NODEJS_20_X,
+        architecture: lambda.Architecture.X86_64,
+        bundling: {
+          sourceMap: true,
+        },
+        environment: {
+          FEATURE_FLAG_TABLE_NAME: flagTable.tableName,
+        },
+        entry: path.join(__dirname, "..", "lambda", "flag", "lambda.ts"),
+        handler: "handler",
+      }
+    );
+
+    flagTableHandler.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:*"],
+        resources: [flagTable.tableArn],
+      })
+    );
+
     httpApiGateway.addRoutes({
-      integration: new apigatewayv2_integrations.HttpUrlIntegration(
-        "testIntegration",
-        "https://jwt.io"
+      integration: new apigatewayv2_integrations.HttpLambdaIntegration(
+        "flagTableRoute",
+        flagTableHandler
       ),
-      path: "/jwt",
-      authorizer: oktaAuthorizer,
+      path: "/flag",
     });
 
     new cdk.CfnOutput(this, "apiGatewayRootUrl", {
