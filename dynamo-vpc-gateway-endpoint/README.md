@@ -111,6 +111,274 @@ dynamoDbEndpoint.addToPolicy(
 );
 ```
 
+We won't implement the service exactly in the diagram, instead we will use a
+lambda for our compute instead of a auto-scaling group. This is cheaper and
+uses the same pattern of querying a dynamo table to influence our software.
+The lambda servers a webpage where the text changes from `Feature not enabled.`
+to `Hello feature enabled!` when the feature is enabled. The lambda simply makes a
+`GetItem` api call to dynamo for the specific client and stage it has been
+configured with. AWS CDK provides us
+with the `ec2.Peer.prefixList` function to provide with the prefix lists of the
+which dynamo gateway endpoints use for various regions. The CDK for the service
+lambda and its corresponding security groups are shown below.
+
+```typescript
+const lambdaSecurityGroup = new ec2.SecurityGroup(
+    this,
+    "lambdaSecurityGroup",
+    {
+    vpc: vpc,
+    allowAllOutbound: true,
+    }
+);
+
+lambdaSecurityGroup.addIngressRule(
+    ec2.Peer.prefixList(
+    cfnRegionToManagedPrefixList.findInMap(this.region, "prefixListId")
+    ),
+    ec2.Port.tcp(HTTPS_PORT)
+);
+
+const handler = new lambdaJs.NodejsFunction(this, "serviceLambda", {
+    memorySize: 256,
+    runtime: lambda.Runtime.NODEJS_20_X,
+    architecture: lambda.Architecture.X86_64,
+    allowPublicSubnet: false,
+    vpc: vpc,
+    securityGroups: [lambdaSecurityGroup],
+    bundling: {
+    sourceMap: true,
+    },
+    environment: {
+    FEATURE_FLAG_TABLE_NAME: flagTable.tableName,
+    CLIENT_ID: "CLIENT1",
+    STAGE: "Prod",
+    NODE_OPTIONS: "--enable-source-maps",
+    },
+    entry: path.join(__dirname, "..", "lambda", "service", "lambda.ts"),
+    handler: "handler",
+});
+
+handler.addToRolePolicy(
+    new iam.PolicyStatement({
+    effect: iam.Effect.ALLOW,
+    actions: ["dynamodb:*"],
+    resources: [flagTable.tableArn],
+    })
+);
+```
+
+Traffic is passed to the lambda using an application load balancer shown below.
+
+```typescript
+const applicationLoadBalancer = new elbv2.ApplicationLoadBalancer(
+    this,
+    "internalApplicationLoadBalancer",
+    {
+    vpc: vpc,
+    // When internetFacing is set to true, denyAllIgwTraffic is set to false
+    internetFacing: false,
+    ipAddressType: elbv2.IpAddressType.IPV4,
+    securityGroup: albSecurityGroup,
+    http2Enabled: true,
+    }
+);
+
+const lambdaListener = applicationLoadBalancer.addListener("httpListener", {
+    port: HTTP_PORT,
+    // We do not want traffic from any other sources other the ones defined
+    // in our security group.
+    open: false,
+    protocol: elbv2.ApplicationProtocol.HTTP,
+});
+
+lambdaListener.addTargets("serviceTarget", {
+    targets: [new elbv2_targets.LambdaTarget(handler)],
+    healthCheck: {
+    enabled: false,
+    },
+});
+```
+
+A Http API Gateway is used to tie the service together and gives our users an
+endpoint to make calls against the service. Since no public subnets are used,
+a private has been configured to route traffic from the `service` path to the
+`httpListener`.
+
+```typescript
+const httpApiGateway = new apigatewayv2.HttpApi(this, "httpApiGateway", {});
+
+/**
+ * Traffic originating from the api-gateway is tunnelled into the vpc
+ * via a vpc link. This vpc link is injected into the vpc through an
+ * elastic network interface (ENI). Security groups need to be configured
+ * on the ENI to communicate with other resources
+ * within the vpc. From the perspective of the vpc link's ENI, traffic is
+ * routed out to other resources in the vpc. Since security groups are
+ * stateful, we only need egress rules for tcp traffic.
+ */
+const vpcLinkSecurityGroup = new ec2.SecurityGroup(
+    this,
+    "vpcLinkSecurityGroup",
+    {
+    vpc: vpc,
+    allowAllOutbound: true,
+    }
+);
+
+vpcLinkSecurityGroup.addIngressRule(
+    ec2.Peer.anyIpv4(),
+    ec2.Port.icmpPing(),
+    "Allow Pings from Ipv4"
+);
+
+vpcLinkSecurityGroup.addIngressRule(
+    ec2.Peer.anyIpv6(),
+    ec2.Port.icmpPing(),
+    "Allow Pings from Ipv6"
+);
+
+albSecurityGroup.addIngressRule(
+    vpcLinkSecurityGroup,
+    ec2.Port.tcp(HTTP_PORT),
+    "Allows inbound traffic from api gateway vpc link"
+);
+
+httpApiGateway.addRoutes({
+    path: "/service",
+    methods: [apigatewayv2.HttpMethod.GET],
+    integration: new apigatewayv2_integrations.HttpAlbIntegration(
+    "albIntegration",
+    lambdaListener,
+    {
+        vpcLink: new apigatewayv2.VpcLink(this, "albVpcLink", {
+        vpc: vpc,
+        securityGroups: [vpcLinkSecurityGroup],
+        }),
+    }
+    ),
+});
+```
+
+The api gateway also exposes a `flag` endpoint to allow members of the product
+team to check and set the values of flags for clients. This works using a lambda
+to consume the http request and uses the query parameters provided in the request
+to make the appropriate api calls to the dynamo table. Of course, we don't want
+anybody to make these requests. Hence a cognito client has been added to ensure
+requests made against the `flag` route carry and valid bearer token in their
+`Authorization` headers. The cognito client validates the users against a
+Okta OIDC provider (acting as our corporate idp).
+
+```typescript
+const userPool = new cognito.UserPool(this, "serviceUserPool", {
+    userPoolName: "serviceUserPool",
+    mfa: cognito.Mfa.OFF,
+    selfSignUpEnabled: false,
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+});
+
+const oktaOidcProvider = new cognito.UserPoolIdentityProviderOidc(
+    this,
+    "oktaOidcProvider",
+    {
+    userPool: userPool,
+    clientId: process.env.OKTA_CLIENT_ID!,
+    clientSecret: process.env.OKTA_CLIENT_SECRET!,
+    issuerUrl: "https://dev-79485661.okta.com/oauth2/default",
+    scopes: ["openid"],
+    attributeRequestMethod: cognito.OidcAttributeRequestMethod.GET,
+    endpoints: {
+        authorization:
+        "https://dev-79485661.okta.com/oauth2/default/v1/authorize",
+        token: "https://dev-79485661.okta.com/oauth2/default/v1/token",
+        jwksUri: "https://dev-79485661.okta.com/oauth2/default/v1/keys",
+        userInfo: "https://dev-79485661.okta.com/oauth2/default/v1/userinfo",
+    },
+    }
+);
+
+userPool.registerIdentityProvider(oktaOidcProvider);
+
+const userPoolDomain = userPool.addDomain("oktaOidcUserPoolDomain", {
+    cognitoDomain: {
+    domainPrefix: "oktaoidcuserpooldomain",
+    },
+});
+
+const oktaOidcClient = userPool.addClient("oktaOidcClient", {
+    userPoolClientName: "oktaOidcClient",
+    generateSecret: true,
+    oAuth: {
+    callbackUrls: [`https://jwt.io`],
+    flows: {
+        authorizationCodeGrant: false,
+        implicitCodeGrant: true,
+    },
+    scopes: [cognito.OAuthScope.OPENID],
+    },
+    supportedIdentityProviders: [
+    cognito.UserPoolClientIdentityProvider.custom(
+        oktaOidcProvider.providerName
+    ),
+    ],
+});
+
+const oktaAuthorizer = new apigatewayv2_authorizers.HttpUserPoolAuthorizer(
+    "oktaAuthorizer",
+    userPool,
+    {
+    userPoolClients: [oktaOidcClient],
+    userPoolRegion: this.region,
+    }
+);
+
+httpApiGateway.addRoutes({
+    integration: new apigatewayv2_integrations.HttpUrlIntegration(
+    "token",
+    `${userPoolDomain.baseUrl()}/oauth2/authorize?client_id=${
+        oktaOidcClient.userPoolClientId
+    }&response_type=token&scope=openid&redirect_uri=${encodeURI(
+        "https://jwt.io"
+    )}`
+    ),
+    path: "/token",
+});
+
+const flagTableHandler = new lambdaJs.NodejsFunction(
+    this,
+    "flagTableHandler",
+    {
+    memorySize: 256,
+    runtime: lambda.Runtime.NODEJS_20_X,
+    architecture: lambda.Architecture.X86_64,
+    bundling: {
+        sourceMap: true,
+    },
+    environment: {
+        FEATURE_FLAG_TABLE_NAME: flagTable.tableName,
+    },
+    entry: path.join(__dirname, "..", "lambda", "flag", "lambda.ts"),
+    handler: "handler",
+    }
+);
+
+flagTableHandler.addToRolePolicy(
+    new iam.PolicyStatement({
+    effect: iam.Effect.ALLOW,
+    actions: ["dynamodb:*"],
+    resources: [flagTable.tableArn],
+    })
+);
+
+httpApiGateway.addRoutes({
+    integration: new apigatewayv2_integrations.HttpLambdaIntegration(
+    "flagTableRoute",
+    flagTableHandler
+    ),
+    path: "/flag",
+});
+```
+
 
 ## Useful commands
 
