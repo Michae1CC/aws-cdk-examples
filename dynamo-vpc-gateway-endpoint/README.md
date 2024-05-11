@@ -23,7 +23,7 @@ sort key by checking if the sort key begins with the client id.
 
 Compute within the private subnet will be able to query the table for feature
 flags via a Gateway Endpoint. An Gateway Endpoint provides network access to
-S3 or Dynamo without the need for a NAT gateway. This work by attaching
+S3 or Dynamo without the need for a NAT gateway. This works by attaching
 new routes to the designated subnet route tables. The CDK used to create the
 dynamo table and Gateway Endpoint are shown below.
 
@@ -110,6 +110,8 @@ dynamoDbEndpoint.addToPolicy(
     })
 );
 ```
+
+## Service Networking
 
 We won't implement the service exactly in the diagram, instead we will use a
 lambda for our compute instead of a auto-scaling group. This is cheaper and
@@ -200,6 +202,8 @@ lambdaListener.addTargets("serviceTarget", {
 });
 ```
 
+## API-Gateway
+
 A Http API Gateway is used to tie the service together and gives our users an
 endpoint to make calls against the service. Since no public subnets are used,
 a private has been configured to route traffic from the `service` path to the
@@ -264,7 +268,7 @@ The api gateway also exposes a `flag` endpoint to allow members of the product
 team to check and set the values of flags for clients. This works using a lambda
 to consume the http request and uses the query parameters provided in the request
 to make the appropriate api calls to the dynamo table. Of course, we don't want
-anybody to make these requests. Hence a cognito client has been added to ensure
+any public user to make these requests. Hence a cognito client has been added to ensure
 requests made against the `flag` route carry and valid bearer token in their
 `Authorization` headers. The cognito client validates the users against a
 Okta OIDC provider (acting as our corporate idp).
@@ -284,15 +288,14 @@ const oktaOidcProvider = new cognito.UserPoolIdentityProviderOidc(
     userPool: userPool,
     clientId: process.env.OKTA_CLIENT_ID!,
     clientSecret: process.env.OKTA_CLIENT_SECRET!,
-    issuerUrl: "https://dev-79485661.okta.com/oauth2/default",
+    issuerUrl: "<YOUR-OIDC-ISSUER-URL>",
     scopes: ["openid"],
     attributeRequestMethod: cognito.OidcAttributeRequestMethod.GET,
     endpoints: {
-        authorization:
-        "https://dev-79485661.okta.com/oauth2/default/v1/authorize",
-        token: "https://dev-79485661.okta.com/oauth2/default/v1/token",
-        jwksUri: "https://dev-79485661.okta.com/oauth2/default/v1/keys",
-        userInfo: "https://dev-79485661.okta.com/oauth2/default/v1/userinfo",
+        authorization: "<YOUR-OIDC-AUTHORIZATION-URL>",
+        token: "<YOUR-OIDC-TOKEN-URL>",
+        jwksUri: "<YOUR-OIDC-JWKS-URL>",
+        userInfo: "<YOUR-OIDC-USER-INFO-URL>",
     },
     }
 );
@@ -379,15 +382,115 @@ httpApiGateway.addRoutes({
 });
 ```
 
+## How to Test
 
-## Useful commands
+### Create an IDP
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+First you will need to create a OIDC identity provider. For this example I just
+used an okta developer account and used that to create an IDP for a web app.
+Ensure the OIDC ID an secret are store in the `.env` file and their environment
+variable updated in the cdk update if required.
+
+### Setup
+
+First clone this repository
+
+```bash
+git clone https://github.com/Michae1CC/aws-cdk-examples
+```
+
+and change directory into the `dynamo-vpc-gateway-endpoint` folder.
+
+```bash
+cd dynamo-vpc-gateway-endpoint
+```
+
+Run
+
+```bash
+npm install
+```
+
+to install the required packages to create our Cloudformation template. Next
+bootstrap and deploy your environment.
+
+```bash
+cdk bootstrap && cdk deploy
+```
+
+Make sure you have docker running during this set.
+
+### Usage
+
+Once deployed you should be able to immediately be able to access the '/service'
+route of the api-gateway, ie. `https://<YOUR-API-GATEWAY-DOMAIN>/service`.
+
+![no-feature-enabled](./img/service-no-feature.png)
+
+This is because the service code is querying the table and failing to find a
+entry for the `HelloFeature` primary key and a sort key of `CLIENT1#Prod`.
+Let's try and this entry the feature using the `flag` route! We can try and make a
+make of the flag table by running the following command.
+
+```bash
+curl -s -X GET https://<YOUR-API-GATEWAY-DOMAIN>/flag
+```
+
+although we are met with a `401` return code. This is because api-gateway
+is using our cognito user pool expects a bearer token for this. We can get a
+bearer from the `/token` route of the api-gateway. Once you authenticate with
+your OIDC provider you should be redirected to `jwt.io` with your access token
+in the fragment of the return URL. Copy the value of the `access_token` and
+set as `TOKEN` within bash, example:
+
+```bash
+TOKEN='eyJa...'
+```
+
+Let's try running the scan command again, but this time with the bearer token.
+
+```bash
+curl -s -X GET --header "Authorization: Bearer $TOKEN" https://<YOUR-API-GATEWAY-DOMAIN>/flag | jq
+```
+
+The command should succeed. Now let's add an item to enable the
+`HelloFeature` for our service. The command
+
+```bash
+curl -s -X GET --header "Authorization: Bearer $TOKEN" 'https://u92zdmzs0e.execute-api.us-east-1.amazonaws.com/flag?feature=HelloFeature&client=CLIENT1&stage=Prod&value=true' | jq
+```
+
+should give the output
+
+```json
+{
+  "Feature": "HelloFeature",
+  "Value": true,
+  "Target": "CLIENT1#Prod"
+}
+```
+
+indicating the flag was set successfully. We can also run
+
+```bash
+curl -s -X GET --header "Authorization: Bearer $TOKEN" 'https://u92zdmzs0e.execute-api.us-east-1.amazonaws.com/flag?feature=HelloFeature&client=CLIENT1&stage=Prod' | jq
+```
+
+to just read the flag of an item for a specific item. Hitting our `\service`
+route, we find our `HelloFeature` has now been enabled.
+
+![feature-enabled](./img/service-feature-enabled.png)
+
+### Teardown
+
+Remember to run
+
+```bash
+aws cdk destroy
+```
+
+when you no longer need your test environment.
+
 
 ## References
 

@@ -271,15 +271,14 @@ export class ServiceStack extends cdk.Stack {
         userPool: userPool,
         clientId: process.env.OKTA_CLIENT_ID!,
         clientSecret: process.env.OKTA_CLIENT_SECRET!,
-        issuerUrl: "https://dev-79485661.okta.com/oauth2/default",
+        issuerUrl: "<YOUR-OIDC-ISSUER-URL>",
         scopes: ["openid"],
         attributeRequestMethod: cognito.OidcAttributeRequestMethod.GET,
         endpoints: {
-          authorization:
-            "https://dev-79485661.okta.com/oauth2/default/v1/authorize",
-          token: "https://dev-79485661.okta.com/oauth2/default/v1/token",
-          jwksUri: "https://dev-79485661.okta.com/oauth2/default/v1/keys",
-          userInfo: "https://dev-79485661.okta.com/oauth2/default/v1/userinfo",
+          authorization: "<YOUR-OIDC-AUTHORIZATION-URL>",
+          token: "<YOUR-OIDC-TOKEN-URL>",
+          jwksUri: "<YOUR-OIDC-JWKS-URL>",
+          userInfo: "<YOUR-OIDC-USER-INFO-URL>",
         },
       }
     );
@@ -362,6 +361,7 @@ export class ServiceStack extends cdk.Stack {
         "flagTableRoute",
         flagTableHandler
       ),
+      authorizer: oktaAuthorizer,
       path: "/flag",
     });
 
