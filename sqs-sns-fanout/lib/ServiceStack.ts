@@ -1,5 +1,5 @@
 import * as cdk from "aws-cdk-lib";
-import { aws_s3 as s3 } from "aws-cdk-lib";
+import { aws_iam as iam, aws_s3 as s3 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 export class ServiceStack extends cdk.Stack {
@@ -12,6 +12,10 @@ export class ServiceStack extends cdk.Stack {
       enforceSSL: true,
       versioned: false,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const designerUser = new iam.User(this, "designerUser", {
+      passwordResetRequired: false,
     });
   }
 }
