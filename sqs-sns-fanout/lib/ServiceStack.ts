@@ -18,7 +18,7 @@ export class ServiceStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    const userPassword = new secretsmanager.Secret(this, "userPassword", {
+    const designUserPassword = new secretsmanager.Secret(this, "userPassword", {
       generateSecretString: {
         includeSpace: false,
         passwordLength: 8,
@@ -26,9 +26,48 @@ export class ServiceStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    const designerUser = new iam.User(this, "designerUser", {
-      password: userPassword.secretValue,
+    const designUser = new iam.User(this, "designUser", {
+      password: designUserPassword.secretValue,
       passwordResetRequired: false,
     });
+
+    const DESIGN_USER_S3_ACCESS_POINT_NAME = "designUserAccessPoint" as const;
+    const designUserAccessPointArn =
+      `arn:aws:s3:${this.region}:${this.account}:accesspoint/${DESIGN_USER_S3_ACCESS_POINT_NAME}` as const;
+
+    const designUserAccessPoint = new s3.CfnAccessPoint(
+      this,
+      "designerAccessPoint",
+      {
+        bucket: iconsBucket.bucketName,
+        policy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              sid: "AllowDesignUserGetAndPut",
+              effect: iam.Effect.ALLOW,
+              actions: ["s3:ListObjects", "s3:GetObject", "s3:PutObject"],
+              principals: [new iam.ArnPrincipal(designUser.userArn)],
+              resources: [`${designUserAccessPointArn}/*`],
+            }),
+          ],
+        }),
+      }
+    );
+
+    // Delegate access control to the access point
+    iconsBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: "DelegateAccessToAccessPoint",
+        effect: iam.Effect.ALLOW,
+        actions: ["s3:ListObjects", "s3:GetObject", "s3:PutObject"],
+        principals: [new iam.AnyPrincipal()],
+        resources: [iconsBucket.bucketArn, iconsBucket.arnForObjects("*")],
+        conditions: {
+          StringEquals: {
+            "s3:DataAccessPointAccount": this.account,
+          },
+        },
+      })
+    );
   }
 }
