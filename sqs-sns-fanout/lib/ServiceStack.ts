@@ -1,5 +1,9 @@
 import * as cdk from "aws-cdk-lib";
-import { aws_iam as iam, aws_s3 as s3 } from "aws-cdk-lib";
+import {
+  aws_iam as iam,
+  aws_s3 as s3,
+  aws_secretsmanager as secretsmanager,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 export class ServiceStack extends cdk.Stack {
@@ -14,7 +18,16 @@ export class ServiceStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const userPassword = new secretsmanager.Secret(this, "userPassword", {
+      generateSecretString: {
+        includeSpace: false,
+        passwordLength: 8,
+      },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     const designerUser = new iam.User(this, "designerUser", {
+      password: userPassword.secretValue,
       passwordResetRequired: false,
     });
   }
