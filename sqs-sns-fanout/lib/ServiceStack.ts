@@ -59,7 +59,7 @@ export class ServiceStack extends cdk.Stack {
         new iam.PolicyStatement({
           sid: "AllowDesignUserGetAndPut",
           effect: iam.Effect.ALLOW,
-          actions: ["s3:ListBucket", "s3:GetObject", "s3:PutObject"],
+          actions: ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
           principals: [new iam.ArnPrincipal(designUser.userArn)],
           // When specifying the bucket objects in the access point resource
           // policy, the object resource must always be prepended with /object

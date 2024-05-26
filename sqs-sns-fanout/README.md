@@ -13,6 +13,16 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * `npx cdk diff`    compare deployed stack with current state
 * `npx cdk synth`   emits the synthesized CloudFormation template
 
+## Commands
+
+```bash
+aws sts get-caller-identity --profile design
+```
+
+```bash
+aws s3api put-object --profile design --bucket arn:aws:s3:us-east-1:<account-number>:accesspoint/design-ap --key icons8-bucket.png --body ./img/icons8-bucket.png
+```
+
 ## References
 
 * <https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points.html>
@@ -20,3 +30,9 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-policies.html#access-points-policy-examples>
 * <https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-policies.html#access-points-delegating-control>
 * <https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-access-points.html>
+* <https://docs.aws.amazon.com/signin/latest/userguide/introduction-to-iam-user-sign-in-tutorial.html>
+* <https://github.com/awsdocs/amazon-s3-developer-guide/blob/master/doc_source/using-access-points.md>
+* <https://github.com/ksmin23/my-aws-cdk-examples/tree/main/lambda/async-invoke>
+* <https://cdkpatterns.com/patterns/filter/?by=EventBridge>
+* <https://github.com/cdk-patterns/serverless/tree/main/the-destined-lambda>
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#addwbreventwbrnotificationevent-dest-filters>
