@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import {
   aws_iam as iam,
   aws_s3 as s3,
+  aws_s3_notifications as s3_notifications,
   aws_secretsmanager as secretsmanager,
   aws_sns as sns,
 } from "aws-cdk-lib";
@@ -83,5 +84,11 @@ export class ServiceStack extends cdk.Stack {
     );
 
     const newIconsTopic = new sns.Topic(this, "NewIconsTopic");
+
+    graphicsBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED_PUT,
+      new s3_notifications.SnsDestination(newIconsTopic),
+      { prefix: "icons/" }
+    );
   }
 }
