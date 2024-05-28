@@ -3,6 +3,7 @@ import {
   aws_iam as iam,
   aws_s3 as s3,
   aws_secretsmanager as secretsmanager,
+  aws_sns as sns,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
@@ -80,5 +81,7 @@ export class ServiceStack extends cdk.Stack {
         policy: accessPointPolicyDocument,
       }
     );
+
+    const newIconsTopic = new sns.Topic(this, "NewIconsTopic");
   }
 }
