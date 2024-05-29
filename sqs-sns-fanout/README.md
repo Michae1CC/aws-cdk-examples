@@ -36,3 +36,4 @@ aws s3api put-object --profile design --bucket arn:aws:s3:us-east-1:<account-num
 * <https://cdkpatterns.com/patterns/filter/?by=EventBridge>
 * <https://github.com/cdk-patterns/serverless/tree/main/the-destined-lambda>
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#addwbreventwbrnotificationevent-dest-filters>
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.AccessKey.html>
