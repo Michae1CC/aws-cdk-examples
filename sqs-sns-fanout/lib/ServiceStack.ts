@@ -3,7 +3,6 @@ import {
   aws_iam as iam,
   aws_s3 as s3,
   aws_s3_notifications as s3_notifications,
-  aws_secretsmanager as secretsmanager,
   aws_sns as sns,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
@@ -39,17 +38,12 @@ export class ServiceStack extends cdk.Stack {
       })
     );
 
-    const designUserPassword = new secretsmanager.Secret(this, "userPassword", {
-      generateSecretString: {
-        includeSpace: false,
-        passwordLength: 8,
-      },
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    const designUser = new iam.User(this, "designUser");
 
-    const designUser = new iam.User(this, "designUser", {
-      password: designUserPassword.secretValue,
-      passwordResetRequired: false,
+    // Create an access key for our users for cli operations
+    new iam.AccessKey(this, "designUserAccessKey", {
+      user: designUser,
+      status: iam.AccessKeyStatus.ACTIVE,
     });
 
     const DESIGN_USER_S3_ACCESS_POINT_NAME = "design-ap" as const;

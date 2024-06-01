@@ -37,3 +37,4 @@ aws s3api put-object --profile design --bucket arn:aws:s3:us-east-1:<account-num
 * <https://github.com/cdk-patterns/serverless/tree/main/the-destined-lambda>
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#addwbreventwbrnotificationevent-dest-filters>
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.AccessKey.html>
+* <https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/run-message-driven-workloads-at-scale-by-using-aws-fargate.html>
