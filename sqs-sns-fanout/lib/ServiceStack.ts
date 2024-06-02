@@ -8,6 +8,7 @@ import {
   aws_sqs as sqs,
   aws_s3_notifications as s3_notifications,
   aws_sns as sns,
+  aws_sns_subscriptions as sns_subscriptions,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { join } from "path";
@@ -128,6 +129,9 @@ export class ServiceStack extends cdk.Stack {
       this,
       `iconResizeQueueSize${iconSize}`
     );
+    newIconsTopic.addSubscription(
+      new sns_subscriptions.SqsSubscription(iconResizeQueue)
+    );
 
     const iconResizeTaskDefinition = new ecs.FargateTaskDefinition(
       this,
@@ -137,14 +141,14 @@ export class ServiceStack extends cdk.Stack {
         memoryLimitMiB: 512,
       }
     );
-    iconResizeTaskDefinition.addToExecutionRolePolicy(
+    iconResizeTaskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["sqs:ReceiveMessage"],
+        actions: ["sqs:ReceiveMessage", "sqs:DeleteMessage"],
         resources: [iconResizeQueue.queueArn],
       })
     );
-    iconResizeTaskDefinition.addToExecutionRolePolicy(
+    iconResizeTaskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["s3:GetObject", "s3:PutObject"],
@@ -167,6 +171,7 @@ export class ServiceStack extends cdk.Stack {
         },
         logging: new ecs.AwsLogDriver({
           streamPrefix: `size${iconResizeQueue}`,
+          logGroup: serviceLogGroup,
         }),
       }
     );

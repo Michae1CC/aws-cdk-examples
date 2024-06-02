@@ -7,7 +7,7 @@ import os
 import contextlib
 import json
 import logging
-from typing import Generator, Final
+from typing import cast, Generator, Final, TypedDict
 
 import boto3
 
@@ -16,11 +16,19 @@ ICONS_BUCKET_ARN: Final[str] = os.environ.get("ICONS_BUCKET_ARN") or ""
 
 SQS_CLIENT: Final = boto3.client("sqs")
 
-logger: logging.Logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger: logging.Logger = logging.getLogger()
+
+
+class SqsMessage(TypedDict):
+    Body: str
+    MD5OfBody: str
+    MessageId: str
+    ReceiptHandle: str
 
 
 @contextlib.contextmanager
-def next_icon_paths() -> Generator[dict, None, None]:
+def next_icon_paths() -> Generator[list[SqsMessage], None, None]:
 
     sqs_response: dict = SQS_CLIENT.receive_message(
         QueueUrl=SQS_URL,
@@ -34,12 +42,14 @@ def next_icon_paths() -> Generator[dict, None, None]:
         VisibilityTimeout=5 * 15,
         WaitTimeSeconds=0,
     )
+    messages = cast(list[SqsMessage], sqs_response.get("Messages", []))
 
-    yield sqs_response
+    yield messages
 
-    SQS_CLIENT.delete_message(
-        QueueUrl=SQS_URL, ReceiptHandle=sqs_response["Messages"]["ReceiptHandle"]
-    )
+    for message in messages:
+        SQS_CLIENT.delete_message(
+            QueueUrl=SQS_URL, ReceiptHandle=message["ReceiptHandle"]
+        )
 
 
 def main() -> None:
@@ -50,3 +60,6 @@ def main() -> None:
         logger.info(json.dumps(response))
 
     logger.info("Finished processing icons")
+
+
+main()
