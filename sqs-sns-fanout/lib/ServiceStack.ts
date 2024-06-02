@@ -1,15 +1,24 @@
 import * as cdk from "aws-cdk-lib";
 import {
+  aws_autoscaling as autoscaling,
+  aws_ecs as ecs,
+  aws_logs as logs,
   aws_iam as iam,
   aws_s3 as s3,
+  aws_sqs as sqs,
   aws_s3_notifications as s3_notifications,
   aws_sns as sns,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
+import { join } from "path";
 
 export class ServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    /**
+     * Create resources related to our icons bucket.
+     */
 
     const graphicsBucket = new s3.Bucket(this, "graphicsBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -84,5 +93,108 @@ export class ServiceStack extends cdk.Stack {
       new s3_notifications.SnsDestination(newIconsTopic),
       { prefix: "icons/" }
     );
+
+    /**
+     * Create resources related to our ecs services
+     */
+
+    // Individual ECS services will be used to process each of the different
+    // icons sizes. Use a single cluster to unify these services under the same
+    // namespace.
+    const serviceCluster = new ecs.Cluster(this, "iconResizeServiceCluster", {
+      enableFargateCapacityProviders: true,
+    });
+
+    serviceCluster.addDefaultCapacityProviderStrategy([
+      {
+        capacityProvider: "FARGATE",
+        // Direct all traffic in this cluster to Fargate
+      },
+    ]);
+
+    // Create a log group to capture all of the fargate service logs
+    const serviceLogGroup = new logs.LogGroup(
+      this,
+      "iconResizeServiceLogGroup",
+      {
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        retention: logs.RetentionDays.FIVE_DAYS,
+      }
+    );
+
+    const iconSize = 16 as const;
+
+    const iconResizeQueue = new sqs.Queue(
+      this,
+      `iconResizeQueueSize${iconSize}`
+    );
+
+    const iconResizeTaskDefinition = new ecs.FargateTaskDefinition(
+      this,
+      `iconResizeTaskDefinitionSize${iconSize}`,
+      {
+        cpu: 256,
+        memoryLimitMiB: 512,
+      }
+    );
+    iconResizeTaskDefinition.addToExecutionRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["sqs:ReceiveMessage"],
+        resources: [iconResizeQueue.queueArn],
+      })
+    );
+    iconResizeTaskDefinition.addToExecutionRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["s3:GetObject", "s3:PutObject"],
+        resources: [
+          graphicsBucket.bucketArn,
+          graphicsBucket.arnForObjects("icons/*"),
+        ],
+      })
+    );
+
+    const iconResizeContainer = iconResizeTaskDefinition.addContainer(
+      `iconResizeContainerSize${iconSize}`,
+      {
+        image: ecs.ContainerImage.fromAsset(
+          join(__dirname, "..", "src", "icon-resize")
+        ),
+        environment: {
+          SQS_URL: iconResizeQueue.queueUrl,
+          ICONS_BUCKET_ARN: graphicsBucket.bucketArn,
+        },
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: `size${iconResizeQueue}`,
+        }),
+      }
+    );
+
+    const iconResizeService = new ecs.FargateService(
+      this,
+      `iconResizeServiceSize${iconSize}`,
+      {
+        cluster: serviceCluster,
+        taskDefinition: iconResizeTaskDefinition,
+        desiredCount: 0,
+      }
+    );
+
+    const scaling = iconResizeService.autoScaleTaskCount({
+      minCapacity: 0,
+      maxCapacity: 1,
+    });
+
+    // Setup scaling metric and cooldown period
+    scaling.scaleOnMetric("QueueMessagesVisibleScaling", {
+      metric: iconResizeQueue.metricApproximateNumberOfMessagesVisible(),
+      adjustmentType: autoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
+      cooldown: cdk.Duration.seconds(300),
+      scalingSteps: [
+        { upper: 0, change: -1 },
+        { lower: 1, change: +1 },
+      ],
+    });
   }
 }

@@ -38,3 +38,6 @@ aws s3api put-object --profile design --bucket arn:aws:s3:us-east-1:<account-num
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3.Bucket.html#addwbreventwbrnotificationevent-dest-filters>
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.AccessKey.html>
 * <https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/run-message-driven-workloads-at-scale-by-using-aws-fargate.html>
+* <https://github.com/aws-samples/sqs-fargate-ddb-cdk-go/blob/main/cdk/lib/FargateServiceStack.ts>
+* <https://github.com/aws-samples/serverless-patterns/blob/main/eventbridge-sqs-ecs-cdk/src/lib/eb-sqs-ecs-stack.ts>
+* <https://github.com/aws-samples/serverless-patterns/blob/main/eventbridge-schedule-to-lambda-cdk/cdk/lib/eventbridge-scehdules-with-cdk-stack.ts>
