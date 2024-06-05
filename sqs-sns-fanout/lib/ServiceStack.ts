@@ -144,7 +144,11 @@ export class ServiceStack extends cdk.Stack {
     iconResizeTaskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["sqs:ReceiveMessage", "sqs:DeleteMessage"],
+        actions: [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:DeleteMessageBatch",
+        ],
         resources: [iconResizeQueue.queueArn],
       })
     );

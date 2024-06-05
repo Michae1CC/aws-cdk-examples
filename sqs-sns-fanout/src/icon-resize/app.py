@@ -46,9 +46,13 @@ def next_icon_paths() -> Generator[list[SqsMessage], None, None]:
 
     yield messages
 
-    for message in messages:
-        SQS_CLIENT.delete_message(
-            QueueUrl=SQS_URL, ReceiptHandle=message["ReceiptHandle"]
+    if messages:
+        SQS_CLIENT.delete_message_batch(
+            QueueUrl=SQS_URL,
+            Entries=[
+                {"Id": message["MessageId"], "ReceiptHandle": message["ReceiptHandle"]}
+                for message in messages
+            ],
         )
 
 
