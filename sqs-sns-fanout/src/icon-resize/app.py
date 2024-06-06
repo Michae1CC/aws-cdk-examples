@@ -57,6 +57,12 @@ def next_icon_paths() -> Generator[list[SqsMessage], None, None]:
 
 
 def main() -> None:
+    if not SQS_URL:
+        logger.error("No sqs url set in environment")
+
+    if not ICONS_BUCKET_ARN:
+        logger.error("No bucket arn set in environment")
+
     logger.info("Starting to process icons")
 
     with next_icon_paths() as response:
