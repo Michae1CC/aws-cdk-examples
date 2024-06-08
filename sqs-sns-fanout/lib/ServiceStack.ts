@@ -190,20 +190,20 @@ export class ServiceStack extends cdk.Stack {
       }
     );
 
-    const scaling = iconResizeService.autoScaleTaskCount({
-      minCapacity: 0,
-      maxCapacity: 1,
-    });
+    // const scaling = iconResizeService.autoScaleTaskCount({
+    //   minCapacity: 0,
+    //   maxCapacity: 1,
+    // });
 
-    // Setup scaling metric and cooldown period
-    scaling.scaleOnMetric("QueueMessagesVisibleScaling", {
-      metric: iconResizeQueue.metricApproximateNumberOfMessagesVisible(),
-      adjustmentType: autoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
-      cooldown: cdk.Duration.seconds(300),
-      scalingSteps: [
-        { upper: 0, change: -1 },
-        { lower: 1, change: +1 },
-      ],
-    });
+    // // Setup scaling metric and cooldown period
+    // scaling.scaleOnMetric("QueueMessagesVisibleScaling", {
+    //   metric: iconResizeQueue.metricApproximateNumberOfMessagesVisible(),
+    //   adjustmentType: autoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
+    //   cooldown: cdk.Duration.seconds(300),
+    //   scalingSteps: [
+    //     { upper: 0, change: -1 },
+    //     { lower: 1, change: +1 },
+    //   ],
+    // });
   }
 }
