@@ -30,6 +30,7 @@ aws s3api put-object --profile design --bucket arn:aws:s3:us-east-1:<account-num
 * <https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-policies.html#access-points-policy-examples>
 * <https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-points-policies.html#access-points-delegating-control>
 * <https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-access-points.html>
+* <https://docs.aws.amazon.com/cdk/v2/guide/how_to_set_cw_alarm.html>
 * <https://docs.aws.amazon.com/signin/latest/userguide/introduction-to-iam-user-sign-in-tutorial.html>
 * <https://github.com/awsdocs/amazon-s3-developer-guide/blob/master/doc_source/using-access-points.md>
 * <https://github.com/ksmin23/my-aws-cdk-examples/tree/main/lambda/async-invoke>
