@@ -1,6 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import {
-  aws_autoscaling as autoscaling,
+  aws_cloudwatch as cloudwatch,
   aws_ecs as ecs,
   aws_logs as logs,
   aws_iam as iam,
@@ -124,6 +124,17 @@ export class ServiceStack extends cdk.Stack {
     );
 
     const iconSize = 16 as const;
+
+    const ecsTargetMetric = new cloudwatch.Metric({
+      namespace: "Service/ImageResize",
+      metricName: "EcsTargetMetric",
+      dimensionsMap: {
+        IconSize: `size${iconSize}`,
+      },
+      period: cdk.Duration.seconds(10),
+      account: this.account,
+      region: this.region,
+    });
 
     const iconResizeQueue = new sqs.Queue(
       this,
