@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import {
   aws_cloudwatch as cloudwatch,
   aws_ecs as ecs,
+  aws_lambda as lambda,
   aws_logs as logs,
   aws_iam as iam,
   aws_s3 as s3,
@@ -10,6 +11,8 @@ import {
   aws_sns as sns,
   aws_sns_subscriptions as sns_subscriptions,
 } from "aws-cdk-lib";
+import { Schedule, ScheduleExpression } from "@aws-cdk/aws-scheduler-alpha";
+import { LambdaInvoke } from "@aws-cdk/aws-scheduler-targets-alpha";
 import { Construct } from "constructs";
 import { join } from "path";
 
@@ -131,7 +134,7 @@ export class ServiceStack extends cdk.Stack {
       dimensionsMap: {
         IconSize: `size${iconSize}`,
       },
-      period: cdk.Duration.seconds(10),
+      period: cdk.Duration.minutes(1),
       account: this.account,
       region: this.region,
     });
@@ -216,5 +219,40 @@ export class ServiceStack extends cdk.Stack {
     //     { lower: 1, change: +1 },
     //   ],
     // });
+
+    /**
+     * Define code to schedule our custom metric to be computed
+     */
+
+    const targetMetricComputeLambda = new lambda.Function(
+      this,
+      "targetMetricComputeLambda",
+      {
+        runtime: lambda.Runtime.PYTHON_3_12,
+        handler: "lambda.handler",
+        code: lambda.Code.fromAsset(
+          join(__dirname, "..", "src", "metric-lambda")
+        ),
+        environment: {
+          // Use toJsonString in case we have any unresolved tokens, see:
+          // https://docs.aws.amazon.com/cdk/v2/guide/tokens.html
+          RESOURCES_STRING: cdk.Stack.of(this).toJsonString([
+            {
+              Size: 16,
+              SqsUrl: iconResizeQueue.queueUrl,
+              Cluster: serviceCluster.clusterName,
+              ServiceName: iconResizeService.serviceName,
+            },
+          ]),
+        },
+      }
+    );
+
+    const target = new LambdaInvoke(targetMetricComputeLambda, {});
+
+    const schedule = new Schedule(this, "targetMetricComputeSchedule", {
+      target,
+      schedule: ScheduleExpression.rate(cdk.Duration.minutes(1)),
+    });
   }
 }

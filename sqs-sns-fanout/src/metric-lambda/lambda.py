@@ -12,7 +12,7 @@ from typing import cast, Final, TypedDict
 import boto3
 
 
-RESOURCES_STRING: Final[str] = os.environ.get("SQS_URL") or ""
+RESOURCES_STRING: Final[str] = os.environ.get("RESOURCES_STRING") or ""
 
 CLOUDWATCH_CLIENT: Final = boto3.client("cloudwatch")
 ECS_CLIENT: Final = boto3.client("ecs")
