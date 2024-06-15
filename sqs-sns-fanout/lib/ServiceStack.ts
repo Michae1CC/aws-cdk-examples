@@ -134,7 +134,7 @@ export class ServiceStack extends cdk.Stack {
       dimensionsMap: {
         IconSize: `size${iconSize}`,
       },
-      period: cdk.Duration.minutes(1),
+      period: cdk.Duration.seconds(15),
       account: this.account,
       region: this.region,
     });

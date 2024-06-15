@@ -7,6 +7,7 @@ import os
 import json
 import logging
 import math
+import time
 from typing import cast, Final, TypedDict
 
 import boto3
@@ -57,41 +58,52 @@ def handler():
 
     logger.info("Using the following resources: " + json.dumps(resources))
 
-    for resource_info in resources:
-        sqs_url = resource_info["SqsUrl"]
-        service_name = resource_info["ServiceName"]
-        cluster = resource_info["Cluster"]
+    iterations: int = 4
 
-        list_tasks_response = ECS_CLIENT.list_tasks(
-            serviceName=service_name, cluster=cluster
-        )
-        get_queue_attributes_response = SQS_CLIENT.get_queue_attributes(
-            QueueUrl=sqs_url, AttributeNames=["ApproximateNumberOfMessages"]
-        )
+    for _ in range(iterations):
+        for resource_info in resources:
+            sqs_url = resource_info["SqsUrl"]
+            service_name = resource_info["ServiceName"]
+            cluster = resource_info["Cluster"]
 
-        if list_tasks_response.get("nextToken"):
-            logger.error(
-                "The number of tasks has exceeded the maximum number of tasks in the list_task response."
+            list_tasks_response = ECS_CLIENT.list_tasks(
+                serviceName=service_name, cluster=cluster
+            )
+            get_queue_attributes_response = SQS_CLIENT.get_queue_attributes(
+                QueueUrl=sqs_url, AttributeNames=["ApproximateNumberOfMessages"]
             )
 
-        ecs_task_count = len(list_tasks_response["taskArns"])
-        approximate_number_of_messages_visible = int(
-            get_queue_attributes_response["Attributes"]["ApproximateNumberOfMessages"]
-        )
-        metric_value = get_metric_value(
-            ecs_task_count, approximate_number_of_messages_visible
-        )
+            if list_tasks_response.get("nextToken"):
+                logger.error(
+                    "The number of tasks has exceeded the maximum number of tasks in the list_task response."
+                )
 
-        # publish the metric, see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/publishingMetrics.html
-        put_metric_data_response = CLOUDWATCH_CLIENT.put_metric_data(
-            Namespace="Service/ImageResize",
-            MetricData=[
-                {
-                    "MetricName": "EcsTargetMetric",
-                    "Dimensions": [
-                        {"Name": "IconSize", "Value": f'size{resource_info["Size"]}'}
-                    ],
-                    "Value": metric_value,
-                }
-            ],
-        )
+            ecs_task_count = len(list_tasks_response["taskArns"])
+            approximate_number_of_messages_visible = int(
+                get_queue_attributes_response["Attributes"][
+                    "ApproximateNumberOfMessages"
+                ]
+            )
+            metric_value = get_metric_value(
+                ecs_task_count, approximate_number_of_messages_visible
+            )
+
+            # publish the metric, see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/publishingMetrics.html
+            put_metric_data_response = CLOUDWATCH_CLIENT.put_metric_data(
+                Namespace="Service/ImageResize",
+                MetricData=[
+                    {
+                        "MetricName": "EcsTargetMetric",
+                        "Dimensions": [
+                            {
+                                "Name": "IconSize",
+                                "Value": f'size{resource_info["Size"]}',
+                            }
+                        ],
+                        "Value": metric_value,
+                    }
+                ],
+            )
+
+        seconds_in_minute: int = 60
+        time.sleep(seconds_in_minute / iterations)
