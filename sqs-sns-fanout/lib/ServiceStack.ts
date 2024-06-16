@@ -128,13 +128,14 @@ export class ServiceStack extends cdk.Stack {
 
     const iconSize = 16 as const;
 
+    // Create a custom high resolution metric with a resolution of 10sec
     const ecsTargetMetric = new cloudwatch.Metric({
       namespace: "Service/ImageResize",
       metricName: "EcsTargetMetric",
       dimensionsMap: {
         IconSize: `size${iconSize}`,
       },
-      period: cdk.Duration.seconds(15),
+      period: cdk.Duration.seconds(10),
       account: this.account,
       region: this.region,
     });

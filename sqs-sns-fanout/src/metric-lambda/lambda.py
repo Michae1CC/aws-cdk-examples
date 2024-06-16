@@ -58,7 +58,7 @@ def handler():
 
     logger.info("Using the following resources: " + json.dumps(resources))
 
-    iterations: int = 4
+    iterations: int = 6
 
     for _ in range(iterations):
         for resource_info in resources:
