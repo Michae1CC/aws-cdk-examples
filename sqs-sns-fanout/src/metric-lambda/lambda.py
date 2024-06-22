@@ -90,6 +90,7 @@ def handler():
 
             # publish the metric, see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/publishingMetrics.html
             put_metric_data_response = CLOUDWATCH_CLIENT.put_metric_data(
+                StorageResolution=1,
                 Namespace="Service/ImageResize",
                 MetricData=[
                     {
