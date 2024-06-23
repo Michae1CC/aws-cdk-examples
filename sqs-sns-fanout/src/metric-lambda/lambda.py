@@ -8,7 +8,7 @@ import json
 import logging
 import math
 import time
-from typing import cast, Final, TypedDict
+from typing import cast, Any, Final, TypedDict
 
 import boto3
 
@@ -19,8 +19,8 @@ CLOUDWATCH_CLIENT: Final = boto3.client("cloudwatch")
 ECS_CLIENT: Final = boto3.client("ecs")
 SQS_CLIENT: Final = boto3.client("sqs")
 
-logging.basicConfig(level=logging.INFO)
-logger: logging.Logger = logging.getLogger()
+logger: logging.Logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class ResourceInfo(TypedDict):
@@ -38,8 +38,8 @@ def get_metric_value(
     if ecs_task_count == 0 and approximate_number_of_messages_visible == 0:
         return 1
     elif approximate_number_of_messages_visible == 0:
-        return 0
-    elif ecs_task_count == 0 and approximate_number_of_messages_visible > 0:
+        return 1
+    elif ecs_task_count == 0 and 0 < approximate_number_of_messages_visible < 5:
         return 2
 
     return 1 + math.floor(
@@ -48,7 +48,7 @@ def get_metric_value(
     )
 
 
-def handler():
+def handler(event: Any, context: Any):
     if not RESOURCES_STRING:
         logger.error("No RESOURCE_STRING set in environment")
 
@@ -88,9 +88,18 @@ def handler():
                 ecs_task_count, approximate_number_of_messages_visible
             )
 
+            logger.info(
+                json.dumps(
+                    {
+                        "ecs_task_count": ecs_task_count,
+                        "approximate_number_of_messages_visible ": approximate_number_of_messages_visible,
+                        "metric_value": metric_value,
+                    }
+                ),
+            )
+
             # publish the metric, see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/publishingMetrics.html
             put_metric_data_response = CLOUDWATCH_CLIENT.put_metric_data(
-                StorageResolution=1,
                 Namespace="Service/ImageResize",
                 MetricData=[
                     {
@@ -102,6 +111,7 @@ def handler():
                             }
                         ],
                         "Value": metric_value,
+                        "StorageResolution": 1,
                     }
                 ],
             )

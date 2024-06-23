@@ -28,7 +28,7 @@ class SqsMessage(TypedDict):
 
 
 @contextlib.contextmanager
-def next_icon_paths() -> Generator[list[SqsMessage], None, None]:
+def next_icon_paths() -> Generator[list[str], None, None]:
 
     sqs_response: dict = SQS_CLIENT.receive_message(
         QueueUrl=SQS_URL,
@@ -42,9 +42,16 @@ def next_icon_paths() -> Generator[list[SqsMessage], None, None]:
         VisibilityTimeout=5 * 15,
         WaitTimeSeconds=0,
     )
+    object_keys: list[str] = []
     messages = cast(list[SqsMessage], sqs_response.get("Messages", []))
 
-    yield messages
+    for message in messages:
+        records = json.loads(json.loads(message["Body"])["Message"])["Records"]
+        for record in records:
+            object_key: str = record["s3"]["object"]["key"]
+            object_keys.append(object_key)
+
+    yield object_keys
 
     if messages:
         SQS_CLIENT.delete_message_batch(
@@ -66,7 +73,7 @@ def main() -> None:
     logger.info("Starting to process icons")
 
     with next_icon_paths() as response:
-        logger.info("Got the following response from SQS")
+        logger.info("Got the following icons to process")
         logger.info(json.dumps(response))
 
     logger.info("Finished processing icons")

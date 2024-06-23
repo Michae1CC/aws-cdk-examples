@@ -205,21 +205,15 @@ export class ServiceStack extends cdk.Stack {
       }
     );
 
-    // const scaling = iconResizeService.autoScaleTaskCount({
-    //   minCapacity: 0,
-    //   maxCapacity: 1,
-    // });
+    const scaling = iconResizeService.autoScaleTaskCount({
+      minCapacity: 0,
+      maxCapacity: 5,
+    });
 
-    // // Setup scaling metric and cooldown period
-    // scaling.scaleOnMetric("QueueMessagesVisibleScaling", {
-    //   metric: iconResizeQueue.metricApproximateNumberOfMessagesVisible(),
-    //   adjustmentType: autoscaling.AdjustmentType.CHANGE_IN_CAPACITY,
-    //   cooldown: cdk.Duration.seconds(300),
-    //   scalingSteps: [
-    //     { upper: 0, change: -1 },
-    //     { lower: 1, change: +1 },
-    //   ],
-    // });
+    scaling.scaleToTrackCustomMetric("QueueMessagesVisibleScaling", {
+      metric: ecsTargetMetric,
+      targetValue: 1,
+    });
 
     /**
      * Define code to schedule our custom metric to be computed
@@ -234,6 +228,7 @@ export class ServiceStack extends cdk.Stack {
         code: lambda.Code.fromAsset(
           join(__dirname, "..", "src", "metric-lambda")
         ),
+        timeout: cdk.Duration.minutes(2),
         environment: {
           // Use toJsonString in case we have any unresolved tokens, see:
           // https://docs.aws.amazon.com/cdk/v2/guide/tokens.html
@@ -247,6 +242,33 @@ export class ServiceStack extends cdk.Stack {
           ]),
         },
       }
+    );
+
+    targetMetricComputeLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["cloudwatch:PutMetricData"],
+        // AWS docs mentions to specify the wildcard character as the resource:
+        // https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/permissions-reference-cw.html
+        resources: ["*"],
+      })
+    );
+
+    targetMetricComputeLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ecs:ListTasks"],
+        // TODO: Tighten this
+        resources: ["*"],
+      })
+    );
+
+    targetMetricComputeLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["sqs:GetQueueAttributes"],
+        resources: [iconResizeQueue.queueArn],
+      })
     );
 
     const target = new LambdaInvoke(targetMetricComputeLambda, {});
