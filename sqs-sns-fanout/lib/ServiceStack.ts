@@ -172,7 +172,7 @@ export class ServiceStack extends cdk.Stack {
         effect: iam.Effect.ALLOW,
         actions: ["s3:GetObject", "s3:PutObject"],
         resources: [
-          graphicsBucket.bucketArn,
+          graphicsBucket.bucketName,
           graphicsBucket.arnForObjects("icons/*"),
         ],
       })

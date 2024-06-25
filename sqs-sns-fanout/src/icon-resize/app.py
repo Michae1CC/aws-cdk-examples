@@ -3,6 +3,7 @@
 __author__ = "Michael Ciccotosto-Camp"
 __version__ = ""
 
+import io
 import os
 import contextlib
 import json
@@ -12,8 +13,9 @@ from typing import cast, Generator, Final, TypedDict
 import boto3
 
 SQS_URL: Final[str] = os.environ.get("SQS_URL") or ""
-ICONS_BUCKET_ARN: Final[str] = os.environ.get("ICONS_BUCKET_ARN") or ""
+ICONS_BUCKET_NAME: Final[str] = os.environ.get("ICONS_BUCKET_NAME") or ""
 
+S3_CLIENT: Final = boto3.client("s3")
 SQS_CLIENT: Final = boto3.client("sqs")
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +44,7 @@ def next_icon_paths() -> Generator[list[str], None, None]:
         VisibilityTimeout=5 * 15,
         WaitTimeSeconds=0,
     )
+
     object_keys: list[str] = []
     messages = cast(list[SqsMessage], sqs_response.get("Messages", []))
 
@@ -63,18 +66,28 @@ def next_icon_paths() -> Generator[list[str], None, None]:
         )
 
 
+def get_resized_object_key(object_key: str, size: int) -> str:
+    prefix, suffix = object_key.split(".", maxsplit=1)
+    return "".join([prefix, "-size16", suffix])
+
+
 def main() -> None:
     if not SQS_URL:
         logger.error("No sqs url set in environment")
 
-    if not ICONS_BUCKET_ARN:
+    if not ICONS_BUCKET_NAME:
         logger.error("No bucket arn set in environment")
 
     logger.info("Starting to process icons")
 
-    with next_icon_paths() as response:
+    with next_icon_paths() as object_keys:
         logger.info("Got the following icons to process")
-        logger.info(json.dumps(response))
+        logger.info(json.dumps(object_keys))
+
+        for object_key in object_keys:
+            image_data: bytes = S3_CLIENT.get_object(
+                Bucket=ICONS_BUCKET_NAME, Key=object_key
+            )
 
     logger.info("Finished processing icons")
 
