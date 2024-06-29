@@ -172,7 +172,7 @@ export class ServiceStack extends cdk.Stack {
         effect: iam.Effect.ALLOW,
         actions: ["s3:GetObject", "s3:PutObject"],
         resources: [
-          graphicsBucket.bucketName,
+          graphicsBucket.bucketArn,
           graphicsBucket.arnForObjects("icons/*"),
         ],
       })
@@ -186,7 +186,7 @@ export class ServiceStack extends cdk.Stack {
         ),
         environment: {
           SQS_URL: iconResizeQueue.queueUrl,
-          ICONS_BUCKET_ARN: graphicsBucket.bucketArn,
+          ICONS_BUCKET_NAME: graphicsBucket.bucketName,
         },
         logging: new ecs.AwsLogDriver({
           streamPrefix: `size${iconResizeQueue}`,
@@ -210,9 +210,11 @@ export class ServiceStack extends cdk.Stack {
       maxCapacity: 5,
     });
 
-    scaling.scaleToTrackCustomMetric("QueueMessagesVisibleScaling", {
+    scaling.scaleToTrackCustomMetric("queueMessagesVisibleScaling", {
       metric: ecsTargetMetric,
       targetValue: 1,
+      scaleInCooldown: cdk.Duration.seconds(30),
+      scaleOutCooldown: cdk.Duration.minutes(2),
     });
 
     /**

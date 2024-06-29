@@ -35,14 +35,7 @@ def get_metric_value(
 ) -> int:
     acceptable_messages_per_task = 5
 
-    if ecs_task_count == 0 and approximate_number_of_messages_visible == 0:
-        return 1
-    elif approximate_number_of_messages_visible == 0:
-        return 1
-    elif ecs_task_count == 0 and 0 < approximate_number_of_messages_visible < 5:
-        return 2
-
-    return 1 + math.floor(
+    return 1 + (
         approximate_number_of_messages_visible
         / (acceptable_messages_per_task * ecs_task_count + 1)
     )
