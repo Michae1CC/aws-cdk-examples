@@ -173,8 +173,15 @@ export class ServiceStack extends cdk.Stack {
         actions: ["s3:GetObject", "s3:PutObject"],
         resources: [
           graphicsBucket.bucketArn,
-          graphicsBucket.arnForObjects("icons/*"),
+          graphicsBucket.arnForObjects("*"),
         ],
+      })
+    );
+    iconResizeTaskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["sqs:GetQueueAttributes"],
+        resources: [iconResizeQueue.queueArn],
       })
     );
 
@@ -186,6 +193,7 @@ export class ServiceStack extends cdk.Stack {
         ),
         environment: {
           SQS_URL: iconResizeQueue.queueUrl,
+          ICON_SIZE: `${iconSize}`,
           ICONS_BUCKET_NAME: graphicsBucket.bucketName,
         },
         logging: new ecs.AwsLogDriver({
@@ -201,12 +209,13 @@ export class ServiceStack extends cdk.Stack {
       {
         cluster: serviceCluster,
         taskDefinition: iconResizeTaskDefinition,
-        desiredCount: 0,
+        desiredCount: 1,
+        minHealthyPercent: 100,
       }
     );
 
     const scaling = iconResizeService.autoScaleTaskCount({
-      minCapacity: 0,
+      minCapacity: 1,
       maxCapacity: 5,
     });
 
@@ -253,18 +262,25 @@ export class ServiceStack extends cdk.Stack {
         // AWS docs mentions to specify the wildcard character as the resource:
         // https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/permissions-reference-cw.html
         resources: ["*"],
+        conditions: {
+          StringEquals: {
+            "cloudwatch:namespace": "Service/ImageResize",
+          },
+        },
       })
     );
-
     targetMetricComputeLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["ecs:ListTasks"],
-        // TODO: Tighten this
         resources: ["*"],
+        // Condition on the ecs cluster, see:
+        // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/security_iam_id-based-policy-examples.html
+        conditions: {
+          ArnEquals: { "ecs:cluster": serviceCluster.clusterArn },
+        },
       })
     );
-
     targetMetricComputeLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,

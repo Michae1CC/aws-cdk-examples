@@ -6,3 +6,7 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# All of the icon images will be stored in the icons folder, do not version this
+# folder
+icons
