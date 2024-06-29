@@ -111,8 +111,8 @@ export class ServiceStack extends cdk.Stack {
 
     serviceCluster.addDefaultCapacityProviderStrategy([
       {
-        capacityProvider: "FARGATE",
         // Direct all traffic in this cluster to Fargate
+        capacityProvider: "FARGATE",
       },
     ]);
 
@@ -126,110 +126,125 @@ export class ServiceStack extends cdk.Stack {
       }
     );
 
-    const iconSize = 16 as const;
+    const sqsQueueArns: Array<string> = [];
+    const metricLambdaResourceList: Array<{
+      Size: number;
+      SqsUrl: string;
+      Cluster: string;
+      ServiceName: string;
+    }> = [];
 
-    // Create a custom high resolution metric with a resolution of 10sec
-    const ecsTargetMetric = new cloudwatch.Metric({
-      namespace: "Service/ImageResize",
-      metricName: "EcsTargetMetric",
-      dimensionsMap: {
-        IconSize: `size${iconSize}`,
-      },
-      period: cdk.Duration.seconds(10),
-      account: this.account,
-      region: this.region,
-    });
-
-    const iconResizeQueue = new sqs.Queue(
-      this,
-      `iconResizeQueueSize${iconSize}`
-    );
-    newIconsTopic.addSubscription(
-      new sns_subscriptions.SqsSubscription(iconResizeQueue)
-    );
-
-    const iconResizeTaskDefinition = new ecs.FargateTaskDefinition(
-      this,
-      `iconResizeTaskDefinitionSize${iconSize}`,
-      {
-        cpu: 256,
-        memoryLimitMiB: 512,
-      }
-    );
-    iconResizeTaskDefinition.addToTaskRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:DeleteMessageBatch",
-        ],
-        resources: [iconResizeQueue.queueArn],
-      })
-    );
-    iconResizeTaskDefinition.addToTaskRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["s3:GetObject", "s3:PutObject"],
-        resources: [
-          graphicsBucket.bucketArn,
-          graphicsBucket.arnForObjects("*"),
-        ],
-      })
-    );
-    iconResizeTaskDefinition.addToTaskRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["sqs:GetQueueAttributes"],
-        resources: [iconResizeQueue.queueArn],
-      })
-    );
-
-    const iconResizeContainer = iconResizeTaskDefinition.addContainer(
-      `iconResizeContainerSize${iconSize}`,
-      {
-        image: ecs.ContainerImage.fromAsset(
-          join(__dirname, "..", "src", "icon-resize")
-        ),
-        environment: {
-          SQS_URL: iconResizeQueue.queueUrl,
-          ICON_SIZE: `${iconSize}`,
-          ICONS_BUCKET_NAME: graphicsBucket.bucketName,
+    for (let iconSize of [16, 32] as const) {
+      // Create a custom high resolution metric with a resolution of 10sec
+      const ecsTargetMetric = new cloudwatch.Metric({
+        namespace: "Service/ImageResize",
+        metricName: "EcsTargetMetric",
+        dimensionsMap: {
+          IconSize: `size${iconSize}`,
         },
-        logging: new ecs.AwsLogDriver({
-          streamPrefix: `size${iconResizeQueue}`,
-          logGroup: serviceLogGroup,
-        }),
-      }
-    );
+        period: cdk.Duration.seconds(10),
+        account: this.account,
+        region: this.region,
+      });
 
-    const iconResizeService = new ecs.FargateService(
-      this,
-      `iconResizeServiceSize${iconSize}`,
-      {
-        cluster: serviceCluster,
-        taskDefinition: iconResizeTaskDefinition,
-        desiredCount: 1,
-        minHealthyPercent: 100,
-      }
-    );
+      const iconResizeQueue = new sqs.Queue(
+        this,
+        `iconResizeQueueSize${iconSize}`
+      );
+      newIconsTopic.addSubscription(
+        new sns_subscriptions.SqsSubscription(iconResizeQueue)
+      );
 
-    const scaling = iconResizeService.autoScaleTaskCount({
-      minCapacity: 1,
-      maxCapacity: 5,
-    });
+      const iconResizeTaskDefinition = new ecs.FargateTaskDefinition(
+        this,
+        `iconResizeTaskDefinitionSize${iconSize}`,
+        {
+          cpu: 256,
+          memoryLimitMiB: 512,
+        }
+      );
+      iconResizeTaskDefinition.addToTaskRolePolicy(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            "sqs:ReceiveMessage",
+            "sqs:DeleteMessage",
+            "sqs:DeleteMessageBatch",
+          ],
+          resources: [iconResizeQueue.queueArn],
+        })
+      );
+      iconResizeTaskDefinition.addToTaskRolePolicy(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ["s3:GetObject", "s3:PutObject"],
+          resources: [
+            graphicsBucket.bucketArn,
+            graphicsBucket.arnForObjects("*"),
+          ],
+        })
+      );
+      iconResizeTaskDefinition.addToTaskRolePolicy(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ["sqs:GetQueueAttributes"],
+          resources: [iconResizeQueue.queueArn],
+        })
+      );
 
-    scaling.scaleToTrackCustomMetric("queueMessagesVisibleScaling", {
-      metric: ecsTargetMetric,
-      targetValue: 1,
-      scaleInCooldown: cdk.Duration.seconds(30),
-      scaleOutCooldown: cdk.Duration.minutes(2),
-    });
+      const iconResizeContainer = iconResizeTaskDefinition.addContainer(
+        `iconResizeContainerSize${iconSize}`,
+        {
+          image: ecs.ContainerImage.fromAsset(
+            join(__dirname, "..", "src", "icon-resize")
+          ),
+          environment: {
+            SQS_URL: iconResizeQueue.queueUrl,
+            ICON_SIZE: `${iconSize}`,
+            ICONS_BUCKET_NAME: graphicsBucket.bucketName,
+          },
+          logging: new ecs.AwsLogDriver({
+            streamPrefix: `size${iconResizeQueue}`,
+            logGroup: serviceLogGroup,
+          }),
+        }
+      );
+
+      const iconResizeService = new ecs.FargateService(
+        this,
+        `iconResizeServiceSize${iconSize}`,
+        {
+          cluster: serviceCluster,
+          taskDefinition: iconResizeTaskDefinition,
+          desiredCount: 1,
+          minHealthyPercent: 100,
+        }
+      );
+
+      const scaling = iconResizeService.autoScaleTaskCount({
+        minCapacity: 1,
+        maxCapacity: 5,
+      });
+
+      scaling.scaleToTrackCustomMetric("queueMessagesVisibleScaling", {
+        metric: ecsTargetMetric,
+        targetValue: 100,
+        scaleInCooldown: cdk.Duration.seconds(30),
+        scaleOutCooldown: cdk.Duration.minutes(1),
+      });
+
+      metricLambdaResourceList.push({
+        Size: iconSize,
+        SqsUrl: iconResizeQueue.queueUrl,
+        Cluster: serviceCluster.clusterName,
+        ServiceName: iconResizeService.serviceName,
+      });
+      sqsQueueArns.push(iconResizeQueue.queueArn);
+    }
 
     /**
      * Define code to schedule our custom metric to be computed
      */
-
     const targetMetricComputeLambda = new lambda.Function(
       this,
       "targetMetricComputeLambda",
@@ -243,14 +258,9 @@ export class ServiceStack extends cdk.Stack {
         environment: {
           // Use toJsonString in case we have any unresolved tokens, see:
           // https://docs.aws.amazon.com/cdk/v2/guide/tokens.html
-          RESOURCES_STRING: cdk.Stack.of(this).toJsonString([
-            {
-              Size: 16,
-              SqsUrl: iconResizeQueue.queueUrl,
-              Cluster: serviceCluster.clusterName,
-              ServiceName: iconResizeService.serviceName,
-            },
-          ]),
+          RESOURCES_STRING: cdk.Stack.of(this).toJsonString(
+            metricLambdaResourceList
+          ),
         },
       }
     );
@@ -285,7 +295,7 @@ export class ServiceStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["sqs:GetQueueAttributes"],
-        resources: [iconResizeQueue.queueArn],
+        resources: sqsQueueArns,
       })
     );
 

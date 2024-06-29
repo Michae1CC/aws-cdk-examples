@@ -35,9 +35,23 @@ def get_metric_value(
 ) -> int:
     acceptable_messages_per_task = 5
 
-    return 1 + (
-        approximate_number_of_messages_visible
-        / (acceptable_messages_per_task * ecs_task_count + 1)
+    overprovison_penalty = (
+        -0.5
+        if (approximate_number_of_messages_visible == 0 and ecs_task_count > 1)
+        else 0
+    )
+
+    return (
+        min(
+            1
+            + (
+                approximate_number_of_messages_visible
+                / (acceptable_messages_per_task * ecs_task_count + 1)
+            )
+            + overprovison_penalty,
+            5,
+        )
+        * 100
     )
 
 

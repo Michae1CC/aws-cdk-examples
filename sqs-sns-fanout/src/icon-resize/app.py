@@ -109,8 +109,8 @@ def main() -> None:
                     Key=get_resized_object_key(object_key, ICON_SIZE),
                 )
 
-            # Artificially inflate the time it takes to process an image
-            time.sleep(2)
+                # Artificially inflate the time it takes to process an image
+                time.sleep(5)
 
         logger.info("Finished processing icons")
 
