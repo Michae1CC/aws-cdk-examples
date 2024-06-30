@@ -288,16 +288,16 @@ ls icons | xargs -P 5 -I {} aws s3api put-object --profile design --bucket arn:a
 Uploading these images will cause the queues to be populated with messages of the
 newly put icons. This in turn will cause our custom metric to pick up.
 
-[metric-increase](./img/metric-increase.png)
+![metric-increase](./img/metric-increase.png)
 
 This then causes the target scaling policy to scaling out each of the services.
 
-[increase-provision](./img/increase-provision.png)
+![increase-provision](./img/increase-provision.png)
 
 After a while, the services will complete processing the messages from the
 queue causing the metric to reel in.
 
-[decrease-increase](./img/metric-decrease.png)
+![decrease-increase](./img/metric-decrease.png)
 
 This eventually triggers the scale in policy, bringing the number of tasks
 back down to 1,
