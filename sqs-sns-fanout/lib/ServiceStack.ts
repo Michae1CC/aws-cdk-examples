@@ -21,9 +21,10 @@ export class ServiceStack extends cdk.Stack {
     super(scope, id, props);
 
     /**
+     * *************************************************************************
      * Create resources related to our icons bucket.
+     * *************************************************************************
      */
-
     const graphicsBucket = new s3.Bucket(this, "graphicsBucket", {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
@@ -52,12 +53,6 @@ export class ServiceStack extends cdk.Stack {
     );
 
     const designUser = new iam.User(this, "designUser");
-
-    // Create an access key for our users for cli operations
-    new iam.AccessKey(this, "designUserAccessKey", {
-      user: designUser,
-      status: iam.AccessKeyStatus.ACTIVE,
-    });
 
     const DESIGN_USER_S3_ACCESS_POINT_NAME = "design-ap" as const;
     const designUserAccessPointArn =
@@ -99,7 +94,9 @@ export class ServiceStack extends cdk.Stack {
     );
 
     /**
+     * *************************************************************************
      * Create resources related to our ecs services
+     * *************************************************************************
      */
 
     // Individual ECS services will be used to process each of the different
@@ -134,7 +131,8 @@ export class ServiceStack extends cdk.Stack {
       ServiceName: string;
     }> = [];
 
-    for (let iconSize of [16, 32] as const) {
+    // Create a service that will resize the icons that are added to s3
+    for (let iconSize of [16, 32, 64] as const) {
       // Create a custom high resolution metric with a resolution of 10sec
       const ecsTargetMetric = new cloudwatch.Metric({
         namespace: "Service/ImageResize",
@@ -167,6 +165,7 @@ export class ServiceStack extends cdk.Stack {
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
           actions: [
+            "sqs:GetQueueAttributes",
             "sqs:ReceiveMessage",
             "sqs:DeleteMessage",
             "sqs:DeleteMessageBatch",
@@ -182,13 +181,6 @@ export class ServiceStack extends cdk.Stack {
             graphicsBucket.bucketArn,
             graphicsBucket.arnForObjects("*"),
           ],
-        })
-      );
-      iconResizeTaskDefinition.addToTaskRolePolicy(
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ["sqs:GetQueueAttributes"],
-          resources: [iconResizeQueue.queueArn],
         })
       );
 
@@ -243,8 +235,12 @@ export class ServiceStack extends cdk.Stack {
     }
 
     /**
-     * Define code to schedule our custom metric to be computed
+     * *************************************************************************
+     * Define infra to schedule the computation of the custom metric
+     * *************************************************************************
      */
+
+    // This lambda will be invoked periodically to compute our custom metric
     const targetMetricComputeLambda = new lambda.Function(
       this,
       "targetMetricComputeLambda",

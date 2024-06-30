@@ -35,7 +35,7 @@ def get_metric_value(
 ) -> int:
     acceptable_messages_per_task = 5
 
-    overprovison_penalty = (
+    overprovision_penalty = (
         -0.5
         if (approximate_number_of_messages_visible == 0 and ecs_task_count > 1)
         else 0
@@ -48,7 +48,7 @@ def get_metric_value(
                 approximate_number_of_messages_visible
                 / (acceptable_messages_per_task * ecs_task_count + 1)
             )
-            + overprovison_penalty,
+            + overprovision_penalty,
             5,
         )
         * 100
@@ -105,7 +105,7 @@ def handler(event: Any, context: Any):
                 ),
             )
 
-            # publish the metric, see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/publishingMetrics.html
+            # Publish the metric, see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/publishingMetrics.html
             put_metric_data_response = CLOUDWATCH_CLIENT.put_metric_data(
                 Namespace="Service/ImageResize",
                 MetricData=[

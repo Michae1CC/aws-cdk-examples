@@ -95,6 +95,8 @@ def main() -> None:
             logger.info(json.dumps(object_keys))
 
             for object_key in object_keys:
+                # Get the new icon from s3, resize then put the resized icon
+                # back into s3 under a different object key
                 s3_response: dict = S3_CLIENT.get_object(
                     Bucket=ICONS_BUCKET_NAME, Key=object_key
                 )
