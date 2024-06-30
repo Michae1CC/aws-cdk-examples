@@ -1,4 +1,4 @@
-# SNS-SQS Fanout Architecture
+# SQS-SNS Fanout Architecture
 
 Broadly speaking, fanout architectures are employed in software architecture
 design to broadcast a message from one publisher to many subscribers. This
@@ -188,7 +188,8 @@ scaling.scaleToTrackCustomMetric("queueMessagesVisibleScaling", {
 });
 ```
 
-The exact value of the metric is computed in the following python code.
+The exact value of the metric is computed in the following python code found
+in `metric-lambda/lambda.py`.
 
 ```python
 def get_metric_value(
@@ -236,7 +237,7 @@ First clone the repository
 git clone https://github.com/Michae1CC/aws-cdk-examples
 ```
 
-and change directory into the `step-function-map-io` folder.
+and change directory into the `sqs-sns-fanout` folder.
 
 ```bash
 cd sqs-sns-fanout
@@ -282,7 +283,7 @@ folder. We can put each of these icons into the s3 bucket using the following
 command
 
 ```bash
-ls icons | xargs -P 5 -I {} aws s3api put-object --profile design --bucket arn:aws:s3:us-east-1:<your-account-number>:accesspoint/design-ap --key icons/{} --body ./icons/{}
+ls icons | xargs -P 5 -I {} aws s3api put-object --profile design --bucket arn:aws:s3:us-east-1:<your-account-number>:accesspoint/design-ap --key icons/{} --body ./icons/{} &>/dev/null
 ```
 
 Uploading these images will cause the queues to be populated with messages of the
