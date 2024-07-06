@@ -1,6 +1,6 @@
 # AWS CDK examples
 
-Examples of small services I've put together to help learn about the products aws provides. All architecture is built use AWS CDK v2 (in typescript). All diagrams were created using [Lucid](https://lucid.app) and [drawio](https://www.drawio.com/).
+Examples of small services I've put together using AWS CDK v2 (in typescript) to help learn about the products AWS provides. All diagrams were created using either [Lucid](https://lucid.app) or [drawio](https://www.drawio.com/).
 
 | Example                                         | Description                                                                               | Tags                                                    |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------- |
