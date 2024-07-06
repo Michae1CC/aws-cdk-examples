@@ -1,6 +1,6 @@
-# SQS-SNS Fanout Architecture
+# SQS-SNS Fanout Pattern
 
-Broadly speaking, fanout architectures are employed in software architecture
+Broadly speaking, the fanout pattern is employed in software architecture
 design to broadcast a message from one publisher to many subscribers. This
 tutorials demonstrates how a fanout architecture can be built using AWS SNS
 and AWS SQS. The application from this tutorial will generate events each time
