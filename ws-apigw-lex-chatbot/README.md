@@ -16,3 +16,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## Resources
 
 * <https://websockets.readthedocs.io/en/stable/intro/tutorial1.html>
+* <https://developer.mozilla.org/en-US/docs/Web/API/WebSocket>
