@@ -19,3 +19,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://bbc.github.io/cloudfit-public-docs/asyncio/asyncio-part-1>
 * <https://developer.mozilla.org/en-US/docs/Web/API/WebSocket>
 * <https://dev.to/aws-builders/your-complete-api-gateway-and-cors-guide-11jb>
+* <https://docs.aws.amazon.com/apigateway/latest/developerguide/websocket-api-chat-app.html>
