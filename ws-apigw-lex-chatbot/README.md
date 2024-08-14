@@ -20,3 +20,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://developer.mozilla.org/en-US/docs/Web/API/WebSocket>
 * <https://dev.to/aws-builders/your-complete-api-gateway-and-cors-guide-11jb>
 * <https://docs.aws.amazon.com/apigateway/latest/developerguide/websocket-api-chat-app.html>
+* <https://github.com/facebook/create-react-app>
