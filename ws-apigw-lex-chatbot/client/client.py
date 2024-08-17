@@ -1,3 +1,6 @@
+import asyncio
+import itertools
+
 from abc import ABC, abstractmethod
 from enum import StrEnum
 from typing import Final, Iterable, Any
@@ -86,8 +89,62 @@ class Prompt(Graphic):
         self._clear_string(self._prompt + self._response + "\n")
 
 
-print("hi")
-p = Prompt("player 1 > ")
-p.draw()
-p.clear()
-print(p.response)
+class Message(Graphic):
+
+    def __init__(self, message: str):
+        self._message = message
+
+    def draw(self):
+        print(self._message, end="")
+
+    def clear(self):
+        self._clear_string(self._message)
+
+
+class Spinner(Graphic):
+
+    def __init__(self):
+        self._task = None
+
+    @classmethod
+    async def _create_spinner(cls):
+        char_sequence = itertools.cycle(r"\|/-")
+        print(" ", flush=True, end="")
+        for char in char_sequence:
+            print(f"\b{char}", flush=True, end="")
+            try:
+                await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                break
+
+    def draw(self):
+        self._task = asyncio.create_task(self._create_spinner())
+
+    def clear(self):
+        self._task.cancel()
+        print(f"\b ", flush=True, end="")
+
+
+async def slow() -> int:
+    await asyncio.sleep(1)  # <4>
+    return 42
+
+
+async def supervisor() -> None:
+    message = Message("Waiting for player 2: ")
+    spinner = Spinner()
+    message.draw()
+    spinner.draw()
+    result = await slow()
+    spinner.clear()
+    message.clear()
+    return result
+
+
+def main() -> None:  # <1>
+    result = asyncio.run(supervisor())  # <2>
+    print(f"Answer: {result}")
+
+
+if __name__ == "__main__":
+    main()
