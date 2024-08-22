@@ -141,7 +141,7 @@ class NaughtsAndCrossesGame:
     def current_player(self):
         return self._current_player
 
-    def board_as_str(self):
+    def board_graphic(self):
         board_str = """
 (0,0)          (2,0)
      {} | {} | {}
@@ -155,7 +155,7 @@ class NaughtsAndCrossesGame:
         )
         return board_str
 
-    def play_round(self, row: int, column: int):
+    def play(self, row: int, column: int):
         if row >= BOARD_LENGTH or column >= BOARD_LENGTH:
             raise IndexError("Row or column values are beyond game board.")
         if self._board[row][column] != " ":
@@ -197,65 +197,101 @@ class NaughtsAndCrossesGame:
         return all(tile == self._EMPTY for tile in flatten(self._board))
 
 
-p2t = iter([(0, 0), (0, 1), (0, 2)])
+def parse_turn_from_input(player_input: str) -> tuple[int, int]:
+    row_str, column_str = player_input.split(",")
+    return (int(row_str), int(column_str))
 
 
-def get_turn_from_slow():
-    from time import sleep
+def handle_players_turn(game: NaughtsAndCrossesGame):
+    game_graphic = Message(game.board_graphic())
+    prompt_turn = Prompt("Enter turn: ")
+    entered_valid: bool = False
 
-    sleep(3)
-    return next(p2t)
+    graphic_component = GraphicComponent(game_graphic, prompt_turn)
+    graphic_component.draw()
+    graphic_component.clear()
+    turn = parse_turn_from_input(prompt_turn.response)
 
+    try:
+        game.play(*turn)
+    except (IndexError, ValueError):
+        pass
+    else:
+        entered_valid = True
 
-class App:
+    while not entered_valid:
+        game_graphic = Message(game.board_graphic())
+        prompt_turn = Prompt("Invalid turn, try again: ")
+        entered_valid: bool = False
 
-    def __init__(self, player: Players):
-        self._game = NaughtsAndCrossesGame()
-        self._player = player
-        # websocket
-
-    def _parse_tile_from_input(player_input: str) -> tuple[int, int]:
-        row_str, column_str = player_input.split(",")
-        return (int(row_str), int(column_str))
-
-    def get_tile_from_player(self, prompt: str = "Enter turn: ") -> tuple[int, int]:
-        game_graphic = Message(self._game.board_as_str())
-        prompt_turn = Prompt("Enter turn: ")
         graphic_component = GraphicComponent(game_graphic, prompt_turn)
         graphic_component.draw()
         graphic_component.clear()
-        return self._parse_tile_from_input(prompt_turn.response)
-
-    def handle_player_turn(self) -> tuple[int, int]:
-        if self._game.current_player != self._player:
-            raise Exception(f"Player is playing out of turn")
-
-        entered_valid: bool = False
-        tile = self.get_tile_from_player()
+        turn = parse_turn_from_input(prompt_turn.response)
 
         try:
-            self._game.play(*tile)
+            game.play(*turn)
         except (IndexError, ValueError):
             pass
         else:
             entered_valid = True
 
-        while not entered_valid:
-            tile = self.get_tile_from_player("Invalid turn, try again: ")
+    # TODO: Send turn to websocket
 
-            try:
-                self._game.play(*tile)
-            except (IndexError, ValueError):
-                pass
-            else:
-                entered_valid = True
 
-    def handler_opponent_turn(self) -> tuple[int, int]:
-        game_graphic = Message(self._game.board_as_str())
-        message = Message("Waiting for player opponent: ")
-        spinner = Spinner()
-        graphic_component = GraphicComponent(game_graphic, message, spinner)
-        graphic_component.draw()
-        tile = get_turn_from_slow()
-        graphic_component.clear()
-        self._game.play(*tile)
+p2t = iter([(0, 0), (0, 1), (0, 2)])
+
+
+async def get_turn_from_slow():
+    # await asyncio.sleep(1)
+    return next(p2t)
+
+
+async def handler_opponents_turn(game: NaughtsAndCrossesGame):
+    game_graphic = Message(game.board_graphic())
+    message = Message("Waiting for player 2: ")
+    spinner = Spinner()
+    graphic_component = GraphicComponent(game_graphic, message, spinner)
+    graphic_component.draw()
+    turn = await get_turn_from_slow()
+    graphic_component.clear()
+    game.play(*turn)
+
+
+async def play_game(player: Players):
+
+    game: NaughtsAndCrossesGame = NaughtsAndCrossesGame()
+
+    # TODO: handle draw
+    while not game.last_player_ended_game:
+
+        if game.current_player == player:
+            handle_players_turn(game)
+        else:
+            await handler_opponents_turn(game)
+
+    print(game.board_graphic())
+    print("Game over")
+
+
+async def slow() -> int:
+    await asyncio.sleep(1)  # <4>
+    return 42
+
+
+async def supervisor() -> None:
+    message = Message("Waiting for player 2: ")
+    spinner = Spinner()
+    gc = GraphicComponent(message, spinner)
+    gc.draw()
+    result = await slow()
+    gc.clear()
+    return result
+
+
+def main() -> None:  # <1>
+    asyncio.run(play_game(Players.PLAYER_1))
+
+
+if __name__ == "__main__":
+    main()
