@@ -1,6 +1,8 @@
 import asyncio
 import itertools
+import time
 
+from threading import Thread, Event
 from abc import ABC, abstractmethod
 from enum import StrEnum
 from typing import Final, Iterable, Literal, Any
@@ -88,24 +90,26 @@ class Message(Graphic):
 class Spinner(Graphic):
 
     def __init__(self):
-        self._task = None
+        self._spinner_event = Event()
+        self._spinner_thread = Thread(
+            target=self._create_spinner, args=(self._spinner_event,)
+        )
 
     @classmethod
-    async def _create_spinner(cls):
+    def _create_spinner(cls, done: Event):
         char_sequence = itertools.cycle(r"\|/-")
         print(" ", flush=True, end="")
         for char in char_sequence:
             print(f"\b{char}", flush=True, end="")
-            try:
-                await asyncio.sleep(0.1)
-            except asyncio.CancelledError:
+            if done.wait(0.1):
                 break
 
     def draw(self):
-        self._task = asyncio.create_task(self._create_spinner())
+        self._spinner_thread.start()
 
     def clear(self):
-        self._task.cancel()
+        self._spinner_event.set()
+        self._spinner_thread.join()
         print(f"\b ", flush=True, end="")
 
 
@@ -194,7 +198,7 @@ class NaughtsAndCrossesGame:
                 ):
                     return True
         # Draw condition
-        return all(tile == self._EMPTY for tile in flatten(self._board))
+        return all(tile != self._EMPTY for tile in flatten(self._board))
 
 
 p2t = iter([(0, 0), (0, 1), (0, 2)])
@@ -214,11 +218,12 @@ class App:
         self._player = player
         # websocket
 
+    @staticmethod
     def _parse_tile_from_input(player_input: str) -> tuple[int, int]:
         row_str, column_str = player_input.split(",")
         return (int(row_str), int(column_str))
 
-    def get_tile_from_player(self, prompt: str = "Enter turn: ") -> tuple[int, int]:
+    def _get_tile_from_player(self, prompt: str = "Enter turn: ") -> tuple[int, int]:
         game_graphic = Message(self._game.board_as_str())
         prompt_turn = Prompt("Enter turn: ")
         graphic_component = GraphicComponent(game_graphic, prompt_turn)
@@ -226,31 +231,31 @@ class App:
         graphic_component.clear()
         return self._parse_tile_from_input(prompt_turn.response)
 
-    def handle_player_turn(self) -> tuple[int, int]:
+    def _handle_player_turn(self) -> tuple[int, int]:
         if self._game.current_player != self._player:
             raise Exception(f"Player is playing out of turn")
 
         entered_valid: bool = False
-        tile = self.get_tile_from_player()
+        tile = self._get_tile_from_player()
 
         try:
-            self._game.play(*tile)
+            self._game.play_round(*tile)
         except (IndexError, ValueError):
             pass
         else:
             entered_valid = True
 
         while not entered_valid:
-            tile = self.get_tile_from_player("Invalid turn, try again: ")
+            tile = self._get_tile_from_player("Invalid turn, try again: ")
 
             try:
-                self._game.play(*tile)
+                self._game.play_round(*tile)
             except (IndexError, ValueError):
                 pass
             else:
                 entered_valid = True
 
-    def handler_opponent_turn(self) -> tuple[int, int]:
+    def _handler_opponent_turn(self) -> tuple[int, int]:
         game_graphic = Message(self._game.board_as_str())
         message = Message("Waiting for player opponent: ")
         spinner = Spinner()
@@ -258,4 +263,24 @@ class App:
         graphic_component.draw()
         tile = get_turn_from_slow()
         graphic_component.clear()
-        self._game.play(*tile)
+        self._game.play_round(*tile)
+
+    def play_game(self):
+
+        while not self._game.last_player_ended_game:
+            if self._game.current_player == self._player:
+                player_tile = self._handle_player_turn()
+            else:
+                opponent_tile = self._handler_opponent_turn()
+
+        print(self._game.board_graphic())
+        print("Game over")
+
+
+def main() -> None:
+    app = App(Players.PLAYER_1)
+    app.play_game()
+
+
+if __name__ == "__main__":
+    main()
