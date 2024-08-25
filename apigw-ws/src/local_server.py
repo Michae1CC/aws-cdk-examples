@@ -4,7 +4,6 @@ import asyncio
 import json
 import uuid
 
-from enum import StrEnum
 from pprint import pprint
 
 import websockets
