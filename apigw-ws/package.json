@@ -1,8 +1,8 @@
 {
-  "name": "ws-apigw-lex-chatbot",
+  "name": "apigw-ws",
   "version": "0.1.0",
   "bin": {
-    "ws-apigw-lex-chatbot": "bin/ws-apigw-lex-chatbot.js"
+    "apigw-ws": "bin/apigw-ws.js"
   },
   "scripts": {
     "build": "tsc",
@@ -15,12 +15,12 @@
     "@types/node": "20.14.9",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.5",
-    "aws-cdk": "2.148.0",
+    "aws-cdk": "2.154.1",
     "ts-node": "^10.9.2",
     "typescript": "~5.5.3"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.148.0",
+    "aws-cdk-lib": "2.154.1",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"
   }
