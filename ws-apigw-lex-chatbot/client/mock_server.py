@@ -12,11 +12,6 @@ import websockets
 ALL_CONNECTIONS = set()
 
 
-class Players(StrEnum):
-    PLAYER_1 = "x"
-    PLAYER_2 = "o"
-
-
 async def play(websocket, event):
     for connection in ALL_CONNECTIONS:
         if connection is websocket:

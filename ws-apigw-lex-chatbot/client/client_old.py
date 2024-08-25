@@ -43,18 +43,6 @@ class Graphic(ABC):
     def clear(self): ...
 
 
-class Message(Graphic):
-
-    def __init__(self, message: str):
-        self._message = message
-
-    def draw(self):
-        print(self._message, end="\n")
-
-    def clear(self):
-        self._clear_string(self._message)
-
-
 class Prompt(Graphic):
 
     def __init__(self, prompt: str):

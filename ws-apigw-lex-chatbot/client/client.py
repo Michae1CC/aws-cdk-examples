@@ -7,8 +7,6 @@ from abc import ABC, abstractmethod
 from enum import StrEnum
 from typing import Final, Iterable, Literal, Any
 
-from pprint import pprint
-
 from websockets.sync.client import connect, ClientConnection
 
 BOARD_LENGTH: Final[int] = 3
@@ -206,6 +204,7 @@ class App:
     def _start_new_game(self, websocket: ClientConnection) -> str:
         websocket.send(json.dumps({"type": "start"}))
         event = json.loads(websocket.recv())
+        assert event["type"] == "init"
         return event["id"]
 
     @staticmethod
@@ -248,33 +247,43 @@ class App:
         return tile
 
     def _handler_opponent_turn(self) -> tuple[int, int]:
+        if self._game.current_player == self._player:
+            raise Exception(f"Player is playing out of turn")
+
         game_graphic = Message(self._game.board_as_str())
         message = Message("Waiting for player opponent: ")
         spinner = Spinner()
         graphic_component = GraphicComponent(game_graphic, message, spinner)
         graphic_component.draw()
         event = json.loads(self._websocket.recv())
+        assert event["type"] == "play"
         tile = self._parse_tile_from_input(event["tile"])
         graphic_component.clear()
         self._game.play_round(*tile)
         return tile
 
     def _wait_for_opponent(self):
-        message = Message(
+        cli_message = Message(
             f"Connected to game: {self._game_id}\nWaiting for opponent to connect "
         )
         spinner = Spinner()
-        graphic_component = GraphicComponent(message, spinner)
+        graphic_component = GraphicComponent(cli_message, spinner)
         graphic_component.draw()
-        message = self._websocket.recv(timeout=None)
+        event = json.loads(self._websocket.recv(timeout=None))
+        assert event["type"] == "join"
         graphic_component.clear()
 
     def _connect_to_game(self):
         self._websocket.send(json.dumps({"type": "join"}))
-        message = self._websocket.recv(timeout=None)
+        event = json.loads(self._websocket.recv(timeout=None))
+        assert event["type"] == "join"
+
+    def _broadcast_play(self, row: int, column: int):
+        self._websocket.send(
+            json.dumps({"type": "play", "tile": f"{row},{column}", "id": self._game_id})
+        )
 
     def play_game(self):
-
         if self._player == Players.PLAYER_1:
             self._wait_for_opponent()
         else:
@@ -283,11 +292,9 @@ class App:
         while not self._game.last_player_ended_game:
             if self._game.current_player == self._player:
                 row, column = self._handle_player_turn()
-                self._websocket.send(
-                    json.dumps({"type": "play", "tile": f"{row},{column}"})
-                )
+                self._broadcast_play(row, column)
             else:
-                opponent_tile = self._handler_opponent_turn()
+                self._handler_opponent_turn()
 
         print(self._game.board_as_str())
         print("Game over")
