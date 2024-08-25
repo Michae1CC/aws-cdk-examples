@@ -1,11 +1,15 @@
-import asyncio
+import argparse
 import itertools
-import time
+import json
 
 from threading import Thread, Event
 from abc import ABC, abstractmethod
 from enum import StrEnum
 from typing import Final, Iterable, Literal, Any
+
+from pprint import pprint
+
+from websockets.sync.client import connect, ClientConnection
 
 BOARD_LENGTH: Final[int] = 3
 
@@ -51,7 +55,7 @@ class Message(Graphic):
         self._message = message
 
     def draw(self):
-        print(self._message, end="\n")
+        print(self._message, end="")
 
     def clear(self):
         self._clear_string(self._message)
@@ -73,18 +77,6 @@ class Prompt(Graphic):
     def clear(self):
         # The new line is added for the user hitting enter after the response
         self._clear_string(self._prompt + self._response + "\n")
-
-
-class Message(Graphic):
-
-    def __init__(self, message: str):
-        self._message = message
-
-    def draw(self):
-        print(self._message, end="")
-
-    def clear(self):
-        self._clear_string(self._message)
 
 
 class Spinner(Graphic):
@@ -129,9 +121,9 @@ class GraphicComponent(Graphic):
 
 class NaughtsAndCrossesGame:
 
-    _EMPTY: Final[str] = " "
+    _EMPTY: Final[Literal[" "]] = " "
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._board: list[
             list[Literal[" "] | Literal[Players.PLAYER_1] | Literal[Players.PLAYER_2]]
         ] = [
@@ -201,22 +193,20 @@ class NaughtsAndCrossesGame:
         return all(tile != self._EMPTY for tile in flatten(self._board))
 
 
-p2t = iter([(0, 0), (0, 1), (0, 2)])
-
-
-def get_turn_from_slow():
-    from time import sleep
-
-    sleep(3)
-    return next(p2t)
-
-
 class App:
 
-    def __init__(self, player: Players):
+    def __init__(
+        self, player: Players, websocket: ClientConnection, game_id: str | None = None
+    ):
         self._game = NaughtsAndCrossesGame()
         self._player = player
-        # websocket
+        self._websocket = websocket
+        self._game_id = game_id or self._start_new_game(websocket)
+
+    def _start_new_game(self, websocket: ClientConnection) -> str:
+        websocket.send(json.dumps({"type": "start"}))
+        event = json.loads(websocket.recv())
+        return event["id"]
 
     @staticmethod
     def _parse_tile_from_input(player_input: str) -> tuple[int, int]:
@@ -225,7 +215,7 @@ class App:
 
     def _get_tile_from_player(self, prompt: str = "Enter turn: ") -> tuple[int, int]:
         game_graphic = Message(self._game.board_as_str())
-        prompt_turn = Prompt("Enter turn: ")
+        prompt_turn = Prompt(prompt)
         graphic_component = GraphicComponent(game_graphic, prompt_turn)
         graphic_component.draw()
         graphic_component.clear()
@@ -255,31 +245,75 @@ class App:
             else:
                 entered_valid = True
 
+        return tile
+
     def _handler_opponent_turn(self) -> tuple[int, int]:
         game_graphic = Message(self._game.board_as_str())
         message = Message("Waiting for player opponent: ")
         spinner = Spinner()
         graphic_component = GraphicComponent(game_graphic, message, spinner)
         graphic_component.draw()
-        tile = get_turn_from_slow()
+        event = json.loads(self._websocket.recv())
+        tile = self._parse_tile_from_input(event["tile"])
         graphic_component.clear()
         self._game.play_round(*tile)
+        return tile
+
+    def _wait_for_opponent(self):
+        message = Message(
+            f"Connected to game: {self._game_id}\nWaiting for opponent to connect "
+        )
+        spinner = Spinner()
+        graphic_component = GraphicComponent(message, spinner)
+        graphic_component.draw()
+        message = self._websocket.recv(timeout=None)
+        graphic_component.clear()
+
+    def _connect_to_game(self):
+        self._websocket.send(json.dumps({"type": "join"}))
+        message = self._websocket.recv(timeout=None)
 
     def play_game(self):
 
+        if self._player == Players.PLAYER_1:
+            self._wait_for_opponent()
+        else:
+            self._connect_to_game()
+
         while not self._game.last_player_ended_game:
             if self._game.current_player == self._player:
-                player_tile = self._handle_player_turn()
+                row, column = self._handle_player_turn()
+                self._websocket.send(
+                    json.dumps({"type": "play", "tile": f"{row},{column}"})
+                )
             else:
                 opponent_tile = self._handler_opponent_turn()
 
-        print(self._game.board_graphic())
+        print(self._game.board_as_str())
         print("Game over")
 
 
 def main() -> None:
-    app = App(Players.PLAYER_1)
-    app.play_game()
+    parser = argparse.ArgumentParser(
+        prog="Naughts and Crosses", description="Play x and o's over a network."
+    )
+
+    verb_parser = parser.add_subparsers(dest="command")
+    parser_new = verb_parser.add_parser("new", help="Starts a new game.")
+    parser_join = verb_parser.add_parser("join", help="Join a game.")
+    parser_join.add_argument(
+        "--id", type=str, required=True, help="The game id to join."
+    )
+
+    cli_args = parser.parse_args()
+
+    with connect("ws://localhost:8002", close_timeout=None) as websocket:
+        app = App(
+            player=Players.PLAYER_1 if cli_args.command == "new" else Players.PLAYER_2,
+            websocket=websocket,
+            game_id=cli_args.id if cli_args.command == "join" else None,
+        )
+        app.play_game()
 
 
 if __name__ == "__main__":
