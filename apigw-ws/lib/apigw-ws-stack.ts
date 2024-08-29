@@ -14,7 +14,7 @@ export class ApigwWsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const connectionTable = new dynamodb.Table(this, "flagTable", {
+    const connectionTable = new dynamodb.Table(this, "connectionTable", {
       partitionKey: {
         name: "GameId",
         type: dynamodb.AttributeType.STRING,
@@ -50,6 +50,21 @@ export class ApigwWsStack extends cdk.Stack {
     startIntegrationLambda.addToRolePolicy(dynamoLambdaPolicy);
     startIntegrationLambda.addToRolePolicy(apigwLambdaPolicy);
 
+    const joinIntegrationLambda = new lambda.Function(
+      this,
+      "joinIntegrationLambda",
+      {
+        runtime: lambda.Runtime.PYTHON_3_12,
+        code: lambda.Code.fromAsset(join(__dirname, "..", "src", "lambda")),
+        handler: "join.handler",
+        environment: {
+          CONNECTION_TABLE_NAME: connectionTable.tableName,
+        },
+      }
+    );
+    joinIntegrationLambda.addToRolePolicy(dynamoLambdaPolicy);
+    joinIntegrationLambda.addToRolePolicy(apigwLambdaPolicy);
+
     const wsApiGw = new apigatewayv2.WebSocketApi(this, "wsApiGw", {
       routeSelectionExpression: "${request.body.type}",
     });
@@ -63,6 +78,13 @@ export class ApigwWsStack extends cdk.Stack {
       integration: new apigatewayv2_integrations.WebSocketLambdaIntegration(
         "StartIntegration",
         startIntegrationLambda
+      ),
+    });
+    0;
+    wsApiGw.addRoute("join", {
+      integration: new apigatewayv2_integrations.WebSocketLambdaIntegration(
+        "JoinIntegration",
+        joinIntegrationLambda
       ),
     });
   }
