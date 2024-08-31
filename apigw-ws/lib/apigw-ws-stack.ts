@@ -65,6 +65,21 @@ export class ApigwWsStack extends cdk.Stack {
     joinIntegrationLambda.addToRolePolicy(dynamoLambdaPolicy);
     joinIntegrationLambda.addToRolePolicy(apigwLambdaPolicy);
 
+    const playIntegrationLambda = new lambda.Function(
+      this,
+      "playIntegrationLambda",
+      {
+        runtime: lambda.Runtime.PYTHON_3_12,
+        code: lambda.Code.fromAsset(join(__dirname, "..", "src", "lambda")),
+        handler: "play.handler",
+        environment: {
+          CONNECTION_TABLE_NAME: connectionTable.tableName,
+        },
+      }
+    );
+    playIntegrationLambda.addToRolePolicy(dynamoLambdaPolicy);
+    playIntegrationLambda.addToRolePolicy(apigwLambdaPolicy);
+
     const wsApiGw = new apigatewayv2.WebSocketApi(this, "wsApiGw", {
       routeSelectionExpression: "${request.body.type}",
     });
@@ -85,6 +100,12 @@ export class ApigwWsStack extends cdk.Stack {
       integration: new apigatewayv2_integrations.WebSocketLambdaIntegration(
         "JoinIntegration",
         joinIntegrationLambda
+      ),
+    });
+    wsApiGw.addRoute("play", {
+      integration: new apigatewayv2_integrations.WebSocketLambdaIntegration(
+        "PlayIntegration",
+        playIntegrationLambda
       ),
     });
   }

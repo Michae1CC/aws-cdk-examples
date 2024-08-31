@@ -274,7 +274,7 @@ class App:
         graphic_component.clear()
 
     def _connect_to_game(self):
-        self._websocket.send(json.dumps({"type": "join", "game_id": self._game_id}))
+        self._websocket.send(json.dumps({"type": "join", "id": self._game_id}))
         event = json.loads(self._websocket.recv(timeout=None))
         assert event["type"] == "join"
 

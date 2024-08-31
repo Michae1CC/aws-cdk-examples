@@ -36,7 +36,7 @@ def handler(event, _):
 
     API_GW_MANAGEMENT_CLIENT = boto3.client(
         "apigatewaymanagementapi",
-        endpoint_url="https://nk6yi2vprd.execute-api.us-east-1.amazonaws.com/prod",
+        endpoint_url="https://61eql4dpu8.execute-api.us-east-1.amazonaws.com/prod/",
     )
     API_GW_MANAGEMENT_CLIENT.post_to_connection(
         Data=bytes(

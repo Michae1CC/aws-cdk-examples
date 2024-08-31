@@ -29,12 +29,6 @@ def handler(event: dict, _) -> dict:
     event_body = json.loads(event["body"])
 
     logger.info(json.dumps(event_body))
-    DYNAMO_CLIENT.update_item(
-        TableName=CONNECT_TABLE_NAME,
-        Key={"GameId": {"S": event_body["id"]}},
-        UpdateExpression="SET Player2 = :Player2",
-        ExpressionAttributeValues={":Player2": {"S": connection_id}},
-    )
     response = DYNAMO_CLIENT.get_item(
         TableName=CONNECT_TABLE_NAME,
         Key={"GameId": {"S": event_body["id"]}},
@@ -47,21 +41,30 @@ def handler(event: dict, _) -> dict:
         endpoint_url="https://61eql4dpu8.execute-api.us-east-1.amazonaws.com/prod/",
     )
 
-    for connection in [
-        response["Item"]["Player1"]["S"],
-        response["Item"]["Player2"]["S"],
-    ]:
-        API_GW_MANAGEMENT_CLIENT.post_to_connection(
-            Data=bytes(
-                json.dumps(
-                    {
-                        "type": "join",
-                        "id": event_body["id"],
-                    }
-                ),
-                encoding="utf8",
+    player1_connection: str | None = response["Item"]["Player1"]["S"]
+    player2_connection: str | None = response["Item"]["Player2"]["S"]
+
+    if player1_connection is None or player2_connection is None:
+        raise ValueError("Both player connections are not set")
+
+    other_player_connection: str = (
+        player1_connection
+        if player2_connection == connection_id
+        else player2_connection
+    )
+
+    API_GW_MANAGEMENT_CLIENT.post_to_connection(
+        Data=bytes(
+            json.dumps(
+                {
+                    "type": "play",
+                    "id": event_body["id"],
+                    "tile": event_body["tile"],
+                }
             ),
-            ConnectionId=connection,
-        )
+            encoding="utf8",
+        ),
+        ConnectionId=other_player_connection,
+    )
 
     return {"statusCode": 200}
