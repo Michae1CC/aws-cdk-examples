@@ -322,7 +322,7 @@ and change directory into the `route53-dnssec-enabled` folder.
 cd route53-dnssec-enabled
 ```
 
-Obviously, if you're deploying this yourself, you will need to replace
+If you're deploying this yourself, you will need to replace
 the domain names I've used with your own. Run
 
 ```bash
