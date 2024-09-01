@@ -12,11 +12,16 @@ from typing import Any, Final
 import boto3
 
 CONNECT_TABLE_NAME: str = os.getenv("CONNECTION_TABLE_NAME") or ""
+WEBSOCKET_URL: str = os.getenv("WEBSOCKET_URL") or ""
 
 DYNAMO_CLIENT: Final[Any] = boto3.client("dynamodb")
 
 logger: logging.Logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+def change_protocol_to_https(endpoint: str):
+    return "https" + endpoint[len("wss") :]
 
 
 def handler(event: dict, _) -> dict:
@@ -38,7 +43,7 @@ def handler(event: dict, _) -> dict:
 
     API_GW_MANAGEMENT_CLIENT = boto3.client(
         "apigatewaymanagementapi",
-        endpoint_url="https://61eql4dpu8.execute-api.us-east-1.amazonaws.com/prod/",
+        endpoint_url=change_protocol_to_https(WEBSOCKET_URL),
     )
 
     player1_connection: str | None = response["Item"]["Player1"]["S"]

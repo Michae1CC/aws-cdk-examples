@@ -1,3 +1,4 @@
+import os
 import argparse
 import itertools
 import json
@@ -8,6 +9,8 @@ from enum import StrEnum
 from typing import Final, Iterable, Literal, Any
 
 from websockets.sync.client import connect, ClientConnection
+
+WEBSOCKET_URL: str = os.getenv("WEBSOCKET_URL") or ""
 
 BOARD_LENGTH: Final[int] = 3
 
@@ -137,13 +140,13 @@ class NaughtsAndCrossesGame:
 
     def board_as_str(self):
         board_str = """
-(0,0)          (2,0)
+ 0,0            0,2
      {} | {} | {}
     -----------
      {} | {} | {}
     -----------
      {} | {} | {}
-(0,2)          (2,2)\n
+ 2,0            2,2\n
 """.format(
             *flatten(self._board)
         )
@@ -314,7 +317,7 @@ def main() -> None:
 
     cli_args = parser.parse_args()
 
-    with connect("ws://localhost:8002", close_timeout=None) as websocket:
+    with connect(WEBSOCKET_URL, close_timeout=None) as websocket:
         app = App(
             player=Players.PLAYER_1 if cli_args.command == "new" else Players.PLAYER_2,
             websocket=websocket,
