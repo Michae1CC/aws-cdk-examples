@@ -8,7 +8,7 @@ import json
 import logging
 import uuid
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Final
 
 import boto3
@@ -42,7 +42,7 @@ def handler(event, _):
             "Player1": {"S": connection_id},
             # The ttl attribute must in the Unix epoch time format:
             # see: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html
-            "ttl": {"N": str(datetime.now().timestamp())},
+            "ttl": {"N": str((datetime.now() + timedelta(hours=6)).timestamp())},
         },
     )
 

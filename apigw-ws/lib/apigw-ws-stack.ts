@@ -119,7 +119,6 @@ export class ApigwWsStack extends cdk.Stack {
         startIntegrationLambda
       ),
     });
-    0;
     wsApiGw.addRoute("join", {
       integration: new apigatewayv2_integrations.WebSocketLambdaIntegration(
         "JoinIntegration",
