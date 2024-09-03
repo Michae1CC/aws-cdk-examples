@@ -141,6 +141,12 @@ API-Gateway.
 Enter turn:        
 ```
 
+Run the following to clean up any resources created in this tutorial
+
+```bash
+cdk destroy
+```
+
 ## Resources
 
 * <https://websockets.readthedocs.io/en/stable/intro/tutorial1.html>

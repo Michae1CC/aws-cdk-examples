@@ -301,7 +301,11 @@ queue causing the metric to reel in.
 ![decrease-increase](./img/metric-decrease.png)
 
 This eventually triggers the scale in policy, bringing the number of tasks
-back down to 1,
+back down to 1. Run the following to clean up any resources produced by this service
+
+```bash
+cdk destroy --all
+```
 
 ## References
 
