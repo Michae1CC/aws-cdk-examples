@@ -1,0 +1,71 @@
+* {
+    background-color: #313131;
+    font-family: sans-serif;
+    padding: 0;
+    margin: 0;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.main-box {
+    /* background-color: red; */
+    width: max(80%, 500px);
+    height: 100vh;
+    margin: 0 auto;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+.main-box, .main-box * {
+    background-color: #1b1b1b;
+}
+
+.main-box div {
+    padding: 1em;
+}
+
+.header {
+    grid-area: header;
+    color: white;
+}
+
+.text-box {
+    grid-area: text-box;
+}
+
+.text-box textarea {
+    resize: none;
+    background-color: #313131;
+    padding: 5px;
+    color: white;
+    width: 100%;
+    height: 300px;
+    border-radius: 5px;
+    outline: none !important;
+    border:1px solid white;
+}
+
+.button-box {
+    grid-area: button-box;
+}
+
+.button-box button {
+    width: 100%;
+    height: 50px;
+    font-size: large;
+    color: white;
+    background-color: #313131;
+    border-radius: 5px;
+    outline: none !important;
+    border:1px solid white;
+}
+
+.grid-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+        "header header header header"
+        "text-box text-box text-box text-box"
+        "button-box . . .";
+}
