@@ -23,13 +23,15 @@ const isViewingPaste = () => {
     return new URL(window.location.href).searchParams.has("id");
 }
 
+const setupViewingPaste = () => {
+    const pasteTextArea = document.getElementsByTagName("textarea")[0];
+    pasteTextArea.value = getPasteText();
+    pasteTextArea.disabled = true;
+}
+
 const main = () => {
-    console.log("Got here");
     if (isViewingPaste()) {
-        console.log("Got here");
-        const pasteTextArea = document.getElementsByTagName("textarea")[0];
-        pasteTextArea.value = getPasteText();
-        pasteTextArea.disabled = true;
+        setupViewingPaste();
     }
 }
 
