@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node ./build/index.js",
     "lint": "npx eslint src",
+    "build": "npx tsc",
     "format": "npx prettier --write --config .prettierrc src",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,7 +15,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "helmet": "^7.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.10.0",
