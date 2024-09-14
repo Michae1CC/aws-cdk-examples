@@ -18,6 +18,12 @@ apiRouter.use(
  */
 apiRouter.post('/get_paste', async (req, res, next) => {
   const requestBody = GetPasteSchema.parse(req.body);
-  res.status(StatusCodes.OK).json(await getPaste(requestBody.id, res.locals.logger));
+  // For errors returned from async functions invoked by route handlers and
+  // middleware, you must pass them to the `next` function
+  try {
+    res.status(StatusCodes.OK).json(await getPaste(requestBody.id, res.locals.logger));
+  } catch (e) {
+    next(e);
+  }
   next();
 });

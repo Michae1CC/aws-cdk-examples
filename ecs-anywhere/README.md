@@ -18,3 +18,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://kinsta.com/blog/express-typescript/>
 * <https://www.youtube.com/watch?v=064yDG7Rz80>
 * <https://github.com/colinhacks/zod>
+* <https://ubuntu.com/tutorials/how-to-install-ubuntu-on-your-raspberry-pi#1-overview>

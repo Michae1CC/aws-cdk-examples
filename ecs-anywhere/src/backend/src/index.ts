@@ -68,8 +68,8 @@ app.get('/', (request: Request, response: Response) => {
 app.use('/api', apiRouter);
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  res.locals.console.error(err);
-  res.status(StatusCodes.INTERNAL_SERVER_ERROR).send();
+  res.locals.logger.error(err);
+  res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Internal Server Error Occurred');
 });
 
 app

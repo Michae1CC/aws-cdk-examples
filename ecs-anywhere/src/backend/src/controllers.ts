@@ -2,6 +2,7 @@ import winston from 'winston';
 
 export const getPaste = async (id: string, logger: winston.Logger): Promise<{ text: string }> => {
   logger.info(`Getting paste with id: ${id}`);
+  throw new Error('Bad');
   return Promise.resolve({ text: 'paste text' });
 };
 
