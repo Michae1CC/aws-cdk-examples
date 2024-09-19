@@ -8,7 +8,7 @@
     <title>Sharepaste</title>
     <link rel="stylesheet" href="index.css">
     <link rel="shortcut icon" type="image/png" href="image/favicon.png">
-    <script defer src="index.js"></script>
+    <!-- <script defer src="index.js"></script> -->
 </head>
 
 <body>
@@ -20,15 +20,15 @@
                 </h1>
             </div>
             <div class="text-box">
-                <textarea>
-                </textarea>
+                <textarea name="text" form="formId"></textarea>
             </div>
             <div class="button-box">
-                <button>
-                    Share
-                </button>
+                <form method="post" action="/api/put_paste" id="formId">
+                    <input type="submit" value="Share">
+                </form>
             </div>
         </div>
     </div>
 </body>
+
 </html>

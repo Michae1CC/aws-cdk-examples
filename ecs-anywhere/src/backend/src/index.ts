@@ -4,7 +4,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { StatusCodes } from 'http-status-codes';
 import helmet from 'helmet';
 import winston from 'winston';
+import path, { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
 import { apiRouter } from './api-router.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 declare global {
   namespace Express {
@@ -23,6 +29,7 @@ const app = express();
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, '..', '..', 'frontend')));
 app.use((req, res, next) => {
   res.locals.cspNonce = randomBytes(16).toString('hex');
 
@@ -59,10 +66,6 @@ app.use((req, res, next) => {
   });
   res.locals.logger.info(req.originalUrl);
   next();
-});
-
-app.get('/', (request: Request, response: Response) => {
-  response.status(200).send('Hello World');
 });
 
 app.use('/api', apiRouter);

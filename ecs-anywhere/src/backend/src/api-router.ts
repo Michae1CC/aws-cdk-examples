@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import { StatusCodes } from 'http-status-codes';
-import { GetPasteSchema } from './schemas.js';
+import { GetPasteSchema, PutPasteSchema } from './schemas.js';
 import { getPaste } from './controllers.js';
 
 export const apiRouter = express.Router();
@@ -25,5 +25,11 @@ apiRouter.post('/get_paste', async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+  next();
+});
+
+apiRouter.post('/put_paste', async (req, res, next) => {
+  const requestBody = PutPasteSchema.parse(req.body);
+  console.log(requestBody);
   next();
 });

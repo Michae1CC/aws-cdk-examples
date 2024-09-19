@@ -49,7 +49,7 @@
     grid-area: button-box;
 }
 
-.button-box button {
+.button-box input {
     width: 100%;
     height: 50px;
     cursor: pointer;
