@@ -41,10 +41,10 @@ app.use((req, res, next) => {
 
   const cspMiddleWare = helmet.contentSecurityPolicy({
     directives: {
-      'connect-src': null,
       'frame-src': null,
       'script-src-elem': null,
       'script-src-attr': null,
+      'connect-src': ['*'],
       'form-action': ["'self'"],
       'script-src': [`'nonce-${res.locals.cspNonce}'`],
       'style-src': [`'nonce-${res.locals.cspNonce}'`]

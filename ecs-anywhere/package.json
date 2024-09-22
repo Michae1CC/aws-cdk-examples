@@ -5,9 +5,6 @@
     "ecs-anywhere": "bin/ecs-anywhere.js"
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "test": "jest",
     "cdk": "cdk"
   },
   "devDependencies": {
@@ -20,6 +17,7 @@
     "typescript": "~5.5.3"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.656.0",
     "aws-cdk-lib": "2.156.0",
     "constructs": "^10.0.0",
     "pug": "^3.0.3",
