@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import { StatusCodes } from 'http-status-codes';
 import { GetPasteSchema, PutPasteSchema } from './schemas.js';
-import { getPaste } from './controllers.js';
+import { getPaste, putPaste } from './controllers.js';
 
 export const apiRouter = express.Router();
 
@@ -30,6 +30,7 @@ apiRouter.post('/get_paste', async (req, res, next) => {
 
 apiRouter.post('/put_paste', async (req, res, next) => {
   const requestBody = PutPasteSchema.parse(req.body);
-  console.log(requestBody);
+  const createdPasteId: string = await putPaste(requestBody.text, res.locals.logger);
+  res.redirect(`/view?id=${createdPasteId}`);
   next();
 });

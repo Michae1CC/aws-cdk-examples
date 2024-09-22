@@ -15,6 +15,7 @@ const __dirname = dirname(__filename);
 declare global {
   namespace Express {
     interface Locals {
+      cspNonce: string;
       requestId: string;
       logger: winston.Logger;
     }
@@ -22,14 +23,19 @@ declare global {
 }
 
 const PORT = 3000;
+const STATIC_FOLDER = path.join(__dirname, 'static');
+const VIEWS_FOLDER = path.join(__dirname, 'static', 'views');
 
 // configures dotenv to work in your application
 const app = express();
 
+app.set('view engine', 'pug');
+app.set('views', VIEWS_FOLDER);
+app.set('trust proxy', true);
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, '..', '..', 'frontend')));
+app.use(express.static(STATIC_FOLDER));
 app.use((req, res, next) => {
   res.locals.cspNonce = randomBytes(16).toString('hex');
 
@@ -37,11 +43,11 @@ app.use((req, res, next) => {
     directives: {
       'connect-src': null,
       'frame-src': null,
-      'script-src': null,
       'script-src-elem': null,
       'script-src-attr': null,
       'form-action': ["'self'"],
-      'style-src': ["'self'", `'nonce-${res.locals.cspNonce}'`]
+      'script-src': [`'nonce-${res.locals.cspNonce}'`],
+      'style-src': [`'nonce-${res.locals.cspNonce}'`]
     }
   });
 
@@ -66,6 +72,15 @@ app.use((req, res, next) => {
   });
   res.locals.logger.info(req.originalUrl);
   next();
+});
+
+app.get('/', (req, res) => {
+  console.log({ nonce: res.locals.cspNonce });
+  res.render('index', { nonce: res.locals.cspNonce });
+});
+
+app.get('/view', (req, res) => {
+  res.render('view', { nonce: res.locals.cspNonce });
 });
 
 app.use('/api', apiRouter);

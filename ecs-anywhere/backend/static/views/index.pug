@@ -1,0 +1,5 @@
+extends layout
+
+block append button
+  form#formId(method="post", action="/api/put_paste")
+    input(type="submit" value="Create Paste")

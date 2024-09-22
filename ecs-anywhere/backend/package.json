@@ -8,7 +8,7 @@
     "start": "node ./build/index.js",
     "start:watch": "node --watch ./build/index.js",
     "lint": "npx eslint src",
-    "build": "npx tsc",
+    "build": "npx tsc && cp -r ./src/static ./build",
     "build:watch": "npx tsc --watch",
     "format": "npx prettier --write --config .prettierrc src",
     "test": "echo \"Error: no test specified\" && exit 1"

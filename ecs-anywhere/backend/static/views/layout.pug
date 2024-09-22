@@ -1,0 +1,26 @@
+doctype html5
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    meta(http-equiv="X-UA-Compatible", content="ie=edge")
+    title= "Sharepaste"
+    link(rel="shortcut icon", type="/static/img/png", href="image/favicon.png")
+    link(nonce=nonce, rel="stylesheet", href="/style/style.css")
+    block scripts
+
+  body
+    div(class="message-box fade-out")= "Copied Link"
+      div(class="tick")!= '&check;'
+
+    div(class="main-box")
+      div(class="grid-box")
+
+        div(class="header")
+          h1= "Sharepaste"
+
+        div(class="text-box")
+          textarea(name="text", form="formId")
+
+        div(class="button-box")
+          block button

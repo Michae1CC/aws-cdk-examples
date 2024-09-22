@@ -1,6 +1,6 @@
 *.js
 !jest.config.js
-!src/frontend/*.js
+!backend/static/script/*.js
 *.d.ts
 node_modules
 

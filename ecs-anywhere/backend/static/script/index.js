@@ -15,24 +15,27 @@ const getPasteText = (id) => {
  */
 
 
-/**
- * Returns true if the view is being used to view a paste. Returns false
- * if the view is being used to create a paste.
- */
-const isViewingPaste = () => {
-    return new URL(window.location.href).searchParams.has("id");
+const onShareButtonCLick = () => {
+    navigator.clipboard.writeText(window.location.href);
+
+    const messageBox = document.getElementsByClassName("message-box")[0];
+    messageBox.style.display = 'block';
+    messageBox.style.animation = 'none';
+    messageBox.offsetHeight; /* trigger reflow */
+    messageBox.style.animation = null;
 }
 
 const setupViewingPaste = () => {
     const pasteTextArea = document.getElementsByTagName("textarea")[0];
     pasteTextArea.value = getPasteText();
     pasteTextArea.disabled = true;
+
+    const shareButton = document.getElementsByTagName("button")[0];
+    shareButton.onclick = onShareButtonCLick;
 }
 
 const main = () => {
-    if (isViewingPaste()) {
-        setupViewingPaste();
-    }
+    setupViewingPaste();
 }
 
 main();
