@@ -57,17 +57,19 @@ def next_icon_paths() -> Generator[list[str], None, None]:
         for record in records:
             object_key: str = record["s3"]["object"]["key"]
             object_keys.append(object_key)
-
-    yield object_keys
-
-    if messages:
-        SQS_CLIENT.delete_message_batch(
-            QueueUrl=SQS_URL,
-            Entries=[
-                {"Id": message["MessageId"], "ReceiptHandle": message["ReceiptHandle"]}
-                for message in messages
-            ],
-        )
+    try:
+        yield object_keys
+    except Exception as e:
+        # We don't want to delete messages if an exception was raised
+    finally:
+        if messages:
+            SQS_CLIENT.delete_message_batch(
+                QueueUrl=SQS_URL,
+                Entries=[
+                    {"Id": message["MessageId"], "ReceiptHandle": message["ReceiptHandle"]}
+                    for message in messages
+                ],
+            )
 
 
 def get_resized_object_key(object_key: str, size: int) -> str:
