@@ -6,6 +6,8 @@ import helmet from 'helmet';
 import winston from 'winston';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import * as AWS from 'aws-sdk';
+import * as AWSXRay from 'aws-xray-sdk';
 
 import { apiRouter } from './api-router.js';
 
@@ -26,8 +28,44 @@ const PORT = 3000;
 const STATIC_FOLDER = path.join(__dirname, 'static');
 const VIEWS_FOLDER = path.join(__dirname, 'static', 'views');
 
+// AWS X-Ray
+const DAEMON_ADDRESS = 'rpi1-3b:2000';
+// Don't actually throw a error if we didn't initialise a segment.
+AWSXRay.setContextMissingStrategy('LOG_ERROR');
+// Dynamic name will override the above segment name if it matches.
+AWS.config.update({ region: process.env.REGION || 'us-east-1' });
+AWSXRay.setDaemonAddress(DAEMON_ADDRESS);
+
 // configures dotenv to work in your application
 const app = express();
+
+// AWSXRay Logger
+export const AWSXRayLogger = winston.createLogger({
+  transports: [new winston.transports.Console()],
+  format: winston.format.combine(
+    winston.format.timestamp({
+      format: () => {
+        return new Date().toISOString();
+      }
+    }),
+    winston.format.label({ label: 'AWSXray' }),
+    winston.format.errors({ stack: true }),
+    winston.format.align(),
+    winston.format.json()
+  )
+});
+
+AWSXRay.setLogger({
+  error: (message) => {
+    AWSXRayLogger.error(message);
+  },
+  warn: (message) => {
+    AWSXRayLogger.warn(message);
+  },
+  // Info and debug logs aren't important and clutter the log streams.
+  info: () => {},
+  debug: () => {}
+});
 
 app.set('view engine', 'pug');
 app.set('views', VIEWS_FOLDER);
@@ -36,6 +74,7 @@ app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(STATIC_FOLDER));
+app.use(AWSXRay.express.openSegment('Paste'));
 app.use((req, res, next) => {
   res.locals.cspNonce = randomBytes(16).toString('hex');
 
@@ -84,6 +123,8 @@ app.get('/view', (req, res) => {
 });
 
 app.use('/api', apiRouter);
+
+app.use(AWSXRay.express.closeSegment());
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   res.locals.logger.error(err);

@@ -1,3 +1,4 @@
+import * as AWSXRay from 'aws-xray-sdk';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 
 export const ddb = new DynamoDBClient({

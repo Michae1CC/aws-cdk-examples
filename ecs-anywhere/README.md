@@ -16,6 +16,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## Resources
 
 * <https://kinsta.com/blog/express-typescript/>
+* <https://github.com/aws-samples/aws-xray-sdk-node-sample/blob/master/index.js>
 * <https://www.youtube.com/watch?v=064yDG7Rz80>
 * <https://github.com/colinhacks/zod>
 * <https://ubuntu.com/tutorials/how-to-install-ubuntu-on-your-raspberry-pi#1-overview>
