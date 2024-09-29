@@ -6,8 +6,8 @@ import helmet from 'helmet';
 import winston from 'winston';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import * as AWS from 'aws-sdk';
-import * as AWSXRay from 'aws-xray-sdk';
+import AWS from 'aws-sdk';
+import AWSXRay from 'aws-xray-sdk';
 
 import { apiRouter } from './api-router.js';
 
@@ -29,7 +29,7 @@ const STATIC_FOLDER = path.join(__dirname, 'static');
 const VIEWS_FOLDER = path.join(__dirname, 'static', 'views');
 
 // AWS X-Ray
-const DAEMON_ADDRESS = 'rpi1-3b:2000';
+const DAEMON_ADDRESS = 'rpi1-3b.local:2000';
 // Don't actually throw a error if we didn't initialise a segment.
 AWSXRay.setContextMissingStrategy('LOG_ERROR');
 // Dynamic name will override the above segment name if it matches.
