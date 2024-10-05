@@ -20,3 +20,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://www.youtube.com/watch?v=064yDG7Rz80>
 * <https://github.com/colinhacks/zod>
 * <https://ubuntu.com/tutorials/how-to-install-ubuntu-on-your-raspberry-pi#1-overview>
+* <https://github.com/aws-samples/amazon-ecs-anywhere-cdk-samples>

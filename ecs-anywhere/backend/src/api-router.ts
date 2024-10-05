@@ -30,7 +30,11 @@ apiRouter.post('/get_paste', async (req, res, next) => {
 
 apiRouter.post('/put_paste', async (req, res, next) => {
   const requestBody = PutPasteSchema.parse(req.body);
-  const createdPasteId: string = await putPaste(requestBody.text, res.locals.logger);
-  res.redirect(`/view?id=${createdPasteId}`);
+  try {
+    const createdPasteId: string = await putPaste(requestBody.text, res.locals.logger);
+    res.redirect(`/view?id=${createdPasteId}`);
+  } catch (e) {
+    next(e);
+  }
   next();
 });
