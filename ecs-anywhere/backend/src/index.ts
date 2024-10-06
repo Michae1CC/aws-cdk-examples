@@ -6,7 +6,6 @@ import helmet from 'helmet';
 import winston from 'winston';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import AWS from 'aws-sdk';
 import AWSXRay from 'aws-xray-sdk';
 
 import { apiRouter } from './api-router.js';
@@ -32,8 +31,6 @@ const VIEWS_FOLDER = path.join(__dirname, 'static', 'views');
 const DAEMON_ADDRESS = 'rpi1-3b.local:2000';
 // Don't actually throw a error if we didn't initialise a segment.
 AWSXRay.setContextMissingStrategy('LOG_ERROR');
-// Dynamic name will override the above segment name if it matches.
-AWS.config.update({ region: process.env.REGION || 'us-east-1' });
 AWSXRay.setDaemonAddress(DAEMON_ADDRESS);
 
 // configures dotenv to work in your application
@@ -43,14 +40,8 @@ const app = express();
 export const AWSXRayLogger = winston.createLogger({
   transports: [new winston.transports.Console()],
   format: winston.format.combine(
-    winston.format.timestamp({
-      format: () => {
-        return new Date().toISOString();
-      }
-    }),
     winston.format.label({ label: 'AWSXray' }),
     winston.format.errors({ stack: true }),
-    winston.format.align(),
     winston.format.json()
   )
 });
@@ -98,14 +89,8 @@ app.use((req, res, next) => {
   res.locals.logger = winston.createLogger({
     transports: [new winston.transports.Console()],
     format: winston.format.combine(
-      winston.format.timestamp({
-        format: () => {
-          return new Date().toISOString();
-        }
-      }),
       winston.format.label({ label: res.locals.requestId }),
       winston.format.errors({ stack: true }),
-      winston.format.align(),
       winston.format.json()
     )
   });
@@ -114,8 +99,11 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-  console.log({ nonce: res.locals.cspNonce });
   res.render('index', { nonce: res.locals.cspNonce });
+});
+
+app.get('/healthcheck', (req, res) => {
+  res.status(StatusCodes.OK);
 });
 
 app.get('/view', (req, res) => {

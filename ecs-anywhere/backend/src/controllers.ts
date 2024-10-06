@@ -9,7 +9,7 @@ export const getPaste = async (id: string, logger: winston.Logger): Promise<{ te
   logger.info(`Getting paste with id: ${id}`);
   const item = await ddb.send(
     new GetItemCommand({
-      TableName: 'paste',
+      TableName: Paste.TableName,
       Key: {
         [Paste.PartitionKey]: {
           S: id
@@ -28,7 +28,7 @@ export const putPaste = async (text: string, logger: winston.Logger): Promise<st
   const pasteId = uuidv4();
   await ddb.send(
     new PutItemCommand({
-      TableName: 'paste',
+      TableName: Paste.TableName,
       Item: {
         id: {
           S: pasteId

@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import helmet from 'helmet';
 import { StatusCodes } from 'http-status-codes';
 import { GetPasteSchema, PutPasteSchema } from './schemas.js';

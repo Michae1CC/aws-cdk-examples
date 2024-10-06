@@ -21,3 +21,11 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://github.com/colinhacks/zod>
 * <https://ubuntu.com/tutorials/how-to-install-ubuntu-on-your-raspberry-pi#1-overview>
 * <https://github.com/aws-samples/amazon-ecs-anywhere-cdk-samples>
+* <https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/manage-on-premises-container-applications-by-setting-up-amazon-ecs-anywhere-with-the-aws-cdk.html>
+* <https://aws.amazon.com/blogs/containers/building-an-amazon-ecs-anywhere-home-lab-with-amazon-vpc-network-connectivity/>
+* <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-anywhere.html>
+* <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-placement-strategies.html>
+
+```bash
+docker run --rm -it -p 3000:3000 --name paste-app -v ~/.aws/:/root/.aws/:ro paste-app
+```

@@ -1,15 +1,5 @@
 /**
  * *****************************************************************************
- * Controls domain level logic.
- * *****************************************************************************
- */
-
-const getPasteText = (id) => {
-    return "Paste data";
-}
-
-/**
- * *****************************************************************************
  * Controls application level logic
  * *****************************************************************************
  */
@@ -27,8 +17,7 @@ const onShareButtonCLick = () => {
 
 const setupViewingPaste = async () => {
     const pasteId = new URL(window.location.href).searchParams.get("id") ?? "";
-    console.log(pasteId);
-    const getPasteResponse = await fetch("http://localhost:3000/api/get_paste", {
+    const getPasteResponse = await fetch("/api/get_paste", {
         method: "POST",
         headers: {
             'Accept': 'application/json',
@@ -39,7 +28,6 @@ const setupViewingPaste = async () => {
     const jsonResponse = await getPasteResponse.json();
 
     const pasteTextArea = document.getElementsByTagName("textarea")[0];
-    pasteTextArea.value = getPasteText();
     pasteTextArea.disabled = true;
     pasteTextArea.value = jsonResponse.text;
 
