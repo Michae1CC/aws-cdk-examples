@@ -1,129 +1,112 @@
-import express, { NextFunction, Request, Response } from 'express';
-import { randomBytes } from 'crypto';
-import { v4 as uuidv4 } from 'uuid';
-import { StatusCodes } from 'http-status-codes';
-import helmet from 'helmet';
-import winston from 'winston';
-import path, { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import AWSXRay from 'aws-xray-sdk';
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  SQSClient,
+  GetQueueAttributesCommand,
+  ReceiveMessageCommand,
+  DeleteMessageCommand,
+} from "@aws-sdk/client-sqs";
+import winston from "winston";
 
-import { apiRouter } from './api-router.js';
+const SQS_URL = process.env.SQS_URL;
+const DYNAMO_TABLE_NAME = process.env.DYNAMO_TABLE_NAME;
+const REGION = process.env.REGION;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const ddbClient = new DynamoDBClient({
+  region: REGION,
+});
 
-declare global {
-  namespace Express {
-    interface Locals {
-      cspNonce: string;
-      requestId: string;
-      logger: winston.Logger;
-    }
-  }
-}
+const sqsClient = new SQSClient({
+  region: REGION,
+});
 
-const PORT = 3000;
-const STATIC_FOLDER = path.join(__dirname, 'static');
-const VIEWS_FOLDER = path.join(__dirname, 'static', 'views');
-
-// AWS X-Ray
-const DAEMON_ADDRESS = 'rpi1-3b.local:2000';
-// Don't actually throw a error if we didn't initialise a segment.
-AWSXRay.setContextMissingStrategy('LOG_ERROR');
-AWSXRay.setDaemonAddress(DAEMON_ADDRESS);
-
-// configures dotenv to work in your application
-const app = express();
-
-// AWSXRay Logger
-export const AWSXRayLogger = winston.createLogger({
+// Application logger
+const globalLogger = winston.createLogger({
   transports: [new winston.transports.Console()],
   format: winston.format.combine(
-    winston.format.label({ label: 'AWSXray' }),
+    winston.format.label({ label: "global" }),
     winston.format.errors({ stack: true }),
     winston.format.json()
-  )
+  ),
 });
 
-AWSXRay.setLogger({
-  error: (message) => {
-    AWSXRayLogger.error(message);
-  },
-  warn: (message) => {
-    AWSXRayLogger.warn(message);
-  },
-  // Info and debug logs aren't important and clutter the log streams.
-  info: () => {},
-  debug: () => {}
-});
+const sleep = async (ms: number) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+};
 
-app.set('view engine', 'pug');
-app.set('views', VIEWS_FOLDER);
-app.set('trust proxy', true);
-app.use(helmet());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(STATIC_FOLDER));
-app.use(AWSXRay.express.openSegment('Paste'));
-app.use((req, res, next) => {
-  res.locals.cspNonce = randomBytes(16).toString('hex');
+const main = async () => {
+  if (REGION === undefined) {
+    throw new Error("No region defined");
+  }
 
-  const cspMiddleWare = helmet.contentSecurityPolicy({
-    directives: {
-      'frame-src': null,
-      'script-src-elem': null,
-      'script-src-attr': null,
-      'connect-src': ['*'],
-      'form-action': ["'self'"],
-      'script-src': [`'nonce-${res.locals.cspNonce}'`],
-      'style-src': [`'nonce-${res.locals.cspNonce}'`]
+  if (SQS_URL === undefined) {
+    throw new Error("No SQS URL provided in env");
+  }
+
+  if (DYNAMO_TABLE_NAME === undefined) {
+    throw new Error("No dynamodb table name provided in env");
+  }
+
+  while (true) {
+    const getQueueAttributesResponse = await sqsClient.send(
+      new GetQueueAttributesCommand({
+        QueueUrl: SQS_URL,
+        AttributeNames: ["ApproximateNumberOfMessages"],
+      })
+    );
+    const approximateNumberOfMessages = Number(
+      getQueueAttributesResponse.Attributes?.ApproximateNumberOfMessages ?? "0"
+    );
+    globalLogger.info(
+      `Approximate number of messages found: ${approximateNumberOfMessages}`
+    );
+
+    if (approximateNumberOfMessages === 0) {
+      await sleep(5000);
+      continue;
     }
-  });
 
-  cspMiddleWare(req, res, next);
-});
+    const receiveMessageResponse = await sqsClient.send(
+      new ReceiveMessageCommand({
+        QueueUrl: SQS_URL,
+        MaxNumberOfMessages: 5,
+        MessageAttributeNames: ["All"],
+        VisibilityTimeout: 10,
+        WaitTimeSeconds: 5,
+      })
+    );
 
-app.use((req, res, next) => {
-  res.locals.requestId = uuidv4();
-  res.locals.logger = winston.createLogger({
-    transports: [new winston.transports.Console()],
-    format: winston.format.combine(
-      winston.format.label({ label: res.locals.requestId }),
-      winston.format.errors({ stack: true }),
-      winston.format.json()
-    )
-  });
-  res.locals.logger.info(req.originalUrl);
-  next();
-});
+    const messages = receiveMessageResponse["Messages"] ?? [];
+    globalLogger.info(messages);
 
-app.get('/', (req, res) => {
-  res.render('index', { nonce: res.locals.cspNonce });
-});
+    for (let message of messages) {
+      const body = JSON.parse(message["Body"]!) as { url: string };
+      globalLogger.info(body);
 
-app.get('/healthcheck', (req, res) => {
-  res.status(StatusCodes.OK);
-});
+      try {
+        ddbClient.send(
+          new PutItemCommand({
+            TableName: DYNAMO_TABLE_NAME,
+            Item: {
+              id: {
+                S: body.url,
+              },
+            },
+          })
+        );
 
-app.get('/view', (req, res) => {
-  res.render('view', { nonce: res.locals.cspNonce });
-});
+        sqsClient.send(
+          new DeleteMessageCommand({
+            QueueUrl: SQS_URL,
+            ReceiptHandle: message.ReceiptHandle,
+          })
+        );
+      } catch (e) {
+        globalLogger.error(e);
+      }
+    }
+  }
+};
 
-app.use('/api', apiRouter);
-
-app.use(AWSXRay.express.closeSegment());
-
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  res.locals.logger.error(err);
-  res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Internal Server Error Occurred');
-});
-
-app
-  .listen(PORT, () => {
-    console.log('Server running at PORT: ', PORT);
-  })
-  .on('error', (error) => {
-    // gracefully handle error
-    throw new Error(error.message);
-  });
+main();

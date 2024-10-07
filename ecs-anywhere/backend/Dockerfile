@@ -1,4 +1,5 @@
-FROM --platform=linux/amd64 node:20
+FROM --platform=linux/arm64 node:20
+# FROM node:20
 
 USER root
 WORKDIR /app
@@ -10,9 +11,6 @@ COPY ./src ./src
 RUN : \
     && set -eu pipefail \
     && npm install \
-    && npm run build:prod
+    && npm run build
 
-COPY ./static ./build/static
-
-EXPOSE 3000
 CMD ["node", "./build/index.js"]

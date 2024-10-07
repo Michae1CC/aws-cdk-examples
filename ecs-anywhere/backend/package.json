@@ -7,40 +7,24 @@
   "scripts": {
     "start": "node ./build/index.js",
     "start:watch": "node --watch ./build/index.js",
-    "lint": "npx eslint src",
-    "build": "npx tsc && cp -r ./static ./build",
-    "build:prod": "npx tsc",
+    "build": "npx tsc",
     "build:watch": "npx tsc --watch",
     "format": "npx prettier --write --config .prettierrc src",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "globals": "^15.10.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.2"
+  },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.665.0",
+    "@aws-sdk/client-sqs": "^3.665.0",
     "aws-xray-sdk": "^3.10.1",
-    "express": "^4.21.0",
-    "helmet": "^7.1.0",
-    "http-status-codes": "^2.3.0",
-    "pug": "^3.0.3",
     "uuid": "^10.0.0",
-    "winston": "^3.14.2",
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.10.0",
-    "@tsconfig/node20": "^20.1.4",
-    "@types/express": "^4.17.21",
-    "@types/uuid": "^10.0.0",
-    "eslint": "^9.10.0",
-    "globals": "^15.9.0",
-    "prettier": "^3.3.3",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.5.4",
-    "typescript-eslint": "^8.5.0"
-  },
-  "engines": {
-    "node": ">= 20.0.0"
+    "winston": "^3.15.0"
   }
 }
