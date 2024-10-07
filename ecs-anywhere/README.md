@@ -1,21 +1,4 @@
-# Welcome to your CDK TypeScript project
-
-This is a blank project for CDK development with TypeScript.
-
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
-## Useful commands
-
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
-
-```bash
-docker run --rm -it --name anywhere-app -v ~/.aws/:/root/.aws/:ro anywhere-app
-```
+# ECS Anywhere
 
 ## How To Test
 
@@ -59,7 +42,8 @@ export CDK_DOCKER=podman
 During the setup you will need to set up the ecs-agent on the on-prem device
 for the ecs cluster created within cdk, see:
 <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-anywhere-registration.html>.
-Note 
+Note the device you are installing the agent should not have any existing
+IAM credentials setup on it.
 
 Once the deploy has finished, the SQS URL and dynamodb table name should be
 displayed as outputs.
@@ -93,6 +77,17 @@ aws dynamodb scan --table-name <DYNAMODB-TABLE-NAME>
     "ScannedCount": 1,
     "ConsumedCapacity": null
 }
+```
+
+## Clean Up
+
+First register the instance/s used in the ecs service, see:
+<https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-anywhere-deregistration.html>.
+
+After run
+
+```bash
+cdk destroy
 ```
 
 ## Resources
