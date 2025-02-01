@@ -24,3 +24,8 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://github.com/beabetterdevv/ci-cd-aws-pipeline-demo>
 * <https://github.com/aws-samples/aws-serverless-app-sam-cdk>
 * <https://docs.aws.amazon.com/codepipeline/latest/userguide/ecs-cd-pipeline.html>
+
+
+https://docs.aws.amazon.com/codepipeline/latest/userguide/file-reference.html
+What is an ECR source action?
+What is Appsec?

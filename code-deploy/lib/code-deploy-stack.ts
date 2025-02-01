@@ -38,6 +38,10 @@ export class CodeDeployStack extends Stack {
      */
     const sourceCodeAction = new codepipeline_actions.GitHubSourceAction({
       actionName: "Source",
+      // The Github access token requires a repo scope for full control to read and
+      // pull artifacts into the pipeline. It also requires a admin repo_hook scope
+      // for full control of repository hooks, see:
+      //  https://docs.aws.amazon.com/codepipeline/latest/userguide/appendix-github-oauth.html#GitHub-create-personal-token-CLI
       oauthToken: SecretValue.secretsManager("codepipelineExample", {
         jsonField: "githubActionPersonalAccessToken",
       }),
@@ -47,6 +51,12 @@ export class CodeDeployStack extends Stack {
       branch: "main",
       trigger: codepipeline_actions.GitHubTrigger.WEBHOOK,
     });
+
+    /**
+     * A build artifact used for handling the imageDetail.json from the build
+     * to the ECS deploy stage.
+     */
+    const buildArtifact = new codepipeline.Artifact();
 
     const exampleProject = new codebuild.PipelineProject(
       this,
@@ -83,12 +93,16 @@ export class CodeDeployStack extends Stack {
                 "docker push ${REPOSITORY_URI}:latest",
                 "docker push ${REPOSITORY_URI}:${IMAGE_TAG}",
                 "echo Writing image definitions file",
-                'printf \'[{"name":"hello-food","imageUri":"%s"}]\' ${REPOSITORY_URI}:${IMAGE_TAG} > imagedefinitions.json',
+                // A imageDetail.json file is a JSON document that
+                // describes your Amazon ECS image URI. This file must be provided
+                // for ECS blue/green deployments:
+                //  see: https://docs.aws.amazon.com/codepipeline/latest/userguide/file-reference.html#file-reference-ecs-bluegreen
+                'printf \'{"ImageURI":"%s"}\' ${REPOSITORY_URI}:${IMAGE_TAG} > imageDetail.json',
               ],
             },
           },
           artifacts: {
-            files: "imagedefinitions.json",
+            files: "imageDetail.json",
           },
         }),
         environment: {
@@ -109,7 +123,7 @@ export class CodeDeployStack extends Stack {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
           },
         },
-      },
+      }
     );
 
     /**
@@ -128,7 +142,7 @@ export class CodeDeployStack extends Stack {
           "ecr:PutImage",
           "ecr:UploadLayerPart",
         ],
-      }),
+      })
     );
 
     pipelineArtifactBucket.grantPut(exampleProject);
@@ -136,6 +150,7 @@ export class CodeDeployStack extends Stack {
     const codebuildAction = new codepipeline_actions.CodeBuildAction({
       actionName: "Build",
       input: sourceCodeArtifact,
+      outputs: [buildArtifact],
       project: exampleProject,
     });
 
