@@ -123,7 +123,7 @@ export class CodeDeployStack extends Stack {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
           },
         },
-      }
+      },
     );
 
     /**
@@ -142,7 +142,7 @@ export class CodeDeployStack extends Stack {
           "ecr:PutImage",
           "ecr:UploadLayerPart",
         ],
-      })
+      }),
     );
 
     pipelineArtifactBucket.grantPut(exampleProject);
