@@ -24,8 +24,13 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://github.com/beabetterdevv/ci-cd-aws-pipeline-demo>
 * <https://github.com/aws-samples/aws-serverless-app-sam-cdk>
 * <https://docs.aws.amazon.com/codepipeline/latest/userguide/ecs-cd-pipeline.html>
-
-
-https://docs.aws.amazon.com/codepipeline/latest/userguide/file-reference.html
-What is an ECR source action?
-What is Appsec?
+* <https://docs.aws.amazon.com/codepipeline/latest/userguide/file-reference.html>
+* <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-blue-green.html>
+* <https://docs.aws.amazon.com/codepipeline/latest/userguide/action-reference-ECSbluegreen.html>
+* <https://github.com/aws-containers/ecs-workshop-blue-green-deployments>
+* <https://docs.aws.amazon.com/codedeploy/latest/userguide/tutorial-ecs-deployment.html>
+* <https://docs.aws.amazon.com/codedeploy/latest/userguide/deployment-steps-ecs.html#deployment-process-workflow-ecs>
+* <https://aws.plainenglish.io/aws-codepipeline-for-amazon-ecs-part-2-a-blue-green-deployment-type-c162fd73be91>
+* <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-blue-green.html>
+* <https://docs.aws.amazon.com/codepipeline/latest/userguide/tutorials-ecs-ecr-codedeploy.html#tutorials-ecs-ecr-codedeploy-imagerepository>
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_codepipeline_actions.CodeDeployEcsDeployActionProps.html>
