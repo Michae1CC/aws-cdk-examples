@@ -1,21 +1,21 @@
 import {
+  aws_codedeploy as codedeploy,
   aws_codebuild as codebuild,
   aws_codepipeline as codepipeline,
   aws_codepipeline_actions as codepipeline_actions,
   aws_ecr as ecr,
   aws_iam as iam,
   aws_s3 as s3,
-  aws_ssm as ssm,
   SecretValue,
   Stack,
   StackProps,
-  RemovalPolicy,
 } from "aws-cdk-lib";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 
 interface CodeDeployStackProps extends StackProps {
   appEcrRepository: ecr.Repository;
+  deploymentGroup: codedeploy.EcsDeploymentGroup;
 }
 
 export class CodeDeployStack extends Stack {
@@ -82,7 +82,7 @@ export class CodeDeployStack extends Stack {
                 "echo REPOSITORY_URI ${REPOSITORY_URI}",
                 "COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)",
                 "IMAGE_TAG=${COMMIT_HASH:=latest}",
-                "docker build -t ${REPOSITORY_URI}:latest .",
+                "docker build --platform linux/arm64 --build-arg POSTGRES_HOSTNAME=database.com -t ${REPOSITORY_URI}:latest .",
                 "docker tag ${REPOSITORY_URI}:latest ${REPOSITORY_URI}:${IMAGE_TAG}",
               ],
             },
@@ -102,7 +102,7 @@ export class CodeDeployStack extends Stack {
             },
           },
           artifacts: {
-            files: "imageDetail.json",
+            files: ["imageDetail.json", "appspec.yaml", "taskdef.json"],
           },
         }),
         environment: {
@@ -154,6 +154,23 @@ export class CodeDeployStack extends Stack {
       project: exampleProject,
     });
 
+    const deployEcsAction = new codepipeline_actions.CodeDeployEcsDeployAction({
+      actionName: "Deploy",
+      deploymentGroup: props.deploymentGroup,
+      // Note, the default file name is `appspec.yaml` placed in the root of
+      // the artifact
+      appSpecTemplateInput: buildArtifact,
+      // Note, the default file name is `taskdef.json` placed in the root of
+      // the artifact
+      taskDefinitionTemplateInput: buildArtifact,
+      containerImageInputs: [
+        {
+          input: buildArtifact,
+          taskDefinitionPlaceholder: "IMAGE1_NAME",
+        },
+      ],
+    });
+
     new codepipeline.Pipeline(this, "examplePipeline", {
       artifactBucket: pipelineArtifactBucket,
       stages: [
@@ -164,6 +181,10 @@ export class CodeDeployStack extends Stack {
         {
           stageName: "Build",
           actions: [codebuildAction],
+        },
+        {
+          stageName: "Deploy",
+          actions: [deployEcsAction],
         },
       ],
     });

@@ -34,3 +34,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-blue-green.html>
 * <https://docs.aws.amazon.com/codepipeline/latest/userguide/tutorials-ecs-ecr-codedeploy.html#tutorials-ecs-ecr-codedeploy-imagerepository>
 * <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_codepipeline_actions.CodeDeployEcsDeployActionProps.html>
+* <https://www.jennapederson.com/blog/automate-your-container-deployments-with-ci-cd-and-github-actions/>

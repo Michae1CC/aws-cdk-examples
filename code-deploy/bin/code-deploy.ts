@@ -8,4 +8,5 @@ const app = new cdk.App();
 const appStack = new AppStack(app, "AppStack");
 new CodeDeployStack(app, "CodeDeployStack", {
   appEcrRepository: appStack.appEcrRepository,
+  deploymentGroup: appStack.deploymentGroup,
 });
