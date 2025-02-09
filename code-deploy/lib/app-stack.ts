@@ -18,6 +18,7 @@ export class AppStack extends Stack {
   public readonly appEcrRepository: ecr.Repository;
   public readonly vpc: ec2.Vpc;
   public readonly deploymentGroup: codedeploy.EcsDeploymentGroup;
+  public readonly appLoadBalancer: elbv2.ApplicationLoadBalancer;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -204,7 +205,7 @@ export class AppStack extends Stack {
       maxHealthyPercent: 200,
     });
 
-    const publicLoadBalancer = new elbv2.ApplicationLoadBalancer(
+    this.appLoadBalancer = new elbv2.ApplicationLoadBalancer(
       this,
       "public-alb",
       {
@@ -254,7 +255,7 @@ export class AppStack extends Stack {
       },
     );
 
-    const httpBlueGreenListener1 = publicLoadBalancer.addListener(
+    const httpBlueGreenListener1 = this.appLoadBalancer.addListener(
       "http-blue-green-listener-1",
       {
         port: 80,
@@ -275,7 +276,7 @@ export class AppStack extends Stack {
       targetGroups: [appBlueGreenTargetGroup1],
     });
 
-    const httpBlueGreenListener2 = publicLoadBalancer.addListener(
+    const httpBlueGreenListener2 = this.appLoadBalancer.addListener(
       "http-blue-green-listener-2",
       {
         port: 8080,

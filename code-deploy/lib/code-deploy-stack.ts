@@ -1,3 +1,4 @@
+import * as cdk from "aws-cdk-lib";
 import {
   aws_codedeploy as codedeploy,
   aws_codebuild as codebuild,
@@ -6,24 +7,26 @@ import {
   aws_ecr as ecr,
   aws_iam as iam,
   aws_s3 as s3,
+  aws_stepfunctions as sfn,
   SecretValue,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
-import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 
 interface CodeDeployStackProps extends StackProps {
   appEcrRepository: ecr.Repository;
   deploymentGroup: codedeploy.EcsDeploymentGroup;
+  testRunnerStateMachine: sfn.StateMachine;
 }
 
 export class CodeDeployStack extends Stack {
   constructor(scope: Construct, id: string, props: CodeDeployStackProps) {
     super(scope, id, props);
 
-    const pipelineArtifactBucket = new Bucket(this, "pipelineArtifact", {
+    const pipelineArtifactBucket = new s3.Bucket(this, "pipelineArtifact", {
       encryption: s3.BucketEncryption.S3_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     const sourceCodeArtifact = new codepipeline.Artifact();
@@ -171,6 +174,12 @@ export class CodeDeployStack extends Stack {
       ],
     });
 
+    const runTestSuiteStateMachineAction =
+      new codepipeline_actions.StepFunctionInvokeAction({
+        actionName: "runTestSuiteStateMachine",
+        stateMachine: props.testRunnerStateMachine,
+      });
+
     new codepipeline.Pipeline(this, "examplePipeline", {
       artifactBucket: pipelineArtifactBucket,
       stages: [
@@ -185,6 +194,10 @@ export class CodeDeployStack extends Stack {
         {
           stageName: "Deploy",
           actions: [deployEcsAction],
+        },
+        {
+          stageName: "Test",
+          actions: [runTestSuiteStateMachineAction],
         },
       ],
     });
