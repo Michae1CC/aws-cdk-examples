@@ -7,6 +7,7 @@ Examples of small services I've put together using AWS CDK v2 (in typescript) to
 | [alb-ssl-bridging](./alb-ssl-bridging/)         | ![alb-ssl-bridging](./alb-ssl-bridging/img/alb-ssl-bridging-architecture.png)             | route 53, fargate, certificate manager, cloudwatch, sns |
 | [apigw-to-dynamodb](./apigw-to-dynamodb/)       | ![apigw-to-dynamodb](./apigw-to-dynamodb/img/apigw-to-dynamodb-architecture.png)          | apigw, dynamodb, lambda, sns                            |
 | [apigw-ws](./apigw-ws/)       | ![apigw-ws](./apigw-ws/img/apigw-ws-architecture.png)          | apigw, dynamodb, lambda                            |
+| [code-deploy](./code-deploy/)       | ![code-deploy](./code-deploy/img/code-deploy-architecture.png)          | code deploy, code build, code pipeline, lambda                            |
 | [cognito-saml-identity-pools](./cognito-saml-identity-pools/)       | ![cognito-saml-identity-pools](./cognito-saml-identity-pools/img/cognito-saml-identity-pools-architecture.png)          | dynamodb, cognito, fargate                            |
 | [dynamo-vpc-gateway-endpoint](./dynamo-vpc-gateway-endpoint/)       | ![dynamo-vpc-gateway-endpoint](./dynamo-vpc-gateway-endpoint/img/dynamo-vpc-gateway-endpoint-architecture.png)          | dynamodb, cognito, apigw, alb                            |
 | [ecs-anywhere](./ecs-anywhere/)       | ![ecs-anywhere](./ecs-anywhere/img/ecs-anywhere-architecture.png)          | dynamodb, ecs, sqs                            |
