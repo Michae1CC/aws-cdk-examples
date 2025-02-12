@@ -22,6 +22,9 @@ export class TestStack extends Stack {
   constructor(scope: Construct, id: string, props: TestStackProps) {
     super(scope, id, props);
 
+    /**
+     * Create a lambda that runs api calls to our service that are valid
+     */
     const validRequestsRunner = new PythonFunction(
       this,
       "valid-request-tests",
@@ -38,6 +41,9 @@ export class TestStack extends Stack {
       },
     );
 
+    /**
+     * Create a lambda that runs api calls to our service that are invalid
+     */
     const invalidRequestsRunner = new PythonFunction(
       this,
       "invalid-request-tests",
@@ -54,6 +60,9 @@ export class TestStack extends Stack {
       },
     );
 
+    /**
+     * Create a stepfunction task to invoke the valid api calls lambda
+     */
     const validRequestsRunnerTask = new sfn_tasks.LambdaInvoke(
       this,
       "validRequestsRunnerTask",
@@ -66,7 +75,9 @@ export class TestStack extends Stack {
       },
     );
 
-    // Create a stepfunction task for the invalid request tests
+    /**
+     * Create a stepfunction task to invoke the invalid api calls lambda
+     */
     const invalidRequestsRunnerTask = new sfn_tasks.LambdaInvoke(
       this,
       "invalidRequestsRunnerTask",

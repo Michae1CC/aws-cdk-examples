@@ -23,11 +23,17 @@ export class AppStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
+    /**
+     * An ECR repository to store images for the application
+     */
     this.appEcrRepository = new ecr.Repository(this, "app", {
       emptyOnDelete: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    /**
+     * Create a vpc for the application
+     */
     this.vpc = new ec2.Vpc(this, "vpc", {
       ipProtocol: ec2.IpProtocol.IPV4_ONLY,
       maxAzs: 3,
@@ -46,16 +52,25 @@ export class AppStack extends Stack {
       ],
     });
 
+    /**
+     * Create a SG for the application service
+     */
     const serviceSecurityGroup = new ec2.SecurityGroup(this, "service-sg", {
       vpc: this.vpc,
       allowAllOutbound: true,
     });
 
+    /**
+     * Create an SG for the public alb
+     */
     const albSecurityGroup = new ec2.SecurityGroup(this, "public-alb-sg", {
       vpc: this.vpc,
       allowAllOutbound: true,
     });
 
+    /**
+     * Create a SG for the database
+     */
     const databaseSecurityGroup = new ec2.SecurityGroup(this, "database-sg", {
       vpc: this.vpc,
       allowAllOutbound: true,
@@ -93,6 +108,9 @@ export class AppStack extends Stack {
       ec2.Port.allTcp(),
     );
 
+    /**
+     * A small instance to run the example application PG database
+     */
     const dbInstance = new ec2.Instance(this, "databaseInstance", {
       vpc: this.vpc,
       allowAllOutbound: true,
@@ -119,6 +137,10 @@ export class AppStack extends Stack {
       "sudo docker run -d --rm --env POSTGRES_PASSWORD=webapp --env POSTGRES_USER=webapp -p 5432:5432 postgres",
     );
 
+    /**
+     * Create a private hostzone to create private DNS records for the DB
+     * instance
+     */
     const privateHostedZone = new route53.PrivateHostedZone(
       this,
       "privateHostedZone",
@@ -153,11 +175,17 @@ export class AppStack extends Stack {
       },
     ]);
 
+    /**
+     * Create a log group for the application ECS service
+     */
     const appLogGroup = new logs.LogGroup(this, "app-log-group", {
       retention: logs.RetentionDays.THREE_DAYS,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    /**
+     * Create an ECS task definition for the example service
+     */
     const appTaskDefinition = new ecs.FargateTaskDefinition(
       this,
       "task-definition",
@@ -172,6 +200,8 @@ export class AppStack extends Stack {
       },
     );
 
+    // Add the latest image from the service ECR repo as the primary container
+    // for the service
     appTaskDefinition.addContainer("service-container", {
       // This container is required to be running for the auth server
       // service to be considered healthy.
@@ -189,6 +219,9 @@ export class AppStack extends Stack {
       },
     });
 
+    /**
+     * Create a fargate service to run our example app
+     */
     const appService = new ecs.FargateService(this, "auth-service", {
       cluster: appCluster,
       taskDefinition: appTaskDefinition,
@@ -255,7 +288,10 @@ export class AppStack extends Stack {
       },
     );
 
-    const httpBlueGreenListener1 = this.appLoadBalancer.addListener(
+    /**
+     * Create a listener for production traffic
+     */
+    const httpProductionListener = this.appLoadBalancer.addListener(
       "http-blue-green-listener-1",
       {
         port: 80,
@@ -272,11 +308,11 @@ export class AppStack extends Stack {
       },
     );
 
-    httpBlueGreenListener1.addTargetGroups("add-blue-green-target-group-1", {
+    httpProductionListener.addTargetGroups("add-blue-green-target-group-1", {
       targetGroups: [appBlueGreenTargetGroup1],
     });
 
-    const httpBlueGreenListener2 = this.appLoadBalancer.addListener(
+    const httpTestListener = this.appLoadBalancer.addListener(
       "http-blue-green-listener-2",
       {
         port: 8080,
@@ -293,10 +329,13 @@ export class AppStack extends Stack {
       },
     );
 
-    httpBlueGreenListener2.addTargetGroups("add-blue-green-target-group-2", {
+    httpTestListener.addTargetGroups("add-blue-green-target-group-2", {
       targetGroups: [appBlueGreenTargetGroup1],
     });
 
+    /**
+     * Create a listener for test traffic
+     */
     this.deploymentGroup = new codedeploy.EcsDeploymentGroup(
       this,
       "app-deployment-group",
@@ -305,8 +344,8 @@ export class AppStack extends Stack {
         blueGreenDeploymentConfig: {
           blueTargetGroup: appBlueGreenTargetGroup1,
           greenTargetGroup: appBlueGreenTargetGroup2,
-          listener: httpBlueGreenListener1,
-          testListener: httpBlueGreenListener2,
+          listener: httpProductionListener,
+          testListener: httpTestListener,
         },
       },
     );
