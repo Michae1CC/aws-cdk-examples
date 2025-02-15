@@ -94,6 +94,9 @@ export class TestStack extends Stack {
       validRequestsRunnerTask,
     ).next(invalidRequestsRunnerTask);
 
+    /**
+     * Create a state machine that runs the test lambdas consecutively
+     */
     this.testRunnerStateMachine = new sfn.StateMachine(this, "test-runner", {
       definitionBody: sfn.DefinitionBody.fromChainable(stateMachineDefinition),
       removalPolicy: cdk.RemovalPolicy.DESTROY,
