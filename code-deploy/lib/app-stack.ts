@@ -79,33 +79,33 @@ export class AppStack extends Stack {
     serviceSecurityGroup.addIngressRule(
       albSecurityGroup,
       ec2.Port.tcp(APP_PORT),
-      "Allow HTTP from the public ALB",
+      "Allow HTTP from the public ALB"
     );
 
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.allIcmp(),
-      "Allow ICMP pings from Ipv4 on any port",
+      "Allow ICMP pings from Ipv4 on any port"
     );
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(80),
-      "Allow HTTP from any port",
+      "Allow HTTP from any port"
     );
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(8080),
-      "Allow HTTP from any port",
+      "Allow HTTP from any port"
     );
 
     databaseSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow ICMP pings from Ipv4 on any port",
+      "Allow ICMP pings from Ipv4 on any port"
     );
     databaseSecurityGroup.addIngressRule(
       serviceSecurityGroup,
-      ec2.Port.allTcp(),
+      ec2.Port.allTcp()
     );
 
     /**
@@ -120,7 +120,7 @@ export class AppStack extends Stack {
       },
       instanceType: ec2.InstanceType.of(
         ec2.InstanceClass.T2,
-        ec2.InstanceSize.MICRO,
+        ec2.InstanceSize.MICRO
       ),
       machineImage: new ec2.AmazonLinuxImage({
         generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
@@ -134,7 +134,7 @@ export class AppStack extends Stack {
       "sudo service docker start",
       "sudo usermod -a -G docker ec2-user",
       "sudo docker pull postgres",
-      "sudo docker run -d --rm --env POSTGRES_PASSWORD=webapp --env POSTGRES_USER=webapp -p 5432:5432 postgres",
+      "sudo docker run -d --rm --env POSTGRES_PASSWORD=webapp --env POSTGRES_USER=webapp -p 5432:5432 postgres"
     );
 
     /**
@@ -147,7 +147,7 @@ export class AppStack extends Stack {
       {
         vpc: this.vpc,
         zoneName: "database.com",
-      },
+      }
     );
 
     // Create an A Record within our private hosted zone to point to the
@@ -155,7 +155,7 @@ export class AppStack extends Stack {
     new route53.ARecord(this, "databaseARecord", {
       zone: privateHostedZone,
       target: route53.RecordTarget.fromIpAddresses(
-        dbInstance.instancePrivateIp,
+        dbInstance.instancePrivateIp
       ),
     });
 
@@ -197,7 +197,7 @@ export class AppStack extends Stack {
           cpuArchitecture: ecs.CpuArchitecture.ARM64,
           operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
         },
-      },
+      }
     );
 
     // Add the latest image from the service ECR repo as the primary container
@@ -247,7 +247,7 @@ export class AppStack extends Stack {
         ipAddressType: elbv2.IpAddressType.IPV4,
         securityGroup: albSecurityGroup,
         http2Enabled: true,
-      },
+      }
     );
 
     const appBlueGreenTargetGroup1 = new elbv2.ApplicationTargetGroup(
@@ -268,7 +268,7 @@ export class AppStack extends Stack {
           protocol: elbv2.Protocol.HTTP,
           path: "/healthcheck",
         },
-      },
+      }
     );
 
     appBlueGreenTargetGroup1.addTarget(appService);
@@ -285,8 +285,10 @@ export class AppStack extends Stack {
           protocol: elbv2.Protocol.HTTP,
           path: "/healthcheck",
         },
-      },
+      }
     );
+
+    appBlueGreenTargetGroup2.addTarget(appService);
 
     /**
      * Create a listener for production traffic
@@ -305,7 +307,7 @@ export class AppStack extends Stack {
           contentType: "text/plain",
           messageBody: "404 ALB No Rule",
         }),
-      },
+      }
     );
 
     httpProductionListener.addTargetGroups("add-blue-green-target-group-1", {
@@ -326,7 +328,7 @@ export class AppStack extends Stack {
           contentType: "text/plain",
           messageBody: "404 ALB No Rule",
         }),
-      },
+      }
     );
 
     httpTestListener.addTargetGroups("add-blue-green-target-group-2", {
@@ -347,7 +349,7 @@ export class AppStack extends Stack {
           listener: httpProductionListener,
           testListener: httpTestListener,
         },
-      },
+      }
     );
   }
 }
