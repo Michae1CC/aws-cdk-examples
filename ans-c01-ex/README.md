@@ -1,4 +1,13 @@
-# Welcome to your CDK TypeScript project
+# Advanced Networking Specialty Exercises
+
+## Exercises 1-4
+
+This is the architecture we will need to implement.
+
+![ex-1-4-architecture](./img/ans-c01-ex-1-4.png)
+
+The architecture of exercises 1-4 have been implement in AWS CDK within the stack
+named `"Ex1-4Stack"`.
 
 Attempting the call from instance a fails
 
@@ -85,3 +94,5 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## References
 
 * <https://dev.to/aws-builders/aws-advanced-networking-specialty-15-hands-on-exercises-for-certification-success-4eh7>
+* <https://docs.aws.amazon.com/vpc/latest/privatelink/create-endpoint-service.html>
+* <https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html>

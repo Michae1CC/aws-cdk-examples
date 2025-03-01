@@ -1,4 +1,8 @@
-import { aws_ec2 as ec2, aws_iam as iam, aws_kms as kms } from "aws-cdk-lib";
+import {
+  aws_ec2 as ec2,
+  aws_elasticloadbalancingv2 as elbv2,
+  aws_iam as iam,
+} from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 
@@ -143,6 +147,48 @@ export class Ex1_2Stack extends cdk.Stack {
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
       }).subnetIds[0],
       securityGroupIds: [instanceConnectBSg.securityGroupId],
+    });
+
+    const nlbSg = new ec2.SecurityGroup(this, "nlb-sg", {
+      vpc: vpcB,
+      allowAllOutbound: true,
+    });
+
+    nlbSg.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow pings from any connection",
+    );
+
+    // Create an NLB in VPC B to act as a service endpoint
+    const serviceNlb = new elbv2.NetworkLoadBalancer(this, "vpc-b-nlb", {
+      vpc: vpcB,
+      internetFacing: false,
+      ipAddressType: elbv2.IpAddressType.IPV4,
+      securityGroups: [nlbSg],
+      vpcSubnets: vpcB.selectSubnets({
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+      }),
+    });
+
+    const nlbEndpointService = new ec2.VpcEndpointService(
+      this,
+      "nlb-endpoint-service",
+      {
+        vpcEndpointServiceLoadBalancers: [serviceNlb],
+        acceptanceRequired: false,
+        allowedPrincipals: [new iam.AccountPrincipal(this.account)],
+      },
+    );
+
+    new ec2.InterfaceVpcEndpoint(this, "vpc-a-nlb-service-endpoint", {
+      vpc: vpcA,
+      service: new ec2.InterfaceVpcEndpointService(
+        nlbEndpointService.vpcEndpointServiceName,
+      ),
+      subnets: vpcA.selectSubnets({
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+      }),
     });
   }
 }
