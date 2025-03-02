@@ -9,12 +9,12 @@ This is the architecture we will need to implement.
 The architecture of exercises 1-4 have been implement in AWS CDK within the stack
 named `"Ex1-4Stack"`.
 
-Attempting the call from instance a fails
+I created two instances from the console and SSHed into then via the Instance
+Connect Endpoints created in CDK. We can indeed connect to KMS from VPC B shown
+by running the aws kms list-keys command from ec2 instance in VPC B.
 
-From instance b
-
-```
-aws kms list-keys
+```text
+[ec2-user@ip-10-0-95-181 ~]$ aws kms list-keys
 {
     "Keys": [
         {
@@ -26,7 +26,14 @@ aws kms list-keys
 }
 ```
 
-```
+Attempting to call the same command on our ec2 instance from VPC A causes the
+command to hang. This is because creates private DNS records to point to ENI
+created for the interface endpoint. These private DNS records won't automatically
+propagate from VPC B to VPC A. This is shown by running the `dig` command on
+`kms.us-east-1.amazonaws.com` VPC A and VPB B respectively. Note that the
+domain resolves to the public endpoint for VPC A.
+
+```text
 [ec2-user@ip-10-0-95-181 ~]$ dig kms.us-east-1.amazonaws.com
 
 ; <<>> DiG 9.18.33 <<>> kms.us-east-1.amazonaws.com
@@ -49,7 +56,7 @@ kms.us-east-1.amazonaws.com. 52 IN      A       67.220.241.181
 ;; MSG SIZE  rcvd: 72
 ```
 
-```
+```text
 [ec2-user@ip-10-1-167-200 ~]$ dig kms.us-east-1.amazonaws.com
 
 ; <<>> DiG 9.18.33 <<>> kms.us-east-1.amazonaws.com
@@ -73,26 +80,21 @@ kms.us-east-1.amazonaws.com. 60 IN      A       10.1.139.164
 ;; MSG SIZE  rcvd: 88
 ```
 
-The following hangs, could be transitivity issues
-```
-[ec2-user@ip-10-0-95-181 ~]$ aws kms list-keys --endpoint-url https://10.1.58.47
-```
+To answer the question
 
-This is a blank project for CDK development with TypeScript.
+> VPC A has a CIDR block of 10.0.0.0/16. VPC B's CIDR block is 10.0.0.0/20
+> with a secondary CIDR of 10.1.0.0/16. Can we peer VPC A and VPC B?
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+The AWS VPC peer documentation states
 
-## Useful commands
+> You cannot create a VPC peering connection between VPCs that have matching or
+> overlapping IPv4 or IPv6 CIDR blocks.
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+To put it shortly - no.
 
 ## References
 
 * <https://dev.to/aws-builders/aws-advanced-networking-specialty-15-hands-on-exercises-for-certification-success-4eh7>
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/create-endpoint-service.html>
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html>
+* <https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-basics.html#vpc-peering-limitations>
