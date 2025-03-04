@@ -1,5 +1,12 @@
 # Advanced Networking Specialty Exercises
 
+While studying for my AWS ANS C01 certification, I stumbled across
+[this post](https://dev.to/aws-builders/aws-advanced-networking-specialty-15-hands-on-exercises-for-certification-success-4eh7)
+by Arpad Toth list a number of practical exercises aimed at those studying for
+this particular certification. Throwing down the gauntlet, I've decided to take
+up the challenge by completing the exercises using CDK. I've omitted exercises
+that require multiple accounts or the need to purchase a domain name.
+
 ## Exercises 1-4
 
 This is the architecture we will need to implement.
@@ -27,7 +34,7 @@ by running the aws kms list-keys command from ec2 instance in VPC B.
 ```
 
 Attempting to call the same command on our ec2 instance from VPC A causes the
-command to hang. This is because creates private DNS records to point to ENI
+command to hang. This is because creates private DNS records to point to ENI/s
 created for the interface endpoint. These private DNS records won't automatically
 propagate from VPC B to VPC A. This is shown by running the `dig` command on
 `kms.us-east-1.amazonaws.com` VPC A and VPB B respectively. Note that the
@@ -90,7 +97,7 @@ The AWS VPC peer documentation states
 > You cannot create a VPC peering connection between VPCs that have matching or
 > overlapping IPv4 or IPv6 CIDR blocks.
 
-To put it shortly - no.
+To put it simply - no.
 
 ## References
 
