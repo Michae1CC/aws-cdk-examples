@@ -105,3 +105,5 @@ To put it simply - no.
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/create-endpoint-service.html>
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html>
 * <https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-basics.html#vpc-peering-limitations>
+* <https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html>
+* <https://github.com/aws-samples/aws-cdk-transit-gateway-peering/tree/master>

@@ -7,6 +7,8 @@ interface Ex8_P2StackProps extends cdk.StackProps {
 }
 
 export class Ex8_P2Stack extends cdk.Stack {
+  public readonly transitGateway: ec2.CfnTransitGateway;
+
   constructor(scope: Construct, id: string, props: Ex8_P2StackProps) {
     super(scope, id, props);
 
@@ -24,9 +26,17 @@ export class Ex8_P2Stack extends cdk.Stack {
       ],
     });
 
+    this.transitGateway = new ec2.CfnTransitGateway(this, "transit-gw", {
+      autoAcceptSharedAttachments: "enable",
+      defaultRouteTableAssociation: "enable",
+      dnsSupport: "enable",
+      // TODO: check
+      transitGatewayCidrBlocks: ["10.0.0.0/16", "10.1.0.0/16"],
+    });
+
     new ec2.CfnTransitGatewayAttachment(this, "tgw-attachment", {
       vpcId: vpc2.vpcId,
-      transitGatewayId: props.transitGateway.logicalId,
+      transitGatewayId: this.transitGateway.logicalId,
       subnetIds: vpc2.selectSubnets({
         subnetType: ec2.SubnetType.PUBLIC,
       }).subnetIds,
