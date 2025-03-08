@@ -99,6 +99,21 @@ The AWS VPC peer documentation states
 
 To put it simply - no.
 
+## Exercise 8
+
+```text
+[ec2-user@ip-10-0-70-63 ~]$ ping 10.1.214.195
+PING 10.1.214.195 (10.1.214.195) 56(84) bytes of data.
+64 bytes from 10.1.214.195: icmp_seq=1 ttl=124 time=16.6 ms
+64 bytes from 10.1.214.195: icmp_seq=2 ttl=124 time=11.8 ms
+64 bytes from 10.1.214.195: icmp_seq=3 ttl=124 time=12.0 ms
+64 bytes from 10.1.214.195: icmp_seq=4 ttl=124 time=11.3 ms
+^C
+--- 10.1.214.195 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3005ms
+rtt min/avg/max/mdev = 11.287/12.907/16.599/2.146 ms
+```
+
 ## References
 
 * <https://dev.to/aws-builders/aws-advanced-networking-specialty-15-hands-on-exercises-for-certification-success-4eh7>
@@ -107,3 +122,4 @@ To put it simply - no.
 * <https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-basics.html#vpc-peering-limitations>
 * <https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html>
 * <https://github.com/aws-samples/aws-cdk-transit-gateway-peering/tree/master>
+* <https://aws.amazon.com/blogs/networking-and-content-delivery/how-to-use-aws-network-manager-to-visualize-transit-gateways-across-all-accounts-in-the-aws-organization/>
