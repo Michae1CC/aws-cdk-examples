@@ -164,6 +164,31 @@ the steps from
 Remember to tear down the created resources by first deleting the ec2 instances
 and then running `cdk destroy` on the created stacks.
 
+## Exercise 14
+
+```text
+[ec2-user@ip-10-0-249-108 ~]$ nslookup example.com
+Server:         10.0.0.2
+Address:        10.0.0.2#53
+
+Non-authoritative answer:
+Name:   example.com
+Address: 10.0.82.95
+
+[ec2-user@ip-10-0-249-108 ~]$ ping !*
+ping example.com
+PING example.com (10.0.82.95) 56(84) bytes of data.
+64 bytes from ip-10-0-82-95.ec2.internal (10.0.82.95): icmp_seq=1 ttl=255 time=5.25 ms
+64 bytes from ip-10-0-82-95.ec2.internal (10.0.82.95): icmp_seq=2 ttl=255 time=1.09 ms
+64 bytes from ip-10-0-82-95.ec2.internal (10.0.82.95): icmp_seq=3 ttl=255 time=1.70 ms
+64 bytes from ip-10-0-82-95.ec2.internal (10.0.82.95): icmp_seq=4 ttl=255 time=1.82 ms
+64 bytes from ip-10-0-82-95.ec2.internal (10.0.82.95): icmp_seq=5 ttl=255 time=1.07 ms
+^C
+--- example.com ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4007ms
+rtt min/avg/max/mdev = 1.066/2.184/5.246/1.561 ms
+```
+
 ## References
 
 * <https://dev.to/aws-builders/aws-advanced-networking-specialty-15-hands-on-exercises-for-certification-success-4eh7>
