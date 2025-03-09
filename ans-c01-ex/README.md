@@ -87,6 +87,21 @@ kms.us-east-1.amazonaws.com. 60 IN      A       10.1.139.164
 ;; MSG SIZE  rcvd: 88
 ```
 
+If we attempt to override the endpoint with using the raw
+private IPv4 address of the interface endpoint on the instance in VPC A, the
+command fails with the following error.
+
+```text
+[ec2-user@ip-10-0-95-181 ~]$ aws kms list-keys --endpoint-url https://10.1.58.47
+
+SSL validation failed for https://10.1.58.47/ ("hostname '10.1.58.47' doesn't match either of 'kms.us-east-1.amazonaws.com', 'kms-a.us-east-1.amazonaws.com', 'kms-b.us-east-1.amazonaws.com', 'kms-c.us-east-1.amazonaws.com', 'kms-d.us-east-1.amazonaws.com', 'kms-e.us-east-1.amazonaws.com', 'kms-f.us-east-1.amazonaws.com', 'kms-g.us-east-1.amazonaws.com', '*.kms.us-east-1.vpce.amazonaws.com'",)
+```
+
+We could use
+[Route 53 Resolver Endpoints](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resolver.html)
+to get around this issue, meaning yes we could in theory access the interface
+endpoint from VPC A (although not demonstrated here).
+
 To answer the question
 
 > VPC A has a CIDR block of 10.0.0.0/16. VPC B's CIDR block is 10.0.0.0/20
@@ -146,9 +161,13 @@ the steps from
 ![nm-tg-1](./img/nm-tgw-1.png)
 ![nm-tg-2](./img/nm-tgw-2.png)
 
+Remember to tear down the created resources by first deleting the ec2 instances
+and then running `cdk destroy` on the created stacks.
+
 ## References
 
 * <https://dev.to/aws-builders/aws-advanced-networking-specialty-15-hands-on-exercises-for-certification-success-4eh7>
+* <https://docs.aws.amazon.com/whitepapers/latest/building-scalable-secure-multi-vpc-network-infrastructure/transit-gateway.html>
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/create-endpoint-service.html>
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html>
 * <https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-basics.html#vpc-peering-limitations>
