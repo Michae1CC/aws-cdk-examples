@@ -22,7 +22,7 @@ export class Ex14Stack extends cdk.Stack {
       ],
     });
 
-    const instanceSg = new ec2.SecurityGroup(this, "instance-connect-vpc-a", {
+    const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
       vpc: vpc,
       allowAllOutbound: true,
     });
@@ -30,16 +30,16 @@ export class Ex14Stack extends cdk.Stack {
     instanceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection",
+      "Allow pings from any connection"
     );
 
     instanceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.SSH,
-      "Allow SSH from any connection",
+      "Allow SSH from any connection"
     );
 
-    const instance = new ec2.Instance(this, "databaseInstance", {
+    const instance = new ec2.Instance(this, "instance", {
       vpc: vpc,
       allowAllOutbound: true,
       associatePublicIpAddress: false,
@@ -48,7 +48,7 @@ export class Ex14Stack extends cdk.Stack {
       },
       instanceType: ec2.InstanceType.of(
         ec2.InstanceClass.T2,
-        ec2.InstanceSize.MICRO,
+        ec2.InstanceSize.MICRO
       ),
       machineImage: new ec2.AmazonLinuxImage({
         generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
@@ -58,11 +58,11 @@ export class Ex14Stack extends cdk.Stack {
 
     const privateHostedZone = new route53.PrivateHostedZone(
       this,
-      "privateHostedZone",
+      "private-hosted-zone",
       {
         vpc: vpc,
         zoneName: "example.com",
-      },
+      }
     );
 
     // Create an A Record within our private hosted zone to point to the

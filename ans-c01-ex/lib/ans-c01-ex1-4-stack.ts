@@ -45,7 +45,7 @@ export class Ex1_4Stack extends cdk.Stack {
         peerVpcId: vpcA.vpcId,
         vpcId: vpcB.vpcId,
         peerOwnerId: props.env?.region,
-      },
+      }
     );
 
     // Add the CIDR range of VPC A to VPC B and vice-versa
@@ -77,19 +77,19 @@ export class Ex1_4Stack extends cdk.Stack {
     kmsInterfaceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection",
+      "Allow pings from any connection"
     );
 
     kmsInterfaceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.HTTP,
-      "Allow HTTP from any connection",
+      "Allow HTTP from any connection"
     );
 
     kmsInterfaceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.HTTPS,
-      "Allow HTTPS from any connection",
+      "Allow HTTPS from any connection"
     );
 
     // Create an interface endpoint for the KMS service
@@ -104,7 +104,7 @@ export class Ex1_4Stack extends cdk.Stack {
         subnets: {
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
         },
-      },
+      }
     );
 
     kmsInterfaceEndPoint.addToPolicy(
@@ -113,7 +113,7 @@ export class Ex1_4Stack extends cdk.Stack {
         principals: [new iam.AnyPrincipal()],
         resources: ["*"],
         actions: ["kms:ListKeys", "kms:ListAliases"],
-      }),
+      })
     );
 
     // Create a security group for the instance connect endpoint for VPC a
@@ -123,18 +123,18 @@ export class Ex1_4Stack extends cdk.Stack {
       {
         vpc: vpcA,
         allowAllOutbound: true,
-      },
+      }
     );
 
     instanceConnectASg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection",
+      "Allow pings from any connection"
     );
     instanceConnectASg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.SSH,
-      "Allow SSH from any connection",
+      "Allow SSH from any connection"
     );
 
     // Create a instance connect for VPC A
@@ -152,18 +152,18 @@ export class Ex1_4Stack extends cdk.Stack {
       {
         vpc: vpcB,
         allowAllOutbound: true,
-      },
+      }
     );
 
     instanceConnectBSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection",
+      "Allow pings from any connection"
     );
     instanceConnectBSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.SSH,
-      "Allow SSH from any connection",
+      "Allow SSH from any connection"
     );
 
     // Create a instance connect for VPC B
@@ -174,46 +174,46 @@ export class Ex1_4Stack extends cdk.Stack {
       securityGroupIds: [instanceConnectBSg.securityGroupId],
     });
 
-    // const nlbSg = new ec2.SecurityGroup(this, "nlb-sg", {
-    //   vpc: vpcB,
-    //   allowAllOutbound: true,
-    // });
+    const nlbSg = new ec2.SecurityGroup(this, "nlb-sg", {
+      vpc: vpcB,
+      allowAllOutbound: true,
+    });
 
-    // nlbSg.addIngressRule(
-    //   ec2.Peer.anyIpv4(),
-    //   ec2.Port.icmpPing(),
-    //   "Allow pings from any connection",
-    // );
+    nlbSg.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow pings from any connection"
+    );
 
-    // // Create an NLB in VPC B to act as a service endpoint
-    // const serviceNlb = new elbv2.NetworkLoadBalancer(this, "vpc-b-nlb", {
-    //   vpc: vpcB,
-    //   internetFacing: false,
-    //   ipAddressType: elbv2.IpAddressType.IPV4,
-    //   securityGroups: [nlbSg],
-    //   vpcSubnets: vpcB.selectSubnets({
-    //     subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-    //   }),
-    // });
+    // Create an NLB in VPC B to act as a service endpoint
+    const serviceNlb = new elbv2.NetworkLoadBalancer(this, "vpc-b-nlb", {
+      vpc: vpcB,
+      internetFacing: false,
+      ipAddressType: elbv2.IpAddressType.IPV4,
+      securityGroups: [nlbSg],
+      vpcSubnets: vpcB.selectSubnets({
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+      }),
+    });
 
-    // const nlbEndpointService = new ec2.VpcEndpointService(
-    //   this,
-    //   "nlb-endpoint-service",
-    //   {
-    //     vpcEndpointServiceLoadBalancers: [serviceNlb],
-    //     acceptanceRequired: false,
-    //     allowedPrincipals: [new iam.AccountPrincipal(this.account)],
-    //   },
-    // );
+    const nlbEndpointService = new ec2.VpcEndpointService(
+      this,
+      "nlb-endpoint-service",
+      {
+        vpcEndpointServiceLoadBalancers: [serviceNlb],
+        acceptanceRequired: false,
+        allowedPrincipals: [new iam.AccountPrincipal(this.account)],
+      }
+    );
 
-    // new ec2.InterfaceVpcEndpoint(this, "vpc-a-nlb-service-endpoint", {
-    //   vpc: vpcA,
-    //   service: new ec2.InterfaceVpcEndpointService(
-    //     nlbEndpointService.vpcEndpointServiceName,
-    //   ),
-    //   subnets: vpcA.selectSubnets({
-    //     subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-    //   }),
-    // });
+    new ec2.InterfaceVpcEndpoint(this, "vpc-a-nlb-service-endpoint", {
+      vpc: vpcA,
+      service: new ec2.InterfaceVpcEndpointService(
+        nlbEndpointService.vpcEndpointServiceName
+      ),
+      subnets: vpcA.selectSubnets({
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+      }),
+    });
   }
 }

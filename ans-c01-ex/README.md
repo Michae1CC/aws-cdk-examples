@@ -166,6 +166,12 @@ and then running `cdk destroy` on the created stacks.
 
 ## Exercise 14
 
+![ex-14-architecture](./img/ans-c01-ex-14.png)
+
+The architecture of exercises 1-4 have been implement in AWS CDK within the
+`"Ex14Stack"`. Once deployed we create another instance within the public
+subnet and ping the other instance provided with the `example.com` domain.
+
 ```text
 [ec2-user@ip-10-0-249-108 ~]$ nslookup example.com
 Server:         10.0.0.2
