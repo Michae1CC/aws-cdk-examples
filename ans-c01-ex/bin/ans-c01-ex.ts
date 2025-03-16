@@ -3,6 +3,7 @@ import * as cdk from "aws-cdk-lib";
 import { Ex1_4Stack } from "../lib/ans-c01-ex1-4-stack";
 import { Ex8_P1Stack } from "../lib/ans-c01-ex8-p1stack";
 import { Ex8_P2Stack } from "../lib/ans-c01-ex8-p2stack";
+import { Ex9Stack } from "../lib/ans-c01-ex9stack";
 import { Ex14Stack } from "../lib/ans-c01-ex14stack";
 
 const app = new cdk.App();
@@ -32,4 +33,6 @@ const app = new cdk.App();
 //   },
 // });
 
-new Ex14Stack(app, "Ex14Stack", {});
+new Ex9Stack(app, "Ex9Stack", {});
+
+// new Ex14Stack(app, "Ex14Stack", {});

@@ -164,7 +164,27 @@ the steps from
 Remember to tear down the created resources by first deleting the ec2 instances
 and then running `cdk destroy` on the created stacks.
 
+## Exercise 9
+
+```text
+[home-desktop]$ ping 10.0.43.0
+PING 10.0.43.0 (10.0.43.0): 56 data bytes
+64 bytes from 10.0.43.0: icmp_seq=0 ttl=254 time=313.077 ms
+64 bytes from 10.0.43.0: icmp_seq=1 ttl=254 time=231.098 ms
+64 bytes from 10.0.43.0: icmp_seq=2 ttl=254 time=210.756 ms
+64 bytes from 10.0.43.0: icmp_seq=3 ttl=254 time=273.390 ms
+^C
+--- 10.0.43.0 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 210.756/257.080/313.077/39.442 ms
+```
+
+Examining packets through WireShark it appears that requests are made to the
+client vpn endpoint over UDP where the packet payload has been encrypted.
+
 ## Exercise 14
+
+This is the architecture we will need to implement.
 
 ![ex-14-architecture](./img/ans-c01-ex-14.png)
 
@@ -205,3 +225,4 @@ rtt min/avg/max/mdev = 1.066/2.184/5.246/1.561 ms
 * <https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html>
 * <https://github.com/aws-samples/aws-cdk-transit-gateway-peering/tree/master>
 * <https://aws.amazon.com/blogs/networking-and-content-delivery/how-to-use-aws-network-manager-to-visualize-transit-gateways-across-all-accounts-in-the-aws-organization/>
+* <https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/cvpn-getting-started.html>

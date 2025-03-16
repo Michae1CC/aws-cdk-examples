@@ -45,7 +45,7 @@ export class Ex1_4Stack extends cdk.Stack {
         peerVpcId: vpcA.vpcId,
         vpcId: vpcB.vpcId,
         peerOwnerId: props.env?.region,
-      }
+      },
     );
 
     // Add the CIDR range of VPC A to VPC B and vice-versa
@@ -77,19 +77,19 @@ export class Ex1_4Stack extends cdk.Stack {
     kmsInterfaceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection"
+      "Allow pings from any connection",
     );
 
     kmsInterfaceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.HTTP,
-      "Allow HTTP from any connection"
+      "Allow HTTP from any connection",
     );
 
     kmsInterfaceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.HTTPS,
-      "Allow HTTPS from any connection"
+      "Allow HTTPS from any connection",
     );
 
     // Create an interface endpoint for the KMS service
@@ -104,7 +104,7 @@ export class Ex1_4Stack extends cdk.Stack {
         subnets: {
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
         },
-      }
+      },
     );
 
     kmsInterfaceEndPoint.addToPolicy(
@@ -113,7 +113,7 @@ export class Ex1_4Stack extends cdk.Stack {
         principals: [new iam.AnyPrincipal()],
         resources: ["*"],
         actions: ["kms:ListKeys", "kms:ListAliases"],
-      })
+      }),
     );
 
     // Create a security group for the instance connect endpoint for VPC a
@@ -123,18 +123,18 @@ export class Ex1_4Stack extends cdk.Stack {
       {
         vpc: vpcA,
         allowAllOutbound: true,
-      }
+      },
     );
 
     instanceConnectASg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection"
+      "Allow pings from any connection",
     );
     instanceConnectASg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.SSH,
-      "Allow SSH from any connection"
+      "Allow SSH from any connection",
     );
 
     // Create a instance connect for VPC A
@@ -152,18 +152,18 @@ export class Ex1_4Stack extends cdk.Stack {
       {
         vpc: vpcB,
         allowAllOutbound: true,
-      }
+      },
     );
 
     instanceConnectBSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection"
+      "Allow pings from any connection",
     );
     instanceConnectBSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.SSH,
-      "Allow SSH from any connection"
+      "Allow SSH from any connection",
     );
 
     // Create a instance connect for VPC B
@@ -182,7 +182,7 @@ export class Ex1_4Stack extends cdk.Stack {
     nlbSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection"
+      "Allow pings from any connection",
     );
 
     // Create an NLB in VPC B to act as a service endpoint
@@ -203,13 +203,13 @@ export class Ex1_4Stack extends cdk.Stack {
         vpcEndpointServiceLoadBalancers: [serviceNlb],
         acceptanceRequired: false,
         allowedPrincipals: [new iam.AccountPrincipal(this.account)],
-      }
+      },
     );
 
     new ec2.InterfaceVpcEndpoint(this, "vpc-a-nlb-service-endpoint", {
       vpc: vpcA,
       service: new ec2.InterfaceVpcEndpointService(
-        nlbEndpointService.vpcEndpointServiceName
+        nlbEndpointService.vpcEndpointServiceName,
       ),
       subnets: vpcA.selectSubnets({
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED,

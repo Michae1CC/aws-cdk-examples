@@ -1,11 +1,11 @@
-import { aws_ec2 as ec2, aws_route53 as route53 } from "aws-cdk-lib";
+import { aws_ec2 as ec2 } from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 
-interface Ex14StackProps extends cdk.StackProps {}
+interface Ex9StackProps extends cdk.StackProps {}
 
-export class Ex14Stack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: Ex14StackProps) {
+export class Ex9Stack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props: Ex9StackProps) {
     super(scope, id, props);
 
     const vpc = new ec2.Vpc(this, "vpc", {
@@ -22,6 +22,22 @@ export class Ex14Stack extends cdk.Stack {
       ],
     });
 
+    const clientVpnEndpoint = vpc.addClientVpnEndpoint("client-vpn-endpoint", {
+      cidr: "10.1.0.0/16",
+      serverCertificateArn: "<YOUR-SERVER-CERT>",
+      authorizeAllUsersToVpcCidr: true,
+      clientCertificateArn: "<YOUR-CLIENT-CERT>",
+    });
+
+    clientVpnEndpoint.addRoute("client-vpn-public-route", {
+      cidr: "0.0.0.0/0",
+      target: ec2.ClientVpnRouteTarget.subnet(vpc.publicSubnets[0]),
+    });
+
+    clientVpnEndpoint.addAuthorizationRule("client-vpn-public-route-auth", {
+      cidr: "0.0.0.0/0",
+    });
+
     const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
       vpc: vpc,
       allowAllOutbound: true,
@@ -30,13 +46,7 @@ export class Ex14Stack extends cdk.Stack {
     instanceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection",
-    );
-
-    instanceSg.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.SSH,
-      "Allow SSH from any connection",
+      "Allow pings from any connection"
     );
 
     const instance = new ec2.Instance(this, "instance", {
@@ -48,7 +58,7 @@ export class Ex14Stack extends cdk.Stack {
       },
       instanceType: ec2.InstanceType.of(
         ec2.InstanceClass.T2,
-        ec2.InstanceSize.MICRO,
+        ec2.InstanceSize.MICRO
       ),
       machineImage: new ec2.AmazonLinuxImage({
         generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
@@ -56,20 +66,8 @@ export class Ex14Stack extends cdk.Stack {
       securityGroup: instanceSg,
     });
 
-    const privateHostedZone = new route53.PrivateHostedZone(
-      this,
-      "private-hosted-zone",
-      {
-        vpc: vpc,
-        zoneName: "example.com",
-      },
-    );
-
-    // Create an A Record within our private hosted zone to point to the
-    // instance
-    new route53.ARecord(this, "instance-a-record", {
-      zone: privateHostedZone,
-      target: route53.RecordTarget.fromIpAddresses(instance.instancePrivateIp),
+    new cdk.CfnOutput(this, "instance-ipv4", {
+      value: instance.instancePrivateIp,
     });
   }
 }
