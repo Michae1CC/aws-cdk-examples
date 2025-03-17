@@ -15,7 +15,7 @@ export class Ex8_P2Stack extends cdk.Stack {
     new ec2.CfnTransitGatewayPeeringAttachment(this, "tgw-peer", {
       transitGatewayId: props.transitGateway.attrId,
       // Use the cfn output from the Ex8-P1Tgw2Stack stack here
-      peerTransitGatewayId: "tgw-01a6ee83fa488242c",
+      peerTransitGatewayId: "<TRANSIT-GW-ATTR-ID>",
       peerAccountId: this.account,
       peerRegion: "us-east-2",
     });

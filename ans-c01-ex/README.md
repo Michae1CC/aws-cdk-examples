@@ -2,10 +2,9 @@
 
 While studying for my AWS ANS C01 certification, I stumbled across
 [this post](https://dev.to/aws-builders/aws-advanced-networking-specialty-15-hands-on-exercises-for-certification-success-4eh7)
-by Arpad Toth list a number of practical exercises aimed at those studying for
-this particular certification. Throwing down the gauntlet, I've decided to take
-up the challenge by completing the exercises using CDK. I've omitted exercises
-that require multiple accounts or the need to purchase a domain name.
+by Arpad Toth which lists a number of practical exercises to help with exam prep.
+I've decided to take up the challenge by completing the exercises in CDK.
+I've omitted exercises that require multiple accounts or the need to purchase a domain name.
 
 ## Exercises 1-4
 
@@ -166,6 +165,18 @@ and then running `cdk destroy` on the created stacks.
 
 ## Exercise 9
 
+This is the architecture we will need to implement.
+
+![ex-9-architecture](./img/ans-c01-ex-9.png)
+
+The architecture of exercises 1-4 have been implement in AWS CDK within the
+`"Ex9Stack"`. Setting up SSL certificates for mutual authentication can be done
+by following these steps: <https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/cvpn-getting-started.html>.
+
+Once the stack has been deployed, you can connect to the endpoint using the
+AWS provided client, again by following the above instructions. The following
+demonstrates that we can ping the instance in our VPC using the VPN.
+
 ```text
 [home-desktop]$ ping 10.0.43.0
 PING 10.0.43.0 (10.0.43.0): 56 data bytes
@@ -179,8 +190,17 @@ PING 10.0.43.0 (10.0.43.0): 56 data bytes
 round-trip min/avg/max/stddev = 210.756/257.080/313.077/39.442 ms
 ```
 
-Examining packets through WireShark it appears that requests are made to the
-client vpn endpoint over UDP where the packet payload has been encrypted.
+We can also `ping google.com` through the VPN. To confirm that the packets are
+being sent through the VPN, we can see that the pings are encrypted and sent
+over UDP to the VPN endpoint using WireShark (AWS client VPNs use UDP by default
+to send encrypted packets).
+
+![ping-google-client-vpn](./img/ping-google-client-vpn.png)
+
+For reference, this is what pinging `google.com` looks like without a connection
+to the VPN.
+
+![ping-google-no-client-vpn](./img/ping-google-no-client-vpn.png)
 
 ## Exercise 14
 

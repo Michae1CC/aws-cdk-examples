@@ -35,13 +35,13 @@ export class Ex8_P1Stack extends cdk.Stack {
     instanceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
-      "Allow pings from any connection",
+      "Allow pings from any connection"
     );
 
     instanceSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.SSH,
-      "Allow ssh from any Ipv4",
+      "Allow ssh from any Ipv4"
     );
 
     this.transitGateway = new ec2.CfnTransitGateway(this, "transit-gw", {
@@ -52,7 +52,7 @@ export class Ex8_P1Stack extends cdk.Stack {
       dnsSupport: "enable",
     });
 
-    new cdk.CfnOutput(this, "attrId", {
+    new cdk.CfnOutput(this, "transit-gw-attr-id", {
       value: this.transitGateway.attrId,
     });
 
