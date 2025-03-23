@@ -247,3 +247,4 @@ rtt min/avg/max/mdev = 1.066/2.184/5.246/1.561 ms
 * <https://aws.amazon.com/blogs/networking-and-content-delivery/how-to-use-aws-network-manager-to-visualize-transit-gateways-across-all-accounts-in-the-aws-organization/>
 * <https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/cvpn-getting-started.html>
 * <https://github.com/aws-samples/aws-cloudwan-workshop-code?tab=readme-ov-file>
+* <https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html>
