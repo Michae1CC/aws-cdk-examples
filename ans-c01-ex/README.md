@@ -248,3 +248,4 @@ rtt min/avg/max/mdev = 1.066/2.184/5.246/1.561 ms
 * <https://docs.aws.amazon.com/vpn/latest/clientvpn-admin/cvpn-getting-started.html>
 * <https://github.com/aws-samples/aws-cloudwan-workshop-code?tab=readme-ov-file>
 * <https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html>
+* <https://docs.aws.amazon.com/whitepapers/latest/building-scalable-secure-multi-vpc-network-infrastructure/using-nat-gateway-for-centralized-egress.html>
