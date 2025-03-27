@@ -113,11 +113,17 @@ The AWS VPC peer documentation states
 
 To put it simply - no.
 
+## Exercise 6
+
+This is the architecture we will need to implement.
+
+![ex-6-architecture](./img/ans-c01-ex-6.png)
+
 ## Exercise 8
 
 This is the architecture we will need to implement.
 
-![ex-1-4-architecture](./img/ans-c01-ex-8.png)
+![ex-8-architecture](./img/ans-c01-ex-8.png)
 
 The architecture of exercises 1-4 have been implement in AWS CDK within the
 `"Ex8-P1Tgw1Stack"`, `"Ex8-P1Tgw2Stack"` and `"Ex8-P2Stack"` stacks.
