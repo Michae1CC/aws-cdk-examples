@@ -119,6 +119,25 @@ This is the architecture we will need to implement.
 
 ![ex-6-architecture](./img/ans-c01-ex-6.png)
 
+```text
+[ec2-user@ip-10-0-35-4 ~]$ traceroute 1.1.1.1
+traceroute to 1.1.1.1 (1.1.1.1), 30 hops max, 60 byte packets
+ 1  * * *
+ 2  ip-10-2-34-43.ec2.internal (10.2.34.43)  1.243 ms  1.243 ms  1.221 ms
+ 3  244.5.0.255 (244.5.0.255)  9.914 ms 244.5.5.219 (244.5.5.219)  9.383 ms 244.5.0.227 (244.5.0.227)  5.324 ms
+ 4  240.4.112.68 (240.4.112.68)  2.416 ms 240.0.224.99 (240.0.224.99)  2.487 ms 240.0.224.96 (240.0.224.96)  1.959 ms
+ 5  240.3.184.44 (240.3.184.44)  2.970 ms 240.3.184.38 (240.3.184.38)  3.122 ms  2.884 ms
+ 6  99.82.8.8 (99.82.8.8)  3.114 ms  3.135 ms  3.119 ms
+ 7  99.82.8.9 (99.82.8.9)  4.049 ms 99.83.93.219 (99.83.93.219)  20.601 ms  20.000 ms
+ 8  173.245.63.105 (173.245.63.105)  4.226 ms 173.245.63.101 (173.245.63.101)  3.261 ms 173.245.63.147 (173.245.63.147)  3.238 ms
+ 9  one.one.one.one (1.1.1.1)  3.485 ms  3.019 ms  2.614 ms
+[ec2-user@ip-10-0-35-4 ~]$ ping 1.1.1.1
+PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
+^C
+--- 1.1.1.1 ping statistics ---
+4 packets transmitted, 0 received, 100% packet loss, time 3072ms
+```
+
 ## Exercise 8
 
 This is the architecture we will need to implement.
