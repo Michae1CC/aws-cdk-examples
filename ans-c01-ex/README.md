@@ -3,8 +3,10 @@
 While studying for my AWS ANS C01 certification, I stumbled across
 [this post](https://dev.to/aws-builders/aws-advanced-networking-specialty-15-hands-on-exercises-for-certification-success-4eh7)
 by Arpad Toth which lists a number of practical exercises to help with exam prep.
-I've decided to take up the challenge by completing the exercises in CDK.
-I've omitted exercises that require multiple accounts or the need to purchase a domain name.
+I've decided to take up the challenge by completing a number the exercises in CDK.
+
+If you deploy any of these stacks your self, remember to tear down the created resources by
+running `cdk destroy`.
 
 ## Exercises 1-4
 
@@ -115,28 +117,33 @@ To put it simply - no.
 
 ## Exercise 6
 
-This is the architecture we will need to implement.
+This is the architecture we will need to implement for the first part of the question.
 
 ![ex-6-architecture](./img/ans-c01-ex-6.png)
 
+The architecture of exercise 6 has been implement in AWS CDK within the
+`"Ex6Stack"`. Once deployed we can SSH onto the EC2 machine created within the first
+private VPC and test a ping connection to a public IP.
+
 ```text
-[ec2-user@ip-10-0-35-4 ~]$ traceroute 1.1.1.1
-traceroute to 1.1.1.1 (1.1.1.1), 30 hops max, 60 byte packets
- 1  * * *
- 2  ip-10-2-34-43.ec2.internal (10.2.34.43)  1.243 ms  1.243 ms  1.221 ms
- 3  244.5.0.255 (244.5.0.255)  9.914 ms 244.5.5.219 (244.5.5.219)  9.383 ms 244.5.0.227 (244.5.0.227)  5.324 ms
- 4  240.4.112.68 (240.4.112.68)  2.416 ms 240.0.224.99 (240.0.224.99)  2.487 ms 240.0.224.96 (240.0.224.96)  1.959 ms
- 5  240.3.184.44 (240.3.184.44)  2.970 ms 240.3.184.38 (240.3.184.38)  3.122 ms  2.884 ms
- 6  99.82.8.8 (99.82.8.8)  3.114 ms  3.135 ms  3.119 ms
- 7  99.82.8.9 (99.82.8.9)  4.049 ms 99.83.93.219 (99.83.93.219)  20.601 ms  20.000 ms
- 8  173.245.63.105 (173.245.63.105)  4.226 ms 173.245.63.101 (173.245.63.101)  3.261 ms 173.245.63.147 (173.245.63.147)  3.238 ms
- 9  one.one.one.one (1.1.1.1)  3.485 ms  3.019 ms  2.614 ms
 [ec2-user@ip-10-0-35-4 ~]$ ping 1.1.1.1
 PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.
+64 bytes from 1.1.1.1: icmp_seq=1 ttl=55 time=3.52 ms
+64 bytes from 1.1.1.1: icmp_seq=2 ttl=55 time=2.13 ms
+64 bytes from 1.1.1.1: icmp_seq=3 ttl=55 time=2.24 ms
 ^C
 --- 1.1.1.1 ping statistics ---
-4 packets transmitted, 0 received, 100% packet loss, time 3072ms
+3 packets transmitted, 3 received, 0% packet loss, time 2002ms
+rtt min/avg/max/mdev = 2.132/2.635/3.528/0.634 ms
 ```
+
+The implementation for the second exercise has been omitted although the solution
+is fairly similar. The main difference will be that each region will require
+its own TGW with traffic from the private VPCs bound for a public
+network will traverse over a peering connection from the private VPC's TGW to
+the egress VPC's TGW.
+
+![ex-6-regional-architecture](./img/ans-c01-ex-6-regional.png)
 
 ## Exercise 8
 
@@ -185,9 +192,6 @@ the steps from
 ![nm-tg-1](./img/nm-tgw-1.png)
 ![nm-tg-2](./img/nm-tgw-2.png)
 
-Remember to tear down the created resources by first deleting the ec2 instances
-and then running `cdk destroy` on the created stacks.
-
 ## Exercise 9
 
 This is the architecture we will need to implement.
@@ -233,7 +237,7 @@ This is the architecture we will need to implement.
 
 ![ex-14-architecture](./img/ans-c01-ex-14.png)
 
-The architecture of exercises 1-4 have been implement in AWS CDK within the
+The architecture of exercise 14 has been implement in AWS CDK within the
 `"Ex14Stack"`. Once deployed we create another instance within the public
 subnet and ping the other instance provided with the `example.com` domain.
 
@@ -259,6 +263,10 @@ PING example.com (10.0.82.95) 56(84) bytes of data.
 5 packets transmitted, 5 received, 0% packet loss, time 4007ms
 rtt min/avg/max/mdev = 1.066/2.184/5.246/1.561 ms
 ```
+
+## Exercise 15
+
+This exercise has already been complete in this aws cdk example [here](https://github.com/Michae1CC/aws-cdk-examples/tree/main/route53-dnssec-enabled).
 
 ## References
 
