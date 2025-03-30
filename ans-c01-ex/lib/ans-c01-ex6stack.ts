@@ -249,6 +249,8 @@ export class Ex6Stack extends cdk.Stack {
         });
       });
 
+    // Create an instance connect endpoint and instance in the first private VPC
+
     const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
       vpc: vpcA,
       allowAllOutbound: true,

@@ -139,7 +139,7 @@ rtt min/avg/max/mdev = 2.132/2.635/3.528/0.634 ms
 
 The implementation for the second exercise has been omitted although the solution
 is fairly similar. The main difference will be that each region will require
-its own TGW with traffic from the private VPCs bound for a public
+its own TGW where traffic from the private VPCs bound for a public
 network will traverse over a peering connection from the private VPC's TGW to
 the egress VPC's TGW.
 
