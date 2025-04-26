@@ -16,3 +16,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## References
 
 * <https://docs.aws.amazon.com/whitepapers/latest/ipv6-on-aws/amazon-vpc-design.html>
+* <https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html>
