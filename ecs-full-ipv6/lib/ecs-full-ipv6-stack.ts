@@ -5,6 +5,7 @@ import {
   aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_logs as logs,
+  aws_s3 as s3,
 } from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib";
 import { FlowLogDestination } from "aws-cdk-lib/aws-ec2";
@@ -165,6 +166,15 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       maxHealthyPercent: 200,
     });
 
+    // Create an s3 bucket to store the alb access logs
+    const accessLogsBucket = new s3.Bucket(this, "alb-access-logs", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      versioned: false,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      transferAcceleration: false,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    });
+
     const loadBalancer = new elbv2.ApplicationLoadBalancer(
       this,
       "service-alb",
@@ -176,6 +186,8 @@ export class EcsFullIpv6Stack extends cdk.Stack {
         http2Enabled: true,
       }
     );
+
+    loadBalancer.logAccessLogs(accessLogsBucket);
 
     const targetGroup = new elbv2.ApplicationTargetGroup(this, "target-group", {
       vpc: vpc,
@@ -224,8 +236,8 @@ export class EcsFullIpv6Stack extends cdk.Stack {
 
     vpc
       .selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS })
-      .subnets.map((subnet) => {
-        new ec2.FlowLog(this, `vpc-flow-logs-subnet-${subnet.subnetId}`, {
+      .subnets.map((subnet, index) => {
+        new ec2.FlowLog(this, `vpc-flow-logs-subnet-${index}`, {
           resourceType: ec2.FlowLogResourceType.fromSubnet(subnet),
           destination: FlowLogDestination.toCloudWatchLogs(
             vpcFlowLogsLogGroup,
@@ -249,6 +261,10 @@ export class EcsFullIpv6Stack extends cdk.Stack {
           ],
         });
       });
+
+    new cdk.CfnOutput(this, "alb-dns", {
+      value: loadBalancer.loadBalancerDnsName,
+    });
 
     // TODO: CW logs and glue job
   }
