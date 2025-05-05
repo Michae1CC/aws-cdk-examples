@@ -21,6 +21,7 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       enableDnsSupport: true,
       ipAddresses: ec2.IpAddresses.cidr("10.0.0.0/16"),
       ipProtocol: ec2.IpProtocol.DUAL_STACK,
+      natGateways: 0,
       subnetConfiguration: [
         {
           name: "public",
@@ -40,6 +41,7 @@ export class EcsFullIpv6Stack extends cdk.Stack {
     const albSecurityGroup = new ec2.SecurityGroup(this, "alb-sg", {
       vpc: vpc,
       allowAllOutbound: true,
+      allowAllIpv6Outbound: true,
     });
 
     albSecurityGroup.addIngressRule(
@@ -81,6 +83,7 @@ export class EcsFullIpv6Stack extends cdk.Stack {
     const ecsSecurityGroup = new ec2.SecurityGroup(this, "ecs-sg", {
       vpc: vpc,
       allowAllOutbound: true,
+      allowAllIpv6Outbound: true,
     });
 
     ecsSecurityGroup.addIngressRule(
@@ -97,48 +100,74 @@ export class EcsFullIpv6Stack extends cdk.Stack {
 
     ecsSecurityGroup.addIngressRule(albSecurityGroup, ec2.Port.tcp(80));
 
-    const cluster = new ecs.Cluster(this, "cluster", {
-      vpc: vpc,
-    });
-
-    const ecsAsg = new autoscaling.AutoScalingGroup(this, "service-asg", {
-      vpc: vpc,
-      autoScalingGroupName: "service-asg",
-      allowAllOutbound: true,
-      machineImage: ecs.EcsOptimizedImage.amazonLinux(),
-      instanceType: new ec2.InstanceType("t2.micro"),
-      securityGroup: ecsSecurityGroup,
-      // Scale in protection must be enabled to use managed termination protection
-      // see: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/managed-termination-protection.html
-      newInstancesProtectedFromScaleIn: true,
-      vpcSubnets: vpc.selectSubnets({
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-      }),
-    });
-
-    const asgCapacityProvider = new ecs.AsgCapacityProvider(
+    const cloudwatchIpv6InterfaceEndpointSecurityGroup = new ec2.SecurityGroup(
       this,
-      "capacity-provider",
+      "cloudwatch-ipv6-interface-endpoint-sg",
       {
-        autoScalingGroup: ecsAsg,
-        enableManagedDraining: true,
-        enableManagedScaling: true,
-        enableManagedTerminationProtection: true,
+        vpc: vpc,
+        allowAllOutbound: true,
+        allowAllIpv6Outbound: true,
       }
     );
 
-    cluster.addAsgCapacityProvider(asgCapacityProvider);
+    cloudwatchIpv6InterfaceEndpointSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.HTTP
+    );
+    cloudwatchIpv6InterfaceEndpointSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.HTTP
+    );
+    cloudwatchIpv6InterfaceEndpointSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.HTTPS
+    );
+    cloudwatchIpv6InterfaceEndpointSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.HTTPS
+    );
+
+    // aws log driver does not support endpoint configuration, configure an
+    // interface endpoint to work around this, see:
+    // https://github.com/aws/containers-roadmap/issues/73
+    new ec2.InterfaceVpcEndpoint(this, "cloudwatch-ipv6", {
+      vpc: vpc,
+      securityGroups: [cloudwatchIpv6InterfaceEndpointSecurityGroup],
+      service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+      privateDnsEnabled: true,
+      dnsRecordIpType: ec2.VpcEndpointDnsRecordIpType.IPV6,
+      ipAddressType: ec2.VpcEndpointIpAddressType.DUALSTACK,
+      subnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+    });
+
+    const cluster = new ecs.Cluster(this, "cluster", {
+      vpc: vpc,
+      enableFargateCapacityProviders: true,
+    });
+
+    cluster.addDefaultCapacityProviderStrategy([
+      {
+        capacityProvider: "FARGATE",
+        // Direct all the traffic in this cluster to Fargate
+        weight: 1,
+      },
+    ]);
 
     const ecsTaskLogGroup = new logs.LogGroup(this, "ecs-task", {
+      retention: logs.RetentionDays.ONE_DAY,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    const taskDefinition = new ecs.TaskDefinition(this, "task-definition", {
-      compatibility: ecs.Compatibility.EC2,
-      networkMode: ecs.NetworkMode.AWS_VPC,
-      cpu: "256",
-      memoryMiB: "512",
-    });
+    const taskDefinition = new ecs.FargateTaskDefinition(
+      this,
+      "task-definition",
+      {
+        cpu: 256,
+        memoryLimitMiB: 512,
+      }
+    );
 
     taskDefinition.addContainer("nginx", {
       essential: true,
@@ -158,56 +187,60 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       ],
     });
 
-    const service = new ecs.Ec2Service(this, "service", {
+    const service = new ecs.FargateService(this, "service", {
       cluster: cluster,
       taskDefinition: taskDefinition,
+      assignPublicIp: false,
+      securityGroups: [ecsSecurityGroup],
       desiredCount: 1,
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
     });
 
-    // Create an s3 bucket to store the alb access logs
-    const accessLogsBucket = new s3.Bucket(this, "alb-access-logs", {
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      versioned: false,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      transferAcceleration: false,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-    });
+    // // Create an s3 bucket to store the alb access logs
+    // const accessLogsBucket = new s3.Bucket(this, "alb-access-logs", {
+    //   removalPolicy: cdk.RemovalPolicy.DESTROY,
+    //   versioned: false,
+    //   encryption: s3.BucketEncryption.S3_MANAGED,
+    //   transferAcceleration: false,
+    //   blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    // });
 
-    const loadBalancer = new elbv2.ApplicationLoadBalancer(
-      this,
-      "service-alb",
-      {
-        vpc: vpc,
-        internetFacing: true,
-        ipAddressType: elbv2.IpAddressType.DUAL_STACK,
-        securityGroup: albSecurityGroup,
-        http2Enabled: true,
-      }
-    );
+    // const loadBalancer = new elbv2.ApplicationLoadBalancer(
+    //   this,
+    //   "service-alb",
+    //   {
+    //     vpc: vpc,
+    //     internetFacing: true,
+    //     ipAddressType: elbv2.IpAddressType.DUAL_STACK,
+    //     securityGroup: albSecurityGroup,
+    //     http2Enabled: true,
+    //   }
+    // );
 
-    loadBalancer.logAccessLogs(accessLogsBucket);
+    // loadBalancer.logAccessLogs(accessLogsBucket);
 
-    const targetGroup = new elbv2.ApplicationTargetGroup(this, "target-group", {
-      vpc: vpc,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      port: 80,
-      healthCheck: {
-        protocol: elbv2.Protocol.HTTP,
-        path: "/",
-      },
-    });
+    // const targetGroup = new elbv2.ApplicationTargetGroup(this, "target-group", {
+    //   vpc: vpc,
+    //   protocol: elbv2.ApplicationProtocol.HTTP,
+    //   port: 80,
+    //   ipAddressType: elbv2.TargetGroupIpAddressType.IPV6,
+    //   healthCheck: {
+    //     protocol: elbv2.Protocol.HTTP,
+    //     path: "/",
+    //   },
+    // });
 
-    loadBalancer.addListener("http-listener", {
-      port: 80,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      defaultAction: elbv2.ListenerAction.forward([targetGroup]),
-    });
+    // loadBalancer.addListener("http-listener", {
+    //   port: 80,
+    //   protocol: elbv2.ApplicationProtocol.HTTP,
+    //   defaultAction: elbv2.ListenerAction.forward([targetGroup]),
+    // });
 
-    targetGroup.addTarget(service);
+    // targetGroup.addTarget(service);
 
     const vpcFlowLogsLogGroup = new logs.LogGroup(this, "vpc-flow-log", {
+      retention: logs.RetentionDays.ONE_DAY,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
@@ -249,23 +282,23 @@ export class EcsFullIpv6Stack extends cdk.Stack {
             ec2.LogFormat.ALL_DEFAULT_FIELDS,
             ec2.LogFormat.PKT_SRC_ADDR,
             ec2.LogFormat.PKT_DST_ADDR,
-            ec2.LogFormat.ECS_CLUSTER_ARN,
-            ec2.LogFormat.ECS_CLUSTER_NAME,
-            ec2.LogFormat.ECS_CONTAINER_INSTANCE_ARN,
-            ec2.LogFormat.ECS_CONTAINER_INSTANCE_ID,
-            ec2.LogFormat.ECS_CONTAINER_ID,
-            ec2.LogFormat.ECS_SERVICE_NAME,
-            ec2.LogFormat.ECS_TASK_DEFINITION_ARN,
-            ec2.LogFormat.ECS_TASK_ARN,
-            ec2.LogFormat.ECS_TASK_ID,
+            // ec2.LogFormat.ECS_CLUSTER_ARN,
+            // ec2.LogFormat.ECS_CLUSTER_NAME,
+            // ec2.LogFormat.ECS_CONTAINER_INSTANCE_ARN,
+            // ec2.LogFormat.ECS_CONTAINER_INSTANCE_ID,
+            // ec2.LogFormat.ECS_CONTAINER_ID,
+            // ec2.LogFormat.ECS_SERVICE_NAME,
+            // ec2.LogFormat.ECS_TASK_DEFINITION_ARN,
+            // ec2.LogFormat.ECS_TASK_ARN,
+            // ec2.LogFormat.ECS_TASK_ID,
           ],
         });
       });
 
-    new cdk.CfnOutput(this, "alb-dns", {
-      value: loadBalancer.loadBalancerDnsName,
-    });
+    // new cdk.CfnOutput(this, "alb-dns", {
+    //   value: loadBalancer.loadBalancerDnsName,
+    // });
 
-    // TODO: CW logs and glue job
+    // // TODO: CW logs and glue job
   }
 }
