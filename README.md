@@ -11,6 +11,7 @@ Examples of small services I've put together using AWS CDK v2 (in typescript) to
 | [cognito-saml-identity-pools](./cognito-saml-identity-pools/)       | ![cognito-saml-identity-pools](./cognito-saml-identity-pools/img/cognito-saml-identity-pools-architecture.png)          | dynamodb, cognito, fargate                            |
 | [dynamo-vpc-gateway-endpoint](./dynamo-vpc-gateway-endpoint/)       | ![dynamo-vpc-gateway-endpoint](./dynamo-vpc-gateway-endpoint/img/dynamo-vpc-gateway-endpoint-architecture.png)          | dynamodb, cognito, apigw, alb                            |
 | [ecs-anywhere](./ecs-anywhere/)       | ![ecs-anywhere](./ecs-anywhere/img/ecs-anywhere-architecture.png)          | dynamodb, ecs, sqs                            |
+| [ecs-full-ipv6](./ecs-full-ipv6/)       | ![ecs-full-ipv6](./ecs-full-ipv6/img/ecs-full-ipv6-architecture.png)          | ecs, cloudwatch                             |
 | [lambda-to-fargate](./lambda-to-fargate/)       | ![lambda-to-fargate](./lambda-to-fargate/img/lambda-to-fargate-architecture.png)          | apigw, fargate, lambda                                  |
 | [rekcognition-text](./rekognition-text/)        | ![rekcognition-text](./rekognition-text/img/rekognition-text-architecture.png)            | s3, lambda, rekognition, dynamodb                       |
 | [route53-dnssec-enabled](./route53-dnssec-enabled/)        | ![route53-dnssec-enabled](./route53-dnssec-enabled/img/route53-dnssec-enabled-architecture.png)            | route53, lambda, kms, api-gateway                       |

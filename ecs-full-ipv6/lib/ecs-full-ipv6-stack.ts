@@ -1,5 +1,4 @@
 import {
-  aws_autoscaling as autoscaling,
   aws_ec2 as ec2,
   aws_ecs as ecs,
   aws_elasticloadbalancingv2 as elbv2,
@@ -58,25 +57,25 @@ export class EcsFullIpv6Stack extends cdk.Stack {
 
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(80),
+      ec2.Port.HTTP,
       "Allow HTTP traffic from Ipv4"
     );
 
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(80),
+      ec2.Port.HTTP,
       "Allow HTTP from Ipv6"
     );
 
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(443),
+      ec2.Port.HTTPS,
       "Allow HTTPS traffic from Ipv4"
     );
 
     albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv6(),
-      ec2.Port.tcp(443),
+      ec2.Port.HTTPS,
       "Allow HTTPS from Ipv6"
     );
 
@@ -98,7 +97,7 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       "Allow Pings from Ipv6"
     );
 
-    ecsSecurityGroup.addIngressRule(albSecurityGroup, ec2.Port.tcp(80));
+    ecsSecurityGroup.addIngressRule(albSecurityGroup, ec2.Port.HTTP);
 
     const cloudwatchIpv6InterfaceEndpointSecurityGroup = new ec2.SecurityGroup(
       this,

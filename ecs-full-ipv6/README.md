@@ -21,3 +21,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://containersonaws.com/pattern/dual-stack-ipv6-networking-ecs-fargate>
 * <https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-requests.html>
 * <https://tty.neveragain.de/2024/05/20/aws-ipv6-egress.html>
+* <https://github.com/aws/containers-roadmap/issues/73>
