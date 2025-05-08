@@ -196,47 +196,47 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       maxHealthyPercent: 200,
     });
 
-    // // Create an s3 bucket to store the alb access logs
-    // const accessLogsBucket = new s3.Bucket(this, "alb-access-logs", {
-    //   removalPolicy: cdk.RemovalPolicy.DESTROY,
-    //   versioned: false,
-    //   encryption: s3.BucketEncryption.S3_MANAGED,
-    //   transferAcceleration: false,
-    //   blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-    // });
+    // Create an s3 bucket to store the alb access logs
+    const accessLogsBucket = new s3.Bucket(this, "alb-access-logs", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      versioned: false,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      transferAcceleration: false,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    });
 
-    // const loadBalancer = new elbv2.ApplicationLoadBalancer(
-    //   this,
-    //   "service-alb",
-    //   {
-    //     vpc: vpc,
-    //     internetFacing: true,
-    //     ipAddressType: elbv2.IpAddressType.DUAL_STACK,
-    //     securityGroup: albSecurityGroup,
-    //     http2Enabled: true,
-    //   }
-    // );
+    const loadBalancer = new elbv2.ApplicationLoadBalancer(
+      this,
+      "service-alb",
+      {
+        vpc: vpc,
+        internetFacing: true,
+        ipAddressType: elbv2.IpAddressType.DUAL_STACK,
+        securityGroup: albSecurityGroup,
+        http2Enabled: true,
+      }
+    );
 
     // loadBalancer.logAccessLogs(accessLogsBucket);
 
-    // const targetGroup = new elbv2.ApplicationTargetGroup(this, "target-group", {
-    //   vpc: vpc,
-    //   protocol: elbv2.ApplicationProtocol.HTTP,
-    //   port: 80,
-    //   ipAddressType: elbv2.TargetGroupIpAddressType.IPV6,
-    //   healthCheck: {
-    //     protocol: elbv2.Protocol.HTTP,
-    //     path: "/",
-    //   },
-    // });
+    const targetGroup = new elbv2.ApplicationTargetGroup(this, "target-group", {
+      vpc: vpc,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      port: 80,
+      targetType: elbv2.TargetType.IP,
+      healthCheck: {
+        protocol: elbv2.Protocol.HTTP,
+        path: "/",
+      },
+    });
 
-    // loadBalancer.addListener("http-listener", {
-    //   port: 80,
-    //   protocol: elbv2.ApplicationProtocol.HTTP,
-    //   defaultAction: elbv2.ListenerAction.forward([targetGroup]),
-    // });
+    loadBalancer.addListener("http-listener", {
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      defaultAction: elbv2.ListenerAction.forward([targetGroup]),
+    });
 
-    // targetGroup.addTarget(service);
+    targetGroup.addTarget(service);
 
     const vpcFlowLogsLogGroup = new logs.LogGroup(this, "vpc-flow-log", {
       retention: logs.RetentionDays.ONE_DAY,
@@ -281,22 +281,22 @@ export class EcsFullIpv6Stack extends cdk.Stack {
             ec2.LogFormat.ALL_DEFAULT_FIELDS,
             ec2.LogFormat.PKT_SRC_ADDR,
             ec2.LogFormat.PKT_DST_ADDR,
-            // ec2.LogFormat.ECS_CLUSTER_ARN,
-            // ec2.LogFormat.ECS_CLUSTER_NAME,
-            // ec2.LogFormat.ECS_CONTAINER_INSTANCE_ARN,
-            // ec2.LogFormat.ECS_CONTAINER_INSTANCE_ID,
-            // ec2.LogFormat.ECS_CONTAINER_ID,
-            // ec2.LogFormat.ECS_SERVICE_NAME,
-            // ec2.LogFormat.ECS_TASK_DEFINITION_ARN,
-            // ec2.LogFormat.ECS_TASK_ARN,
-            // ec2.LogFormat.ECS_TASK_ID,
+            ec2.LogFormat.ECS_CLUSTER_ARN,
+            ec2.LogFormat.ECS_CLUSTER_NAME,
+            ec2.LogFormat.ECS_CONTAINER_INSTANCE_ARN,
+            ec2.LogFormat.ECS_CONTAINER_INSTANCE_ID,
+            ec2.LogFormat.ECS_CONTAINER_ID,
+            ec2.LogFormat.ECS_SERVICE_NAME,
+            ec2.LogFormat.ECS_TASK_DEFINITION_ARN,
+            ec2.LogFormat.ECS_TASK_ARN,
+            ec2.LogFormat.ECS_TASK_ID,
           ],
         });
       });
 
-    // new cdk.CfnOutput(this, "alb-dns", {
-    //   value: loadBalancer.loadBalancerDnsName,
-    // });
+    new cdk.CfnOutput(this, "alb-dns", {
+      value: loadBalancer.loadBalancerDnsName,
+    });
 
     // // TODO: CW logs and glue job
   }
