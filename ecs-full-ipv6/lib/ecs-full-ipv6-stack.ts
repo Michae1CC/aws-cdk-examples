@@ -217,7 +217,7 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       }
     );
 
-    // loadBalancer.logAccessLogs(accessLogsBucket);
+    loadBalancer.logAccessLogs(accessLogsBucket);
 
     const targetGroup = new elbv2.ApplicationTargetGroup(this, "target-group", {
       vpc: vpc,
@@ -226,6 +226,7 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       targetType: elbv2.TargetType.IP,
       healthCheck: {
         protocol: elbv2.Protocol.HTTP,
+        port: "80",
         path: "/",
       },
     });
