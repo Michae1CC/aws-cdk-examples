@@ -1,9 +1,11 @@
 import {
+  aws_athena as athena,
   aws_ec2 as ec2,
   aws_ecs as ecs,
   aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_logs as logs,
+  aws_glue as glue,
   aws_s3 as s3,
 } from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib";
@@ -299,6 +301,119 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       value: loadBalancer.loadBalancerDnsName,
     });
 
-    // // TODO: CW logs and glue job
+    const accessLogsGlueDb = new glue.CfnDatabase(
+      this,
+      "accesslogs-glue-database",
+      {
+        databaseInput: {
+          name: `albaccesslogsathenadatabase`,
+        },
+        catalogId: this.account,
+      }
+    );
+
+    const accessLogsOuputBucket = new s3.Bucket(this, "alb-access-logs", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      versioned: false,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      transferAcceleration: false,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    });
+
+    const accessLogsAthenaWorkGroup = new athena.CfnWorkGroup(
+      this,
+      "accesslogs-workgroup",
+      {
+        name: "albaccesslogsworkgroup",
+        description:
+          "This workgroup has the queries related to the alb access logs",
+        state: "ENABLED",
+        workGroupConfiguration: {
+          resultConfiguration: {
+            outputLocation: `s3://${accessLogsOuputBucket.bucketName}`,
+          },
+          engineVersion: {
+            selectedEngineVersion: "Athena engine version 3",
+          },
+        },
+      }
+    );
+
+    new glue.CfnTable(this, id, {
+      catalogId: this.account,
+      databaseName: accessLogsGlueDb.ref,
+      tableInput: {
+        description: "This table has the schema for webapp alb access logs",
+        name: "accesslogs",
+        tableType: "EXTERNAL_TABLE",
+        parameters: {
+          EXTERNAL: "true",
+          "projection.enabled": "true",
+          "projection.day.type": "date",
+          // This start date just needs to be before we wrote our first log to any account
+          "projection.day.range": "2025/05/01,NOW",
+          "projection.day.format": "yyyy/MM/dd",
+          "projection.day.interval": "1",
+          "projection.day.interval.unit": "DAYS",
+          "storage.location.template": `s3://${accessLogsBucket.bucketName}/AWSLogs/${this.account}/elasticloadbalancing/${this.region}/\${day}`,
+        },
+        partitionKeys: [
+          {
+            name: "day",
+            type: "string",
+          },
+        ],
+        storageDescriptor: {
+          location: `s3://${accessLogsBucket.bucketName}/AWSLogs/${this.account}/elasticloadbalancing/${this.region}/`,
+          inputFormat: "org.apache.hadoop.mapred.TextInputFormat",
+          outputFormat:
+            "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+          serdeInfo: {
+            parameters: {
+              EXTERNAL: "true",
+              "serialization.format": "1",
+              "input.regex": `([^ ]*) ([^ ]*) ([^ ]*) ([^ ]*):([0-9]*) ([^ ]*)[:-]([0-9]*) ([-.0-9]*) ([-.0-9]*) ([-.0-9]*) (|[-0-9]*) (-|[-0-9]*) ([-0-9]*) ([-0-9]*) \"([^ ]*) (.*) (- |[^ ]*)\" \"([^\"]*)\" ([A-Z0-9-_]+) ([A-Za-z0-9.-]*) ([^ ]*) \"([^\"]*)\" \"([^\"]*)\" \"([^\"]*)\" ([-.0-9]*) ([^ ]*) \"([^\"]*)\" \"([^\"]*)\" \"([^ ]*)\" \"([^\\s]+?)\" \"([^\\s]+)\" \"([^ ]*)\" \"([^ ]*)\" ?([^ ]*)?`,
+            },
+            serializationLibrary: "org.apache.hadoop.hive.serde2.RegexSerDe",
+          },
+          columns: [
+            { name: "type", type: "string" },
+            { name: "time", type: "string" },
+            { name: "elb", type: "string" },
+            { name: "client_ip", type: "string" },
+            { name: "client_port", type: "int" },
+            { name: "target_ip", type: "string" },
+            { name: "target_port", type: "int" },
+            { name: "request_processing_time", type: "double" },
+            { name: "target_processing_time", type: "double" },
+            { name: "response_processing_time", type: "double" },
+            { name: "elb_status_code", type: "int" },
+            { name: "target_status_code", type: "string" },
+            { name: "received_bytes", type: "bigint" },
+            { name: "sent_bytes", type: "bigint" },
+            { name: "request_verb", type: "string" },
+            { name: "request_url", type: "string" },
+            { name: "request_proto", type: "string" },
+            { name: "user_agent", type: "string" },
+            { name: "ssl_cipher", type: "string" },
+            { name: "ssl_protocol", type: "string" },
+            { name: "target_group_arn", type: "string" },
+            { name: "trace_id", type: "string" },
+            { name: "domain_name", type: "string" },
+            { name: "chosen_cert_arn", type: "string" },
+            { name: "matched_rule_priority", type: "string" },
+            { name: "request_creation_time", type: "string" },
+            { name: "actions_executed", type: "string" },
+            { name: "redirect_url", type: "string" },
+            { name: "lambda_error_reason", type: "string" },
+            { name: "target_port_list", type: "string" },
+            { name: "target_status_code_list", type: "string" },
+            { name: "classification", type: "string" },
+            { name: "classification_reason", type: "string" },
+            { name: "conn_trace_id", type: "string" },
+          ],
+        },
+      },
+    });
   }
 }
