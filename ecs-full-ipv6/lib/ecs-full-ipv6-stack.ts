@@ -312,13 +312,17 @@ export class EcsFullIpv6Stack extends cdk.Stack {
       }
     );
 
-    const accessLogsOuputBucket = new s3.Bucket(this, "alb-access-logs", {
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      versioned: false,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      transferAcceleration: false,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-    });
+    const accessLogsOuputBucket = new s3.Bucket(
+      this,
+      "alb-access-logs-output-bucket",
+      {
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        versioned: false,
+        encryption: s3.BucketEncryption.S3_MANAGED,
+        transferAcceleration: false,
+        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      }
+    );
 
     const accessLogsAthenaWorkGroup = new athena.CfnWorkGroup(
       this,
@@ -350,7 +354,6 @@ export class EcsFullIpv6Stack extends cdk.Stack {
           EXTERNAL: "true",
           "projection.enabled": "true",
           "projection.day.type": "date",
-          // This start date just needs to be before we wrote our first log to any account
           "projection.day.range": "2025/05/01,NOW",
           "projection.day.format": "yyyy/MM/dd",
           "projection.day.interval": "1",
