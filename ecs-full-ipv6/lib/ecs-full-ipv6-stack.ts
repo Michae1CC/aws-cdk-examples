@@ -379,6 +379,7 @@ export class EcsFullIpv6Stack extends cdk.Stack {
             },
             serializationLibrary: "org.apache.hadoop.hive.serde2.RegexSerDe",
           },
+          // See: https://docs.aws.amazon.com/athena/latest/ug/create-alb-access-logs-table.html
           columns: [
             { name: "type", type: "string" },
             { name: "time", type: "string" },
