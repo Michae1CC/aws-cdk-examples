@@ -108,15 +108,10 @@ export class CentralDnsStack extends cdk.Stack {
       }
     );
 
-    sqsInterfaceEndPoint.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        principals: [new iam.AnyPrincipal()],
-        resources: ["*"],
-        actions: ["sqs:*"],
-      })
-    );
-
+    /**
+     * NOTE: A manual association with the spoke VPC/s must be created since
+     * no construct exists for it.
+     */
     const privateHostedZone = new route53.PrivateHostedZone(
       this,
       "private-hosted-zone",
@@ -134,6 +129,15 @@ export class CentralDnsStack extends cdk.Stack {
     });
 
     const testQueue = new sqs.Queue(this, "test-queue");
+
+    sqsInterfaceEndPoint.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.AnyPrincipal()],
+        resources: [testQueue.queueArn],
+        actions: ["sqs:*"],
+      })
+    );
 
     new cdk.CfnOutput(this, "test-queue-url", {
       value: testQueue.queueUrl,
