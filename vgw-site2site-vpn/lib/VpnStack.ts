@@ -1,4 +1,8 @@
-import { aws_ec2 as ec2, aws_logs as logs } from "aws-cdk-lib";
+import {
+  aws_ec2 as ec2,
+  aws_logs as logs,
+  aws_secretsmanager as secretsmanager,
+} from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
@@ -9,6 +13,7 @@ import {
 
 interface VpnStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
+  ipsecKeySecret: secretsmanager.Secret;
 }
 
 export class VpnStack extends cdk.Stack {
@@ -77,6 +82,8 @@ export class VpnStack extends cdk.Stack {
         remoteIpv4NetworkCidr: AWS_VPC_IPV4_SUBNET,
         staticRoutesOnly: true,
         vpnGatewayId: vpnGateway.attrVpnGatewayId,
+        preSharedKeyStorage: "SecretsManager",
+        // TODO: Are two specifications required?
         // To configure, see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ec2.CfnVPNConnection.VpnTunnelOptionsSpecificationProperty.html
         vpnTunnelOptionsSpecifications: [
           {
@@ -163,12 +170,15 @@ export class VpnStack extends cdk.Stack {
               },
             ],
             phase2LifetimeSeconds: 3_600,
-            // TODO
-            preSharedKey: "<TODO>",
+            // tunnelInsideCidr: '169.254.11.0/30',
+            // Are the tunnelInsideCidr required for static tunnels?
+            tunnelInsideCidr: "169.254.10.0/30",
+            preSharedKey: props.ipsecKeySecret.secretValue.unsafeUnwrap(),
           },
         ],
       }
     );
+    vpnConnection.addDependency(vpnVpcAttachment);
 
     /**
      * Create a static route to the on-prem network
@@ -179,11 +189,12 @@ export class VpnStack extends cdk.Stack {
     });
 
     props.vpc.selectSubnets().subnets.forEach((subnet, index) => {
-      new ec2.CfnRoute(this, `vpn-route-${index}`, {
+      const route = new ec2.CfnRoute(this, `vpn-route-${index}`, {
         destinationCidrBlock: ON_PREM_IPV4_SUBNET,
         routeTableId: subnet.routeTable.routeTableId,
         gatewayId: vpnGateway.attrVpnGatewayId,
       });
+      route.addDependency(vpnVpcAttachment);
     });
   }
 }
