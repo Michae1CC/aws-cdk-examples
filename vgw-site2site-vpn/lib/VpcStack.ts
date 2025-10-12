@@ -19,6 +19,7 @@ export class VpcStack extends cdk.Stack {
       ipAddresses: ec2.IpAddresses.cidr(AWS_VPC_IPV4_SUBNET),
       ipProtocol: ec2.IpProtocol.IPV4_ONLY,
       natGateways: 1,
+      maxAzs: 2,
       subnetConfiguration: [
         {
           name: "public",
@@ -33,20 +34,26 @@ export class VpcStack extends cdk.Stack {
           ipv6AssignAddressOnCreation: true,
         },
       ],
+      flowLogs: {
+        "flow-logs-cloudwatch": {
+          destination: ec2.FlowLogDestination.toCloudWatchLogs(),
+          trafficType: ec2.FlowLogTrafficType.ALL,
+        },
+      },
     });
 
-    const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
+    const instanceEndpointSg = new ec2.SecurityGroup(this, "instance-sg", {
       vpc: this.vpc,
       allowAllOutbound: true,
     });
 
-    instanceSg.addIngressRule(
+    instanceEndpointSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.icmpPing(),
       "Allow pings from any connection"
     );
 
-    instanceSg.addIngressRule(
+    instanceEndpointSg.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.SSH,
       "Allow SSH from any connection"
@@ -56,7 +63,7 @@ export class VpcStack extends cdk.Stack {
       subnetId: this.vpc.selectSubnets({
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
       }).subnetIds[0],
-      securityGroupIds: [instanceSg.securityGroupId],
+      securityGroupIds: [instanceEndpointSg.securityGroupId],
     });
   }
 }
