@@ -20,4 +20,8 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/vpn/latest/s2svpn/VPC_VPN.html>
 * <https://www.youtube.com/watch?v=y0rjxXnf1Tk>
 * <https://www.youtube.com/watch?v=ymzqUTczkzM>
+* <https://www.youtube.com/watch?v=Z81Z9HPoVUQ>
 * <https://networklessons.com/security/ipsec-internet-protocol-security>
+* <https://docs.aws.amazon.com/directconnect/latest/UserGuide/create-virtual-private-gateway.html>
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ec2.CfnVPNGateway.html>
+* <https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ec2.CfnVPNConnection.html>
