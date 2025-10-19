@@ -4,6 +4,14 @@ This is a blank project for CDK development with TypeScript.
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
+```text
+$ ping 10.0.51.217
+PING 10.0.51.217 (10.0.51.217) 56(84) bytes of data.
+64 bytes from 10.0.51.217: icmp_seq=1 ttl=126 time=14.7 ms
+64 bytes from 10.0.51.217: icmp_seq=2 ttl=126 time=14.7 ms
+64 bytes from 10.0.51.217: icmp_seq=3 ttl=126 time=14.3 ms
+```
+
 ## Useful commands
 
 * `npm run build`   compile typescript to js

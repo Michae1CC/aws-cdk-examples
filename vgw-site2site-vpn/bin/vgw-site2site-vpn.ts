@@ -5,7 +5,6 @@ import { VpnStack } from "../lib/VpnStack";
 
 const env: cdk.Environment = {
   region: "ap-southeast-2",
-  account: "792309103169",
 };
 
 const app = new cdk.App();

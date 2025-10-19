@@ -25,13 +25,11 @@ export class VpcStack extends cdk.Stack {
           name: "public",
           subnetType: ec2.SubnetType.PUBLIC,
           cidrMask: 20,
-          ipv6AssignAddressOnCreation: true,
         },
         {
           name: "private",
           subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
           cidrMask: 20,
-          ipv6AssignAddressOnCreation: true,
         },
       ],
       flowLogs: {
@@ -61,7 +59,7 @@ export class VpcStack extends cdk.Stack {
 
     new ec2.CfnInstanceConnectEndpoint(this, "instance-connect", {
       subnetId: this.vpc.selectSubnets({
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       }).subnetIds[0],
       securityGroupIds: [instanceEndpointSg.securityGroupId],
     });

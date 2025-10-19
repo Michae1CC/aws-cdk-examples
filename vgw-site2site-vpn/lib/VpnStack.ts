@@ -28,7 +28,7 @@ export class VpnStack extends cdk.Stack {
       {
         logGroupName: "vpn-connection",
         retention: logs.RetentionDays.ONE_WEEK,
-        removalPolicy: cdk.RemovalPolicy.RETAIN,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
       }
     );
 
@@ -81,75 +81,8 @@ export class VpnStack extends cdk.Stack {
             logOutputFormat: "json",
           },
         },
-        // IPsec phase 1 configurations
-        phase1DhGroupNumbers: [
-          {
-            value: 14,
-          },
-        ],
-        phase1EncryptionAlgorithms: [
-          {
-            value: "AES128",
-          },
-          {
-            value: "AES256",
-          },
-          {
-            value: "AES128-GCM-16",
-          },
-          {
-            value: "AES256-GCM-16",
-          },
-        ],
-        phase1IntegrityAlgorithms: [
-          {
-            value: "SHA1",
-          },
-          {
-            value: "SHA2-256",
-          },
-          {
-            value: "SHA2-384",
-          },
-          {
-            value: "SHA2-512",
-          },
-        ],
         phase1LifetimeSeconds: 28_800,
         // IPsec phase 2 configurations
-        phase2DhGroupNumbers: [
-          {
-            value: 14,
-          },
-        ],
-        phase2EncryptionAlgorithms: [
-          {
-            value: "AES128",
-          },
-          {
-            value: "AES256",
-          },
-          {
-            value: "AES128-GCM-16",
-          },
-          {
-            value: "AES256-GCM-16",
-          },
-        ],
-        phase2IntegrityAlgorithms: [
-          {
-            value: "SHA1",
-          },
-          {
-            value: "SHA2-256",
-          },
-          {
-            value: "SHA2-384",
-          },
-          {
-            value: "SHA2-512",
-          },
-        ],
         phase2LifetimeSeconds: 3_600,
         // Let AWS choose the inside tunnel CIDR and pre-shared key
         tunnelInsideCidr: undefined,
