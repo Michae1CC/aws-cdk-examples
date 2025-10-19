@@ -12,6 +12,42 @@ PING 10.0.51.217 (10.0.51.217) 56(84) bytes of data.
 64 bytes from 10.0.51.217: icmp_seq=3 ttl=126 time=14.3 ms
 ```
 
+```text
+$ dig internal.awsvpc @10.0.60.146
+
+; <<>> DiG 9.18.33-1~deb12u2-Debian <<>> internal.awsvpc @10.0.60.146
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 3046
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;internal.awsvpc.		IN	A
+
+;; ANSWER SECTION:
+internal.awsvpc.	1800	IN	A	10.0.51.217
+
+;; Query time: 16 msec
+;; SERVER: 10.0.60.146#53(10.0.60.146) (UDP)
+;; WHEN: Sun Oct 19 21:47:48 AEST 2025
+;; MSG SIZE  rcvd: 60
+```
+
+```text
+ec2-user@ip-10-0-51-217 ~]$ ping node2.internal.onprem
+PING node2.internal.onprem (192.168.3.145) 56(84) bytes of data.
+64 bytes from ip-192-168-3-145.ap-southeast-2.compute.internal (192.168.3.145): icmp_seq=1 ttl=63 time=14.7 ms
+64 bytes from ip-192-168-3-145.ap-southeast-2.compute.internal (192.168.3.145): icmp_seq=2 ttl=63 time=14.3 ms
+64 bytes from ip-192-168-3-145.ap-southeast-2.compute.internal (192.168.3.145): icmp_seq=3 ttl=63 time=14.4 ms
+64 bytes from ip-192-168-3-145.ap-southeast-2.compute.internal (192.168.3.145): icmp_seq=4 ttl=63 time=14.1 ms
+^C
+--- node2.internal.onprem ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3004ms
+rtt min/avg/max/mdev = 14.110/14.377/14.665/0.202 ms
+```
+
 ## Useful commands
 
 * `npm run build`   compile typescript to js

@@ -72,22 +72,35 @@ export class Route53Stack extends cdk.Stack {
       }
     );
 
-    new route53resolver.CfnResolverRule(this, "onprem-resolver-rule", {
-      ruleType: "FORWARD",
-      domainName: "internal.onprem",
-      resolverEndpointId: dnsResolverOutboundEndpoint.logicalId,
-      // Requires two IP address, just use the same two
-      targetIps: [
-        {
-          ip: ON_PREM_PRIVATE_DNS_SERVER_IP,
-          port: "53",
-        },
-        {
-          ip: ON_PREM_PRIVATE_DNS_SERVER_IP,
-          port: "53",
-        },
-      ],
-    });
+    const onpremEndpointRule = new route53resolver.CfnResolverRule(
+      this,
+      "onprem-resolver-rule",
+      {
+        ruleType: "FORWARD",
+        domainName: "internal.onprem",
+        resolverEndpointId: dnsResolverOutboundEndpoint.attrResolverEndpointId,
+        // Requires two IP address, just use the same two
+        targetIps: [
+          {
+            ip: ON_PREM_PRIVATE_DNS_SERVER_IP,
+            port: "53",
+          },
+          {
+            ip: ON_PREM_PRIVATE_DNS_SERVER_IP,
+            port: "53",
+          },
+        ],
+      }
+    );
+
+    new route53resolver.CfnResolverRuleAssociation(
+      this,
+      "onprem-resolver-rule-association",
+      {
+        resolverRuleId: onpremEndpointRule.attrResolverRuleId,
+        vpcId: props.vpc.vpcId,
+      }
+    );
 
     const internalAwsVpcHostedZone = new route53.PrivateHostedZone(
       this,
@@ -98,25 +111,9 @@ export class Route53Stack extends cdk.Stack {
       }
     );
 
-    new route53.ARecord(this, "test-record", {
+    new route53.ARecord(this, "test-machine", {
       zone: internalAwsVpcHostedZone,
-      target: route53.RecordTarget.fromIpAddresses("10.0.0.123"),
+      target: route53.RecordTarget.fromIpAddresses("10.0.51.217"),
     });
-
-    // The cast here should be safe since multiple endpoints have been created.
-    // (
-    //   dnsResolverInboundEndpoint.ipAddresses as route53resolver.CfnResolverEndpoint.IpAddressRequestProperty[]
-    // ).forEach((dnsResolverInboundEndpointIpAddress, index) => {
-    //   // The IPv4 addresses from this output will need to be configured as
-    //   // forwarders for the bind server
-    //   new cdk.CfnOutput(
-    //     this,
-    //     `dns-resolver-inbound-endpoint-ip-address-${index}`,
-    //     {
-    //       description: "The IPv4 address of a DNS resolver inbound endpoint",
-    //       value: dnsResolverInboundEndpointIpAddress.ip!,
-    //     }
-    //   );
-    // });
   }
 }

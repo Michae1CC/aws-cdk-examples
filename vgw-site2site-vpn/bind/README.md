@@ -13,12 +13,11 @@ zone "internal.onprem" {
         type master;
         file "/etc/bind/db.onprem";
 };
-```
 
-```text
-zone "internal.onprem" {
-        type master;
-        file "/etc/bind/db.onprem";
+zone "internal.awsvpc" {
+        type forward;
+        forward only;
+        forwarders { 10.0.36.147; 10.0.60.146; };
 };
 ```
 
