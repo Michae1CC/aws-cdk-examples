@@ -13,7 +13,6 @@ import {
 
 interface VpnStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
-  ipsecKeySecret: secretsmanager.Secret;
 }
 
 export class VpnStack extends cdk.Stack {
@@ -67,6 +66,96 @@ export class VpnStack extends cdk.Stack {
       }
     );
 
+    const tunnelSpecificationShared: ec2.CfnVPNConnection.VpnTunnelOptionsSpecificationProperty =
+      {
+        ikeVersions: [
+          {
+            // Establish phase 1 the IPsec tunnel using the more secure IKEv2 protocol
+            value: "ikev2",
+          },
+        ],
+        logOptions: {
+          cloudwatchLogOptions: {
+            logEnabled: true,
+            logGroupArn: vpnConnectionLogGroup.logGroupArn,
+            logOutputFormat: "json",
+          },
+        },
+        // IPsec phase 1 configurations
+        phase1DhGroupNumbers: [
+          {
+            value: 14,
+          },
+        ],
+        phase1EncryptionAlgorithms: [
+          {
+            value: "AES128",
+          },
+          {
+            value: "AES256",
+          },
+          {
+            value: "AES128-GCM-16",
+          },
+          {
+            value: "AES256-GCM-16",
+          },
+        ],
+        phase1IntegrityAlgorithms: [
+          {
+            value: "SHA1",
+          },
+          {
+            value: "SHA2-256",
+          },
+          {
+            value: "SHA2-384",
+          },
+          {
+            value: "SHA2-512",
+          },
+        ],
+        phase1LifetimeSeconds: 28_800,
+        // IPsec phase 2 configurations
+        phase2DhGroupNumbers: [
+          {
+            value: 14,
+          },
+        ],
+        phase2EncryptionAlgorithms: [
+          {
+            value: "AES128",
+          },
+          {
+            value: "AES256",
+          },
+          {
+            value: "AES128-GCM-16",
+          },
+          {
+            value: "AES256-GCM-16",
+          },
+        ],
+        phase2IntegrityAlgorithms: [
+          {
+            value: "SHA1",
+          },
+          {
+            value: "SHA2-256",
+          },
+          {
+            value: "SHA2-384",
+          },
+          {
+            value: "SHA2-512",
+          },
+        ],
+        phase2LifetimeSeconds: 3_600,
+        // Let AWS choose the inside tunnel CIDR and pre-shared key
+        tunnelInsideCidr: undefined,
+        preSharedKey: undefined,
+      };
+
     const vpnConnection = new ec2.CfnVPNConnection(
       this,
       "vpn-connection-on-prem",
@@ -82,99 +171,10 @@ export class VpnStack extends cdk.Stack {
         remoteIpv4NetworkCidr: AWS_VPC_IPV4_SUBNET,
         staticRoutesOnly: true,
         vpnGatewayId: vpnGateway.attrVpnGatewayId,
-        preSharedKeyStorage: "SecretsManager",
-        // TODO: Are two specifications required?
         // To configure, see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ec2.CfnVPNConnection.VpnTunnelOptionsSpecificationProperty.html
         vpnTunnelOptionsSpecifications: [
-          {
-            ikeVersions: [
-              {
-                // Establish phase 1 the IPsec tunnel using the more secure IKEv2 protocol
-                value: "ikev2",
-              },
-            ],
-            logOptions: {
-              cloudwatchLogOptions: {
-                logEnabled: true,
-                logGroupArn: vpnConnectionLogGroup.logGroupArn,
-                logOutputFormat: "json",
-              },
-            },
-            // IPsec phase 1 configurations
-            phase1DhGroupNumbers: [
-              {
-                value: 14,
-              },
-            ],
-            phase1EncryptionAlgorithms: [
-              {
-                value: "AES128",
-              },
-              {
-                value: "AES256",
-              },
-              {
-                value: "AES128-GCM-16",
-              },
-              {
-                value: "AES256-GCM-16",
-              },
-            ],
-            phase1IntegrityAlgorithms: [
-              {
-                value: "SHA1",
-              },
-              {
-                value: "SHA2-256",
-              },
-              {
-                value: "SHA2-384",
-              },
-              {
-                value: "SHA2-512",
-              },
-            ],
-            phase1LifetimeSeconds: 28_800,
-            // IPsec phase 2 configurations
-            phase2DhGroupNumbers: [
-              {
-                value: 14,
-              },
-            ],
-            phase2EncryptionAlgorithms: [
-              {
-                value: "AES128",
-              },
-              {
-                value: "AES256",
-              },
-              {
-                value: "AES128-GCM-16",
-              },
-              {
-                value: "AES256-GCM-16",
-              },
-            ],
-            phase2IntegrityAlgorithms: [
-              {
-                value: "SHA1",
-              },
-              {
-                value: "SHA2-256",
-              },
-              {
-                value: "SHA2-384",
-              },
-              {
-                value: "SHA2-512",
-              },
-            ],
-            phase2LifetimeSeconds: 3_600,
-            // tunnelInsideCidr: '169.254.11.0/30',
-            // Are the tunnelInsideCidr required for static tunnels?
-            tunnelInsideCidr: "169.254.10.0/30",
-            preSharedKey: props.ipsecKeySecret.secretValue.unsafeUnwrap(),
-          },
+          tunnelSpecificationShared,
+          tunnelSpecificationShared,
         ],
       }
     );
