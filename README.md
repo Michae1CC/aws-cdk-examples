@@ -18,5 +18,6 @@ Examples of small services I've put together using AWS CDK v2 (in typescript) to
 | [route53-dnssec-enabled](./route53-dnssec-enabled/)        | ![route53-dnssec-enabled](./route53-dnssec-enabled/img/route53-dnssec-enabled-architecture.png)            | route53, lambda, kms, api-gateway                       |
 | [sqs-sns-fanout](./sqs-sns-fanout/)        | ![sqs-sns-fanout](./sqs-sns-fanout/img/sqs-sns-fanout-architecture.png)            | sqs, s3, ecs, fargate |
 | [step-function-map-io](./step-function-map-io/) | ![step-function-map-io](./step-function-map-io/img/step-function-map-io-architecture.png) | stepfunction, s3, lambda, dynamodb                      |
+| [vgw-site2site-vpn](./vgw-site2site-vpn/)             | ![vgw-site2site-vpn](./vgw-site2site-vpn/img/vgw-site2site-vpn-architecture.png)                   | vpc, vgw, vpn                         |
 | [vpc-cloudwatch](./vpc-cloudwatch/)             | ![vpc-cloudwatch](./vpc-cloudwatch/img/vpc-cloudwatch-architecture.png)                   | vpc, cloudwatch, flow logs, ec2                         |
 | [waf-cloudfront-ssm](./waf-cloudfront-ssm/)     | ![waf-cloudfront-ssm](./waf-cloudfront-ssm/img/waf-cloudfront-ssm-architecture.png)       | waf, cloudfront, ssm, vpc, ec2, fargate                 |
