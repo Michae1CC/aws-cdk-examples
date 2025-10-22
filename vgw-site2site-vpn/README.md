@@ -2,6 +2,9 @@
 
 This example demonstrates how AWS Virtual Private Gateways can be used to
 establish site-to-site VPN connections between AWS and an external network.
+
+![architecture](./img/vgw-site2site-vpn-architecture.png)
+
 The Customer Gateway is used to provide AWS with configuration details about the
 local network device.
 
@@ -154,7 +157,48 @@ new route53resolver.CfnResolverRuleAssociation(
 );
 ```
 
-## Deploy
+## How to Test
+
+First clone the repository
+
+```bash
+git clone https://github.com/Michae1CC/aws-cdk-examples
+```
+
+and change directory into the `sqs-sns-fanout` folder.
+
+```bash
+cd sqs-sns-fanout
+```
+
+Run
+
+```bash
+npm install
+```
+
+to install the required packages and then deploy the `vpc-stack` and `vpn-stack`
+
+```bash
+cdk deploy vpc-stack vpn-stack
+```
+
+Once the `vpn-stack` has deployed, you will have to configure the on-premise
+router with the deployed Virtual Gateway resource - you can download a
+configurations file for the VPN from the Site-to-Site VPN connections page
+within the AWS console. I'm using a Ubiquity Gateway 7 which allows users to 
+establish IPSec VPN tunnels within the web configuration
+portal.
+
+![architecture](./img/on-prem-router-setup.png)
+
+Once the VPN tunnels have been configured on the remote side, the tunnel status
+within the Site-to-Site VPN connections AWS console should display as 'Up'.
+
+![architecture](./img/vpn-tunnel-status-up.png)
+
+Network connectivity between the two networks can be tested by SSHing onto a
+server in the local networking and pinging an EC2 instance on the remote network.
 
 ```text
 $ ping 10.0.51.217
@@ -162,6 +206,12 @@ PING 10.0.51.217 (10.0.51.217) 56(84) bytes of data.
 64 bytes from 10.0.51.217: icmp_seq=1 ttl=126 time=14.7 ms
 64 bytes from 10.0.51.217: icmp_seq=2 ttl=126 time=14.7 ms
 64 bytes from 10.0.51.217: icmp_seq=3 ttl=126 time=14.3 ms
+```
+
+Next we can deploy the `route53-stack`.
+
+```bash
+cdk deploy vpc-stack vpn-stack
 ```
 
 ```text
