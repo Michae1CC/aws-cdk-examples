@@ -3,7 +3,12 @@
 This example demonstrates how AWS Virtual Private Gateways can be used to
 establish site-to-site VPN connections between AWS and an external network.
 
-![architecture](./img/vgw-site2site-vpn-architecture.png)
+<picture align="center">
+  <source
+    srcset="./img/vgw-site2site-vpn-architecture.png"
+    media="(orientation: portrait)" />
+  <img src="./img/vgw-site2site-vpn-architecture.png" alt="" />
+</picture>
 
 The Customer Gateway is used to provide AWS with configuration details about the
 local network device.
@@ -165,10 +170,10 @@ First clone the repository
 git clone https://github.com/Michae1CC/aws-cdk-examples
 ```
 
-and change directory into the `sqs-sns-fanout` folder.
+and change directory into the `vgw-site2site-vpn` folder.
 
 ```bash
-cd sqs-sns-fanout
+cd vgw-site2site-vpn
 ```
 
 Run
@@ -211,8 +216,12 @@ PING 10.0.51.217 (10.0.51.217) 56(84) bytes of data.
 Next we can deploy the `route53-stack`.
 
 ```bash
-cdk deploy vpc-stack vpn-stack
+cdk deploy route53-stack
 ```
+
+You will need to configure the local DNS server to forward queries to the
+Route53 Inbound Endpoints. You should now be able to resolve DNS queries for
+the Private Hosted zone from local servers.
 
 ```text
 $ dig internal.awsvpc @10.0.60.146
@@ -237,6 +246,9 @@ internal.awsvpc.	1800	IN	A	10.0.51.217
 ;; MSG SIZE  rcvd: 60
 ```
 
+Route53 should also now be able to resolve DNS queries for domains configured
+by local DNS servers.
+
 ```text
 ec2-user@ip-10-0-51-217 ~]$ ping node2.internal.onprem
 PING node2.internal.onprem (192.168.3.145) 56(84) bytes of data.
@@ -249,15 +261,6 @@ PING node2.internal.onprem (192.168.3.145) 56(84) bytes of data.
 4 packets transmitted, 4 received, 0% packet loss, time 3004ms
 rtt min/avg/max/mdev = 14.110/14.377/14.665/0.202 ms
 ```
-
-## Useful commands
-
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
 
 ## References
 
