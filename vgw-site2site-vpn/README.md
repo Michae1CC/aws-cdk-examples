@@ -3,12 +3,14 @@
 This example demonstrates how AWS Virtual Private Gateways can be used to
 establish site-to-site VPN connections between AWS and an external network.
 
-<picture align="center">
-  <source
-    srcset="./img/vgw-site2site-vpn-architecture.png"
-    media="(orientation: portrait)" />
-  <img src="./img/vgw-site2site-vpn-architecture.png" alt="" />
-</picture>
+<p align="center">
+    <picture>
+    <source
+        srcset="./img/vgw-site2site-vpn-architecture.png"
+        media="(orientation: portrait)" />
+    <img src="./img/vgw-site2site-vpn-architecture.png" alt="" />
+    </picture>
+</p>
 
 The Customer Gateway is used to provide AWS with configuration details about the
 local network device.
@@ -30,7 +32,7 @@ const customerGateway = new ec2.CfnCustomerGateway(
 The `CfnVPNConnection` provides the configuration and parameters for the IPSec
 VPN tunnel. The `localIpv4NetworkCidr` and `remoteIpv4NetworkCidr` refer to the
 private subnet CIDRs used by the local and remote networks, respectively.
-Note that the IPSec phase1/2 encryption and integrity algorithms may be omitted
+Note that the IPSec phase 1/2 encryption and integrity algorithms may be omitted
 allowing the negotiating of any parameters from the local side so long as AWS
 supports it.
 
