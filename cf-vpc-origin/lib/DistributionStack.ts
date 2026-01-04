@@ -18,12 +18,13 @@ export class DistributionStack extends cdk.Stack {
     super(scope, id, props);
 
     const contentBucket = new s3.Bucket(this, "web-content-bucket", {
-      bucketName: "app.michael.polymathian.dev",
+      bucketName: "michael.polymathian.dev",
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       versioned: false,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
+      accessControl: s3.BucketAccessControl.PRIVATE,
       // Anonymous identities should not be able to view contents
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       // Permissions to write log files to the bucket are granted through
@@ -44,7 +45,7 @@ export class DistributionStack extends cdk.Stack {
       this,
       "distribution-certificate",
       {
-        domainName: "*.michael.polymathian.dev",
+        domainName: "michael.polymathian.dev",
         validation: acm.CertificateValidation.fromDns(props.hostedZone),
       }
     );
@@ -54,10 +55,7 @@ export class DistributionStack extends cdk.Stack {
       // The TLS certificate for the custom domain.
       certificate: distributionCertificate,
       defaultRootObject: "index.html",
-      domainNames: [
-        "app.michael.polymathian.dev",
-        "images.michael.polymathian.dev",
-      ],
+      domainNames: ["michael.polymathian.dev"],
       // We require IPv6 support for customer requests
       enableIpv6: true,
       // TLS 1.0 and 1.1 are deprecated versions (RFC 8996). Use the oldest
@@ -70,23 +68,24 @@ export class DistributionStack extends cdk.Stack {
         origin: webContentOrigin,
         originRequestPolicy:
           cloudfront.OriginRequestPolicy.ALL_VIEWER_AND_CLOUDFRONT_2022,
-        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
       },
     });
 
-    new route53.ARecord(this, "app-distribution-a-record", {
+    // TODO: Use split view DNS for private alb cert
+    new route53.ARecord(this, "distribution-a-record", {
       zone: props.hostedZone,
-      recordName: "app.michael.polymathian.dev",
+      recordName: "michael.polymathian.dev",
       target: route53.RecordTarget.fromAlias(
         new route53_targets.CloudFrontTarget(distribution)
       ),
     });
 
-    new route53.AaaaRecord(this, "app-distribution-aaaa-record", {
+    new route53.AaaaRecord(this, "distribution-aaaa-record", {
       zone: props.hostedZone,
-      recordName: "app.michael.polymathian.dev",
+      recordName: "michael.polymathian.dev",
       target: route53.RecordTarget.fromAlias(
         new route53_targets.CloudFrontTarget(distribution)
       ),
