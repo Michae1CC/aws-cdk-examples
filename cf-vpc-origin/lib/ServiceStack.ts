@@ -1,17 +1,24 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
+  aws_certificatemanager as acm,
   aws_ec2 as ec2,
   aws_ecs as ecs,
+  aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_route53 as route53,
+  aws_route53_targets as route53_targets,
 } from "aws-cdk-lib";
 import * as path from "path";
 
-export class ServiceStack extends cdk.Stack {
-  public readonly hostedZone: route53.IHostedZone;
+interface ServiceStackProps extends cdk.StackProps {
+  hostedZone: route53.IHostedZone;
+}
 
-  constructor(scope: Construct, id: string, props: cdk.StackProps) {
+export class ServiceStack extends cdk.Stack {
+  public readonly privateAlb: elbv2.ApplicationLoadBalancer;
+
+  constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
 
     /**
@@ -112,30 +119,43 @@ export class ServiceStack extends cdk.Stack {
 
     serviceSecurityGroup.addIngressRule(
       albSecurityGroup,
-      // ECS Fargate uses AWSVPC network mode to send traffic through to
-      // instances. This means the network port will be same as the port used
-      // by the container.
-      ec2.Port.HTTPS
+      ec2.Port.tcp(8080),
+      "Allow HTTP from the private ALB to the express app port"
     );
 
     const cluster = new ecs.Cluster(this, "ecs-cluster", {
       vpc: vpc,
     });
 
-    // ResourceInitializationError: Unable to launch instance(s) for capacity
-    // provider service-stack-managedinstancecapacityprovider5F8F3F4C-50kJgqCJxOCh.
-    // UnauthorizedOperation: You are not authorized to perform this operation.
-    // User: arn:aws:sts::786511284175:assumed-role/service-stack-managedinstancecapacityprovidermanage-Slc4nfSyRSFj/ECSManagedInstances
-    // is not authorized to perform: iam:PassRole on resource:
-    // arn:aws:iam::786511284175:role/service-stack-instanceprofileInstanceRoleC62B5C46-xQt9UFlgbGL4
-    // because no identity-based policy allows the iam:PassRole action.
-    // RequestId: a439d91f-ae2e-40f6-b983-c246fd2aeaad
+    // Role name must start with 'ecsInstanceRole' to match the PassRole permission
+    // in AmazonECSInfrastructureRolePolicyForManagedInstances managed policy
+    const ecsInstanceRole = new iam.Role(this, "ecs-instance-role", {
+      roleName: `ecsInstanceRole-ecs-service`,
+      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
+      managedPolicies: [
+        // Default policy for the Amazon EC2 Role for Amazon EC2 Container Service.
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonEC2ContainerServiceforEC2Role"
+        ),
+      ],
+    });
 
-    const instanceProfile = new iam.InstanceProfile(
-      this,
-      "instance-profile",
-      {}
-    );
+    const instanceProfile = new iam.InstanceProfile(this, "instance-profile", {
+      role: ecsInstanceRole,
+    });
+
+    // Infrastructure role for ECS Managed Instances
+    const infrastructureRole = new iam.Role(this, "ecs-infrastructure-role", {
+      assumedBy: new iam.ServicePrincipal("ecs.amazonaws.com"),
+      managedPolicies: [
+        // Grants the permissions required by Amazon ECS to create and update
+        // Amazon EC2 resources for ECS Managed Instances on your behalf, see:
+        // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/security-iam-awsmanpol.html
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "AmazonECSInfrastructureRolePolicyForManagedInstances"
+        ),
+      ],
+    });
 
     const managedInstanceCapacityProvider =
       new ecs.ManagedInstancesCapacityProvider(
@@ -164,22 +184,32 @@ export class ServiceStack extends cdk.Stack {
       compatibility: ecs.Compatibility.MANAGED_INSTANCES,
     });
 
-    taskDefinition.addToExecutionRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        resources: [instanceProfile.role!.roleArn],
-        actions: ["iam:PassRole"],
-      })
-    );
-
     taskDefinition.addContainer("app", {
+      essential: true,
       image: ecs.ContainerImage.fromAsset(path.join(__dirname, "..", "docker")),
+      // Since we are using Fargate for our ECS service, the
+      // service will run in an awsvpc network mode. The port
+      // serving content from the container will be the same as the
+      // host container port.
+      portMappings: [
+        {
+          containerPort: 8080,
+        },
+      ],
     });
 
-    new ecs.FargateService(this, "app-service", {
+    const ecsService = new ecs.FargateService(this, "app-service", {
       cluster: cluster,
       taskDefinition: taskDefinition,
-      minHealthyPercent: 100,
+      desiredCount: 1,
+      vpcSubnets: {
+        // Place the tasks into subnets with connectivity to a NAT GW
+        // to pull images through
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+      assignPublicIp: false,
+      availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.ENABLED,
+      securityGroups: [serviceSecurityGroup],
       capacityProviderStrategies: [
         {
           capacityProvider:
@@ -187,6 +217,85 @@ export class ServiceStack extends cdk.Stack {
           weight: 1,
         },
       ],
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
     });
+
+    this.privateAlb = new elbv2.ApplicationLoadBalancer(this, "private-alb", {
+      vpc: vpc,
+      vpcSubnets: {
+        // Inject this alb into private subnets, this is required for it
+        // to be used as a Cloudfront Distribution VPC origin, see:
+        //  https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-vpc-origins.html
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+      internetFacing: false,
+      ipAddressType: elbv2.IpAddressType.IPV4,
+      securityGroup: albSecurityGroup,
+      http2Enabled: true,
+      dropInvalidHeaderFields: false,
+      // Append the client IP address of the last hop (in this case the
+      // cloudfront distribution) to the X-Forwarded-For header for debugging
+      xffHeaderProcessingMode: elbv2.XffHeaderProcessingMode.APPEND,
+      // Preserve the source port the client used to connect to the alb
+      // in the X-Forwarded-For header for debugging
+      preserveXffClientPort: true,
+    });
+
+    new route53.ARecord(this, "private-alb-a-record", {
+      zone: props.hostedZone,
+      recordName: "alb.michael.polymathian.dev",
+      target: route53.RecordTarget.fromAlias(
+        new route53_targets.LoadBalancerTarget(this.privateAlb)
+      ),
+    });
+
+    const privateLoadBalancerCertificate = new acm.Certificate(
+      this,
+      "private-alb-certificate",
+      {
+        domainName: "alb.michael.polymathian.dev",
+        validation: acm.CertificateValidation.fromDns(props.hostedZone),
+      }
+    );
+
+    const authServerTargetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      "auth-server-target-group",
+      {
+        vpc: vpc,
+        port: 8080,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        healthCheck: {
+          protocol: elbv2.Protocol.HTTP,
+          path: "/healthcheck",
+        },
+      }
+    );
+
+    authServerTargetGroup.addTarget(ecsService);
+
+    const httpsListener = this.privateAlb.addListener("https-listener", {
+      port: 443,
+      open: false,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      sslPolicy: elbv2.SslPolicy.RECOMMENDED_TLS,
+      // defaultAction: elbv2.ListenerAction.fixedResponse(404, {
+      //   contentType: "text/plain",
+      //   messageBody: "404 ALB No Rule",
+      // }),
+      defaultAction: elbv2.ListenerAction.forward([authServerTargetGroup]),
+      certificates: [privateLoadBalancerCertificate],
+    });
+
+    // new elbv2.ApplicationListenerRule(this, "match-domain-rule", {
+    //   listener: httpsListener,
+    //   // conditions: [
+    //   //   elbv2.ListenerCondition.hostHeaders(["michael.polymathian.dev/"]),
+    //   // ],
+    //   action: elbv2.ListenerAction.forward([authServerTargetGroup]),
+    //   // This value must be globally unique within the context on this alb.
+    //   priority: 1,
+    // });
   }
 }

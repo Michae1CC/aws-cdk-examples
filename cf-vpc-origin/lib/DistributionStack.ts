@@ -4,6 +4,7 @@ import {
   aws_certificatemanager as acm,
   aws_cloudfront as cloudfront,
   aws_cloudfront_origins as cloudfront_origins,
+  aws_elasticloadbalancingv2 as elbv2,
   aws_route53 as route53,
   aws_route53_targets as route53_targets,
   aws_s3 as s3,
@@ -11,6 +12,7 @@ import {
 
 interface DistributionStackProps extends cdk.StackProps {
   hostedZone: route53.IHostedZone;
+  privateAlb: elbv2.ApplicationLoadBalancer;
 }
 
 export class DistributionStack extends cdk.Stack {
@@ -27,8 +29,6 @@ export class DistributionStack extends cdk.Stack {
       accessControl: s3.BucketAccessControl.PRIVATE,
       // Anonymous identities should not be able to view contents
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      // Permissions to write log files to the bucket are granted through
-      // resource policies. Bucket ACLs are not required.
       objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
     });
 
@@ -51,7 +51,9 @@ export class DistributionStack extends cdk.Stack {
     );
 
     const distribution = new cloudfront.Distribution(this, "distribution", {
-      enableLogging: true,
+      // Potential bug where if you enabled logging and then redeploy with
+      // VPC origin there is a deploy failure
+      // enableLogging: true,
       // The TLS certificate for the custom domain.
       certificate: distributionCertificate,
       defaultRootObject: "index.html",
@@ -72,6 +74,27 @@ export class DistributionStack extends cdk.Stack {
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
       },
+      additionalBehaviors: {
+        api: {
+          origin: cloudfront_origins.VpcOrigin.withApplicationLoadBalancer(
+            props.privateAlb,
+            {
+              // We are not trusting the network channel between the
+              // distribution and the VPC origin. Encrypt requests that
+              // pass along this channel with TLS.
+              protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+              originSslProtocols: [cloudfront.OriginSslPolicy.TLS_V1_2],
+              domainName: "alb.michael.polymathian.dev",
+            }
+          ),
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          // Do not cache and responses from this distribution, each new
+          // requests should be handled by the VPC origin.
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        },
+      },
     });
 
     // TODO: Use split view DNS for private alb cert
@@ -86,22 +109,6 @@ export class DistributionStack extends cdk.Stack {
     new route53.AaaaRecord(this, "distribution-aaaa-record", {
       zone: props.hostedZone,
       recordName: "michael.polymathian.dev",
-      target: route53.RecordTarget.fromAlias(
-        new route53_targets.CloudFrontTarget(distribution)
-      ),
-    });
-
-    new route53.ARecord(this, "images-distribution-a-record", {
-      zone: props.hostedZone,
-      recordName: "images.michael.polymathian.dev",
-      target: route53.RecordTarget.fromAlias(
-        new route53_targets.CloudFrontTarget(distribution)
-      ),
-    });
-
-    new route53.AaaaRecord(this, "images-distribution-aaaa-record", {
-      zone: props.hostedZone,
-      recordName: "images.michael.polymathian.dev",
       target: route53.RecordTarget.fromAlias(
         new route53_targets.CloudFrontTarget(distribution)
       ),

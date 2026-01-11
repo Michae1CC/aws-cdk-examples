@@ -16,6 +16,7 @@ const service = new ServiceStack(app, "service-stack", {
     region: "us-east-1",
     account: "786511284175",
   },
+  hostedZone: dnsStack.hostedZone,
 });
 new DistributionStack(app, "distribution-stack", {
   env: {
@@ -23,5 +24,6 @@ new DistributionStack(app, "distribution-stack", {
     account: "786511284175",
   },
   hostedZone: dnsStack.hostedZone,
+  privateAlb: service.privateAlb,
   crossRegionReferences: true,
 });
