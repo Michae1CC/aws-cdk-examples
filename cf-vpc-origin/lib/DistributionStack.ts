@@ -88,6 +88,8 @@ export class DistributionStack extends cdk.Stack {
             }
           ),
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          originRequestPolicy:
+            cloudfront.OriginRequestPolicy.ALL_VIEWER_AND_CLOUDFRONT_2022,
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           // Do not cache and responses from this distribution, each new
@@ -97,7 +99,6 @@ export class DistributionStack extends cdk.Stack {
       },
     });
 
-    // TODO: Use split view DNS for private alb cert
     new route53.ARecord(this, "distribution-a-record", {
       zone: props.hostedZone,
       recordName: "michael.polymathian.dev",

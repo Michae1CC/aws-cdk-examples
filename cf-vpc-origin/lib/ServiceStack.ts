@@ -280,22 +280,23 @@ export class ServiceStack extends cdk.Stack {
       open: false,
       protocol: elbv2.ApplicationProtocol.HTTPS,
       sslPolicy: elbv2.SslPolicy.RECOMMENDED_TLS,
-      // defaultAction: elbv2.ListenerAction.fixedResponse(404, {
-      //   contentType: "text/plain",
-      //   messageBody: "404 ALB No Rule",
-      // }),
-      defaultAction: elbv2.ListenerAction.forward([authServerTargetGroup]),
+      defaultAction: elbv2.ListenerAction.fixedResponse(404, {
+        contentType: "text/plain",
+        messageBody: "404 ALB No Rule",
+      }),
+      // defaultAction: elbv2.ListenerAction.forward([authServerTargetGroup]),
       certificates: [privateLoadBalancerCertificate],
     });
 
-    // new elbv2.ApplicationListenerRule(this, "match-domain-rule", {
-    //   listener: httpsListener,
-    //   // conditions: [
-    //   //   elbv2.ListenerCondition.hostHeaders(["michael.polymathian.dev/"]),
-    //   // ],
-    //   action: elbv2.ListenerAction.forward([authServerTargetGroup]),
-    //   // This value must be globally unique within the context on this alb.
-    //   priority: 1,
-    // });
+    new elbv2.ApplicationListenerRule(this, "match-domain-rule", {
+      listener: httpsListener,
+      conditions: [
+        elbv2.ListenerCondition.hostHeaders(["michael.polymathian.dev"]),
+        elbv2.ListenerCondition.pathPatterns(["/api"]),
+      ],
+      action: elbv2.ListenerAction.forward([authServerTargetGroup]),
+      // This value must be globally unique within the context on this alb.
+      priority: 1,
+    });
   }
 }
