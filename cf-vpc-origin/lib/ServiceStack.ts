@@ -284,7 +284,6 @@ export class ServiceStack extends cdk.Stack {
         contentType: "text/plain",
         messageBody: "404 ALB No Rule",
       }),
-      // defaultAction: elbv2.ListenerAction.forward([authServerTargetGroup]),
       certificates: [privateLoadBalancerCertificate],
     });
 
