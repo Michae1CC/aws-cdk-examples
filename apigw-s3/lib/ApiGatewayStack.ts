@@ -141,7 +141,6 @@ export class ApiGatewayStack extends Stack {
         options: {
           requestParameters: {
             'integration.request.header.Host': 'method.request.header.Host',
-            'integration.request.path.proxy': 'method.request.path.proxy',
           },
         },
       }
