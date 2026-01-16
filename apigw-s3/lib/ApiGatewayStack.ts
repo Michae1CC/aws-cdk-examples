@@ -138,11 +138,11 @@ export class ApiGatewayStack extends Stack {
       {
         httpMethod: 'GET',
         proxy: true,
-        options: {
-          requestParameters: {
-            'integration.request.header.Host': 'method.request.header.Host',
-          },
-        },
+        // options: {
+        //   requestParameters: {
+        //     'integration.request.header.Host': 'method.request.header.Host',
+        //   },
+        // },
       }
     );
 
@@ -150,17 +150,14 @@ export class ApiGatewayStack extends Stack {
 
     userApi.addMethod("GET", albIntegration, {
       authorizationType: apigateway.AuthorizationType.NONE,
-      methodResponses: [
-        {
-          statusCode: "200",
-          responseParameters: {
-            "method.response.header.Content-Type": true,
-          },
-        },
-        {
-          statusCode: "404",
-        },
-      ],
+      // methodResponses: [
+      //   {
+      //     statusCode: "200",
+      //     responseParameters: {
+      //       "method.response.header.Content-Type": true,
+      //     },
+      //   },
+      // ],
     });
   }
 }

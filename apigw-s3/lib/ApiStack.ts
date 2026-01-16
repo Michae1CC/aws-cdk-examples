@@ -58,18 +58,6 @@ export class ApiStack extends cdk.Stack {
       }
     );
 
-    this.loadBalancerListener = this.loadBalancer.addListener("http-listener", {
-        port: 80,
-        protocol: elbv2.ApplicationProtocol.HTTP,
-        // Set a more modern and secure SSL policy then the CDK default
-        // see:
-        //  https://docs.aws.amazon.com/elasticloadbalancing/latest/application/describe-ssl-policies.html
-        defaultAction: elbv2.ListenerAction.fixedResponse(404, {
-            contentType: "text/plain",
-            messageBody: "404 ALB No Rule",
-        }),
-    });
-
     /**
      * Create a target group for each lambda. Note that port and protocols settings
      * are not applicable for target groups with a target type of lambda and that
@@ -87,11 +75,10 @@ export class ApiStack extends cdk.Stack {
         targets: [new elbv2_targets.LambdaTarget(handler)],
     });
 
-    new elbv2.ApplicationListenerRule(this, "match-index-rule", {
-        listener: this.loadBalancerListener,
-        conditions: [elbv2.ListenerCondition.pathPatterns(["/api/users"])],
-        action: elbv2.ListenerAction.forward([routeTargetGroup]),
-        priority: 1,
-      });
+    this.loadBalancerListener = this.loadBalancer.addListener("http-listener", {
+        port: 80,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        defaultAction: elbv2.ListenerAction.forward([routeTargetGroup]),
+    });
   }
 }
