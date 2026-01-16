@@ -51,8 +51,7 @@ export class ApiStack extends cdk.Stack {
       "internalApplicationLoadBalancer",
       {
         vpc: props.vpc,
-        // When internetFacing is set to true, denyAllIgwTraffic is set to false
-        internetFacing: false,
+        internetFacing: true,
         ipAddressType: elbv2.IpAddressType.IPV4,
         securityGroup: albSecurityGroup,
         http2Enabled: true,
@@ -90,7 +89,7 @@ export class ApiStack extends cdk.Stack {
 
     new elbv2.ApplicationListenerRule(this, "match-index-rule", {
         listener: this.loadBalancerListener,
-        conditions: [elbv2.ListenerCondition.pathPatterns(["/"])],
+        conditions: [elbv2.ListenerCondition.pathPatterns(["/api/users"])],
         action: elbv2.ListenerAction.forward([routeTargetGroup]),
         priority: 1,
       });

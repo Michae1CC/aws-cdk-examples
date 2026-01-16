@@ -42,9 +42,9 @@ export class ApiGatewayStack extends Stack {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
       },
-      endpointConfiguration: {
-        types: [apigateway.EndpointType.REGIONAL],
-      },
+      // endpointConfiguration: {
+      //   types: [apigateway.EndpointType.REGIONAL],
+      // },
     });
 
     const apiGatewayRoot = restApi.root;
