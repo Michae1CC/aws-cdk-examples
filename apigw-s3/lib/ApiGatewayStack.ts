@@ -26,7 +26,9 @@ export class ApiGatewayStack extends Stack {
     const apigwRole = new iam.Role(this, "api-gateway-role", {
       assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com"),
       managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonAPIGatewayPushToCloudWatchLogs"),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+        ),
         iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess"),
       ],
     });
@@ -35,6 +37,7 @@ export class ApiGatewayStack extends Stack {
      * API Gateway creation
      */
     const restApi = new apigateway.RestApi(this, "api-gateway", {
+      binaryMediaTypes: ["image/*"],
       // Automatically perform a deployment for this API when
       // the API model (resources, methods) changes
       deploy: true,
@@ -49,6 +52,7 @@ export class ApiGatewayStack extends Stack {
 
     const apiGatewayRoot = restApi.root;
     const apiResource = apiGatewayRoot.addResource("api");
+    const imageResource = apiGatewayRoot.addResource("images");
     const objectResource = apiGatewayRoot.addResource("{proxy+}");
 
     const s3IndexIntegration = new apigateway.AwsIntegration({
@@ -75,6 +79,50 @@ export class ApiGatewayStack extends Stack {
 
     apiGatewayRoot.addMethod("GET", s3IndexIntegration, {
       authorizationType: apigateway.AuthorizationType.NONE,
+      methodResponses: [
+        {
+          statusCode: "200",
+          responseParameters: {
+            "method.response.header.Content-Type": true,
+          },
+        },
+      ],
+    });
+
+    const s3ImageIntegration = new apigateway.AwsIntegration({
+      service: "s3",
+      integrationHttpMethod: "GET",
+      path: `${props.staticSiteBucket.bucketName}/images/{proxy}`,
+      options: {
+        credentialsRole: apigwRole,
+        requestParameters: {
+          "integration.request.path.proxy": "method.request.path.proxy",
+        },
+        integrationResponses: [
+          {
+            contentHandling: apigateway.ContentHandling.CONVERT_TO_BINARY,
+            statusCode: "200",
+            responseParameters: {
+              "method.response.header.Content-Type":
+                "integration.response.header.Content-Type",
+            },
+          },
+          {
+            statusCode: "404",
+            selectionPattern: "404",
+          },
+        ],
+      },
+    });
+
+    const imageProxyResource = imageResource.addResource("{proxy+}");
+
+    imageProxyResource.addMethod("GET", s3ImageIntegration, {
+      authorizationType: apigateway.AuthorizationType.NONE,
+      requestParameters: {
+        // Set the proxy parameters as required
+        "method.request.path.proxy": true,
+      },
       methodResponses: [
         {
           statusCode: "200",
@@ -134,15 +182,10 @@ export class ApiGatewayStack extends Stack {
     });
 
     const albIntegration = new apigateway.HttpIntegration(
-      `http://${props.loadBalancer.loadBalancerDnsName}`, // Use HTTPS if you have SSL certificate
+      `http://${props.loadBalancer.loadBalancerDnsName}`,
       {
-        httpMethod: 'GET',
+        httpMethod: "GET",
         proxy: true,
-        // options: {
-        //   requestParameters: {
-        //     'integration.request.header.Host': 'method.request.header.Host',
-        //   },
-        // },
       }
     );
 
@@ -150,14 +193,6 @@ export class ApiGatewayStack extends Stack {
 
     userApi.addMethod("GET", albIntegration, {
       authorizationType: apigateway.AuthorizationType.NONE,
-      // methodResponses: [
-      //   {
-      //     statusCode: "200",
-      //     responseParameters: {
-      //       "method.response.header.Content-Type": true,
-      //     },
-      //   },
-      // ],
     });
   }
 }
