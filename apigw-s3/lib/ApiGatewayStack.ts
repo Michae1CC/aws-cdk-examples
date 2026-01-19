@@ -1,9 +1,6 @@
 import * as cdk from "aws-cdk-lib/core";
 import {
   aws_apigateway as apigateway,
-  aws_apigatewayv2 as apigatewayv2,
-  aws_apigatewayv2_integrations as apigatewayv2_integrations,
-  aws_ec2 as ec2,
   aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_s3 as s3,
@@ -27,7 +24,7 @@ export class ApiGatewayStack extends Stack {
       assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com"),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+          "service-role/AmazonAPIGatewayPushToCloudWatchLogs",
         ),
         iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonS3FullAccess"),
       ],
@@ -186,7 +183,7 @@ export class ApiGatewayStack extends Stack {
       {
         httpMethod: "GET",
         proxy: true,
-      }
+      },
     );
 
     const userApi = apiResource.addResource("users");
