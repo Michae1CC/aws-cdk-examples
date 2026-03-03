@@ -18,3 +18,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://aws.amazon.com/blogs/networking-and-content-delivery/amazon-vpc-vattice-modernize-and-simplify-your-enterprise-network-architectures/>
 * <https://docs.aws.amazon.com/vpc-lattice/latest/ug/create-service-network.html>
 * <https://docs.aws.amazon.com/vpc-lattice/latest/ug/services.html>
+* <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-vpc-lattice-create-service.html>

@@ -2,6 +2,7 @@ import {
   aws_ec2 as ec2,
   aws_ecs as ecs,
   aws_elasticloadbalancingv2 as elbv2,
+  aws_iam as iam,
   aws_logs as logs,
   CfnOutput,
   RemovalPolicy,
@@ -79,6 +80,25 @@ export class ServiceStack extends Stack {
 
     ecsSecurityGroup.addIngressRule(albSecurityGroup, ec2.Port.HTTP);
 
+    // You need to allow the inbound rule vpc-lattice prefix to your security
+    // group or tasks and health checks can fail.
+    //
+    // see:
+    //  - https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-vpc-lattice-create-service.html
+    //  - https://docs.aws.amazon.com/vpc/latest/userguide/working-with-aws-managed-prefix-lists.html
+    const vpcLatticePrefixList = ec2.PrefixList.fromLookup(
+      this,
+      "vpc-lattice-prefix-list",
+      {
+        prefixListName: "com.amazonaws.region.vpc-lattice",
+      },
+    );
+    ecsSecurityGroup.addIngressRule(
+      ec2.Peer.prefixList(vpcLatticePrefixList.prefixListId),
+      ec2.Port.HTTP,
+    );
+    ecsSecurityGroup.addIngressRule(albSecurityGroup, ec2.Port.HTTP);
+
     const cluster = new ecs.Cluster(this, "cluster", {
       vpc: this.vpc,
       enableFargateCapacityProviders: true,
@@ -132,6 +152,31 @@ export class ServiceStack extends Stack {
       desiredCount: 1,
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
+    });
+
+    // Create IAM role for ECS VPC Lattice integration
+    const ecsVpcLatticeRole = new iam.Role(this, "ecs-vpc-lattice-role", {
+      assumedBy: new iam.ServicePrincipal("ecs.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonECSServiceRolePolicy",
+        ),
+      ],
+      inlinePolicies: {
+        VpcLatticePolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "vpc-lattice:RegisterTargets",
+                "vpc-lattice:DeregisterTargets",
+                "vpc-lattice:ListTargets",
+              ],
+              resources: ["*"],
+            }),
+          ],
+        }),
+      },
     });
 
     this.loadBalancer = new elbv2.ApplicationLoadBalancer(this, "service-alb", {

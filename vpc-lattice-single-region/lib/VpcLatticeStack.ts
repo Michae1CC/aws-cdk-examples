@@ -32,8 +32,9 @@ export class VpcLatticeStack extends Stack {
       },
     );
 
-    // Associate both the client and service vpc to the vpc lattice network.
-    // Vpcs can only have one service association
+    // Associate both the client vpc to the vpc lattice network.
+    // The service vpc doesn't need an association since the service endpoint is
+    // exposed to the vpc lattice service via a vpc lattice listener.
 
     new vpclattice.CfnServiceNetworkVpcAssociation(
       this,
@@ -41,15 +42,6 @@ export class VpcLatticeStack extends Stack {
       {
         serviceNetworkIdentifier: serviceNetwork.attrId,
         vpcIdentifier: props.clientVpc.vpcId,
-      },
-    );
-
-    new vpclattice.CfnServiceNetworkVpcAssociation(
-      this,
-      "service-vpc-service-network-association",
-      {
-        serviceNetworkIdentifier: serviceNetwork.attrId,
-        vpcIdentifier: props.serviceVpc.vpcId,
       },
     );
 
