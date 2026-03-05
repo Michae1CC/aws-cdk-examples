@@ -221,5 +221,9 @@ export class ServiceStack extends Stack {
         serviceIdentifier: vpcLatticeService.attrId,
       },
     );
+
+    new CfnOutput(this, "service-domain-name", {
+      value: vpcLatticeService.attrDnsEntryDomainName,
+    });
   }
 }
