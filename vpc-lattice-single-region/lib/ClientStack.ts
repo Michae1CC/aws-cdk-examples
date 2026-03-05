@@ -1,17 +1,22 @@
-import { aws_ec2 as ec2, Stack, StackProps } from "aws-cdk-lib";
+import {
+  aws_ec2 as ec2,
+  aws_vpclattice as vpclattice,
+  Stack,
+  StackProps,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 
-interface ClientStackProps extends StackProps {}
+interface ClientStackProps extends StackProps {
+  latticeServiceNetwork: vpclattice.CfnServiceNetwork;
+}
 
 const VPC_CIDR = "10.0.0.0/16" as const;
 
 export class ClientStack extends Stack {
-  public readonly vpc: ec2.Vpc;
-
   constructor(scope: Construct, id: string, props: ClientStackProps) {
     super(scope, id, props);
 
-    this.vpc = new ec2.Vpc(this, "vpc", {
+    const vpc = new ec2.Vpc(this, "vpc", {
       ipProtocol: ec2.IpProtocol.IPV4_ONLY,
       maxAzs: 2,
       natGateways: 1,
@@ -31,8 +36,18 @@ export class ClientStack extends Stack {
       ],
     });
 
+    // Associate both the client vpc to the vpc lattice network.
+    new vpclattice.CfnServiceNetworkVpcAssociation(
+      this,
+      "client-vpc-service-network-association",
+      {
+        serviceNetworkIdentifier: props.latticeServiceNetwork.attrId,
+        vpcIdentifier: vpc.vpcId,
+      },
+    );
+
     const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
-      vpc: this.vpc,
+      vpc: vpc,
       allowAllOutbound: true,
     });
 
@@ -49,7 +64,7 @@ export class ClientStack extends Stack {
     );
 
     new ec2.Instance(this, "client-instance", {
-      vpc: this.vpc,
+      vpc: vpc,
       allowAllOutbound: true,
       associatePublicIpAddress: false,
       vpcSubnets: {
@@ -66,7 +81,7 @@ export class ClientStack extends Stack {
     });
 
     new ec2.CfnInstanceConnectEndpoint(this, "instance-connect", {
-      subnetId: this.vpc.selectSubnets({
+      subnetId: vpc.selectSubnets({
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       }).subnetIds[0],
       securityGroupIds: [instanceSg.securityGroupId],

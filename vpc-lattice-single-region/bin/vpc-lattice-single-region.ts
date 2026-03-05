@@ -11,17 +11,16 @@ const env: cdk.Environment = {
 
 const app = new cdk.App();
 
+const vpcLatticeStack = new VpcLatticeStack(app, "vpc-lattice-stack", {
+  env: env,
+});
+
 const clientStack = new ClientStack(app, "client-stack", {
   env: env,
+  latticeServiceNetwork: vpcLatticeStack.latticeServiceNetwork,
 });
 
 const serviceStack = new ServiceStack(app, "service-stack", {
   env: env,
-});
-
-const vpcLatticeStack = new VpcLatticeStack(app, "vpc-lattice-stack", {
-  env: env,
-  clientVpc: clientStack.vpc,
-  serviceVpc: serviceStack.vpc,
-  serviceAlb: serviceStack.loadBalancer,
+  latticeServiceNetwork: vpcLatticeStack.latticeServiceNetwork,
 });

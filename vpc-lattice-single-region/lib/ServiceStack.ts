@@ -4,6 +4,7 @@ import {
   aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_logs as logs,
+  aws_vpclattice as vpclattice,
   CfnOutput,
   RemovalPolicy,
   Stack,
@@ -11,18 +12,18 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
-interface ServiceStackProps extends StackProps {}
+interface ServiceStackProps extends StackProps {
+  latticeServiceNetwork: vpclattice.CfnServiceNetwork;
+}
 
 const VPC_CIDR = "10.0.0.0/16" as const;
+const SERVICE_HTTP_PORT_NAME = "service-port";
 
 export class ServiceStack extends Stack {
-  public readonly vpc: ec2.Vpc;
-  public readonly loadBalancer: elbv2.ApplicationLoadBalancer;
-
   constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
 
-    this.vpc = new ec2.Vpc(this, "vpc", {
+    const vpc = new ec2.Vpc(this, "vpc", {
       ipProtocol: ec2.IpProtocol.IPV4_ONLY,
       maxAzs: 2,
       natGateways: 1,
@@ -42,32 +43,8 @@ export class ServiceStack extends Stack {
       ],
     });
 
-    const albSecurityGroup = new ec2.SecurityGroup(this, "alb-sg", {
-      vpc: this.vpc,
-      allowAllOutbound: true,
-      allowAllIpv6Outbound: true,
-    });
-
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.icmpPing(),
-      "Allow Pings from Ipv4",
-    );
-
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.HTTP,
-      "Allow HTTP traffic from Ipv4",
-    );
-
-    albSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.HTTPS,
-      "Allow HTTPS traffic from Ipv4",
-    );
-
     const ecsSecurityGroup = new ec2.SecurityGroup(this, "ecs-sg", {
-      vpc: this.vpc,
+      vpc: vpc,
       allowAllOutbound: true,
       allowAllIpv6Outbound: true,
     });
@@ -78,7 +55,17 @@ export class ServiceStack extends Stack {
       "Allow Pings from Ipv4",
     );
 
-    ecsSecurityGroup.addIngressRule(albSecurityGroup, ec2.Port.HTTP);
+    ecsSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.HTTP,
+      "Allow HTTP traffic from Ipv4",
+    );
+
+    ecsSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.HTTPS,
+      "Allow HTTPS traffic from Ipv4",
+    );
 
     // You need to allow the inbound rule vpc-lattice prefix to your security
     // group or tasks and health checks can fail.
@@ -90,17 +77,17 @@ export class ServiceStack extends Stack {
       this,
       "vpc-lattice-prefix-list",
       {
-        prefixListName: "com.amazonaws.region.vpc-lattice",
+        prefixListName: `com.amazonaws.${this.region}.vpc-lattice`,
       },
     );
+
     ecsSecurityGroup.addIngressRule(
       ec2.Peer.prefixList(vpcLatticePrefixList.prefixListId),
       ec2.Port.HTTP,
     );
-    ecsSecurityGroup.addIngressRule(albSecurityGroup, ec2.Port.HTTP);
 
     const cluster = new ecs.Cluster(this, "cluster", {
-      vpc: this.vpc,
+      vpc: vpc,
       enableFargateCapacityProviders: true,
     });
 
@@ -138,13 +125,13 @@ export class ServiceStack extends Stack {
       portMappings: [
         {
           containerPort: 80,
-          hostPort: 80,
           protocol: ecs.Protocol.TCP,
+          name: SERVICE_HTTP_PORT_NAME,
         },
       ],
     });
 
-    const service = new ecs.FargateService(this, "service", {
+    const ecsService = new ecs.FargateService(this, "service", {
       cluster: cluster,
       taskDefinition: taskDefinition,
       assignPublicIp: false,
@@ -154,64 +141,85 @@ export class ServiceStack extends Stack {
       maxHealthyPercent: 200,
     });
 
+    const vpcLatticeService = new vpclattice.CfnService(
+      this,
+      "lattice-service",
+      {
+        name: "my-lattice-service",
+      },
+    );
+
     // Create IAM role for ECS VPC Lattice integration
     const ecsVpcLatticeRole = new iam.Role(this, "ecs-vpc-lattice-role", {
       assumedBy: new iam.ServicePrincipal("ecs.amazonaws.com"),
       managedPolicies: [
+        // Provides access to other AWS service resources required to manage VPC Lattice feature in ECS workloads on your behalf.
+        // see: https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonECSInfrastructureRolePolicyForVpcLattice.html
         iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "service-role/AmazonECSServiceRolePolicy",
+          "AmazonECSInfrastructureRolePolicyForVpcLattice",
         ),
       ],
-      inlinePolicies: {
-        VpcLatticePolicy: new iam.PolicyDocument({
-          statements: [
-            new iam.PolicyStatement({
-              effect: iam.Effect.ALLOW,
-              actions: [
-                "vpc-lattice:RegisterTargets",
-                "vpc-lattice:DeregisterTargets",
-                "vpc-lattice:ListTargets",
-              ],
-              resources: ["*"],
-            }),
+    });
+
+    /**
+     * An vpc lattice target group for the service internal alb.
+     */
+    // Create VPC Lattice Target Group for ECS
+    const targetGroup = new vpclattice.CfnTargetGroup(
+      this,
+      "vpc-lattice-service-target-group",
+      {
+        type: "IP", // Use IP type for ECS Fargate tasks
+        config: {
+          protocol: "HTTP",
+          port: 80,
+          vpcIdentifier: vpc.vpcId,
+          healthCheck: {
+            enabled: true,
+            path: "/",
+            protocol: "HTTP",
+            port: 80,
+            healthyThresholdCount: 2,
+            unhealthyThresholdCount: 3,
+            healthCheckIntervalSeconds: 30,
+            healthCheckTimeoutSeconds: 5,
+          },
+        },
+      },
+    );
+
+    // Configure VPC Lattice for ECS Service using L1 construct
+    const cfnEcsService = ecsService.node.defaultChild as ecs.CfnService;
+    cfnEcsService.vpcLatticeConfigurations = [
+      {
+        targetGroupArn: targetGroup.attrArn,
+        portName: SERVICE_HTTP_PORT_NAME,
+        roleArn: ecsVpcLatticeRole.roleArn,
+      },
+    ];
+
+    const listener = new vpclattice.CfnListener(this, "vpc-lattice-listener", {
+      serviceIdentifier: vpcLatticeService.attrId,
+      protocol: "HTTP",
+      defaultAction: {
+        forward: {
+          targetGroups: [
+            {
+              targetGroupIdentifier: targetGroup.attrId,
+              weight: 100,
+            },
           ],
-        }),
+        },
       },
     });
 
-    this.loadBalancer = new elbv2.ApplicationLoadBalancer(this, "service-alb", {
-      vpc: this.vpc,
-      internetFacing: false,
-      ipAddressType: elbv2.IpAddressType.IPV4,
-      securityGroup: albSecurityGroup,
-      http2Enabled: true,
-      vpcSubnets: {
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+    new vpclattice.CfnServiceNetworkServiceAssociation(
+      this,
+      "service-vpc-service-network-association",
+      {
+        serviceNetworkIdentifier: props.latticeServiceNetwork.attrId,
+        serviceIdentifier: vpcLatticeService.attrId,
       },
-    });
-
-    const targetGroup = new elbv2.ApplicationTargetGroup(this, "target-group", {
-      vpc: this.vpc,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      port: 80,
-      targetType: elbv2.TargetType.IP,
-      healthCheck: {
-        protocol: elbv2.Protocol.HTTP,
-        port: "80",
-        path: "/",
-      },
-    });
-
-    this.loadBalancer.addListener("http-listener", {
-      port: 80,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      defaultAction: elbv2.ListenerAction.forward([targetGroup]),
-    });
-
-    targetGroup.addTarget(service);
-
-    new CfnOutput(this, "alb-dns-name", {
-      value: this.loadBalancer.loadBalancerDnsName,
-    });
+    );
   }
 }
