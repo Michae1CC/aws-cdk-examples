@@ -5,7 +5,6 @@ import { ServiceStack } from "../lib/ServiceStack";
 import { VpcLatticeStack } from "../lib/VpcLatticeStack";
 
 const env: cdk.Environment = {
-  account: "786511284175",
   region: "ap-southeast-2",
 };
 
