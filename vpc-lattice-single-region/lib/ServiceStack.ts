@@ -55,18 +55,6 @@ export class ServiceStack extends Stack {
       "Allow Pings from Ipv4",
     );
 
-    ecsSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.HTTP,
-      "Allow HTTP traffic from Ipv4",
-    );
-
-    ecsSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.HTTPS,
-      "Allow HTTPS traffic from Ipv4",
-    );
-
     // You need to allow the inbound rule vpc-lattice prefix to your security
     // group or tasks and health checks can fail.
     //
