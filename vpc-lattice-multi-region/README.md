@@ -17,3 +17,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 * <https://aws.amazon.com/blogs/networking-and-content-delivery/amazon-vpc-vattice-modernize-and-simplify-your-enterprise-network-architectures/>
 * <https://repost.aws/articles/ARYLrU69ciTjeXKVmN7G5NMg/centralized-access-to-vpc-private-endpoints-using-vpc-lattice>
+* <https://docs.aws.amazon.com/vpc-lattice/latest/ug/service-networks.html>
+* <https://docs.aws.amazon.com/vpc/latest/privatelink/access-with-service-network-endpoint.html>
+* <https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-access-service-networks.html>
+* <https://docs.aws.amazon.com/vpc-lattice/latest/ug/service-custom-domain-name.html>

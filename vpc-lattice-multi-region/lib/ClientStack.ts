@@ -94,7 +94,7 @@ export class ClientStack extends Stack {
         nlbEndpointService.vpcEndpointServiceName,
       ),
       subnets: vpc.selectSubnets({
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       }),
     });
   }

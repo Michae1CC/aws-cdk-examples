@@ -10,5 +10,59 @@
     "us-east-1d",
     "us-east-1e",
     "us-east-1f"
+  ],
+  "hosted-zone:account=792309103169:domainName=tropofy.dev:region=us-east-1": {
+    "Id": "/hostedzone/ZJELM5A9EEV50",
+    "Name": "tropofy.dev."
+  },
+  "availability-zones:account=792309103169:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "hosted-zone:account=792309103169:domainName=polymathian.dev:region=us-east-1": {
+    "Id": "/hostedzone/ZILL1ECA32NVL",
+    "Name": "polymathian.dev."
+  },
+  "hosted-zone:account=792309103169:domainName=polymathian.au:region=us-east-1": {
+    "Id": "/hostedzone/Z0736990QT63XXKJ36ZL",
+    "Name": "polymathian.au."
+  },
+  "hosted-zone:account=792309103169:domainName=polymathian.net:region=us-east-1": {
+    "Id": "/hostedzone/Z07901901648NB3UYQDHC",
+    "Name": "polymathian.net."
+  },
+  "hosted-zone:account=349935378560:domainName=development-infra.tropofy.net:region=us-east-1": {
+    "Id": "/hostedzone/Z0127223SC7028ZKB9G7",
+    "Name": "development-infra.tropofy.net."
+  },
+  "availability-zones:account=349935378560:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "hosted-zone:account=349935378560:domainName=development-infra.tropofy.net:region=ap-southeast-2": {
+    "Id": "/hostedzone/Z0127223SC7028ZKB9G7",
+    "Name": "development-infra.tropofy.net."
+  },
+  "availability-zones:account=349935378560:region=ap-southeast-2": [
+    "ap-southeast-2a",
+    "ap-southeast-2b",
+    "ap-southeast-2c"
+  ],
+  "hosted-zone:account=786511284175:domainName=michael.polymathian.dev:region=ap-southeast-2": {
+    "Id": "/hostedzone/Z069445720V66MD45I2WR",
+    "Name": "michael.polymathian.dev."
+  },
+  "availability-zones:account=786511284175:region=ap-southeast-2": [
+    "ap-southeast-2a",
+    "ap-southeast-2b",
+    "ap-southeast-2c"
   ]
 }

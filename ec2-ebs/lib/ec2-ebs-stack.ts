@@ -68,8 +68,8 @@ export class Ec2EbsStack extends Stack {
       }),
       associatePublicIpAddress: false,
       instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.D3,
-        ec2.InstanceSize.XLARGE2,
+        ec2.InstanceClass.T2,
+        ec2.InstanceSize.LARGE,
       ),
       machineImage: ec2.MachineImage.latestAmazonLinux2023({
         cpuType: ec2.AmazonLinuxCpuType.X86_64,
@@ -79,23 +79,23 @@ export class Ec2EbsStack extends Stack {
       ebsOptimized: true,
       blockDevices: [
         {
-          deviceName: "/dev/xvda", // Root volume
-          volume: ec2.BlockDeviceVolume.ebs(20, {
+          deviceName: "/dev/xvda",
+          volume: ec2.BlockDeviceVolume.ebs(10, {
             volumeType: ec2.EbsDeviceVolumeType.GP3,
-            iops: 3000,
+            iops: 1000,
             throughput: 125,
             encrypted: true,
             deleteOnTermination: true,
           }),
         },
         {
-          deviceName: "/dev/xvdb", // Additional data volume
-          volume: ec2.BlockDeviceVolume.ebs(100, {
+          deviceName: "/dev/xvdb",
+          volume: ec2.BlockDeviceVolume.ebs(10, {
             volumeType: ec2.EbsDeviceVolumeType.GP3,
-            iops: 4000,
-            throughput: 250,
+            iops: 1000,
+            throughput: 125,
             encrypted: true,
-            deleteOnTermination: false, // Preserve data volume
+            deleteOnTermination: true,
           }),
         },
       ],
