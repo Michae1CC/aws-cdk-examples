@@ -21,3 +21,11 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/access-with-service-network-endpoint.html>
 * <https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-access-service-networks.html>
 * <https://docs.aws.amazon.com/vpc-lattice/latest/ug/service-custom-domain-name.html>
+* <https://docs.aws.amazon.com/vpc-lattice/latest/ug/resource-configuration.html#custom-domain-name-resource-consumers>
+* <https://docs.aws.amazon.com/vpc-lattice/latest/ug/service-custom-domain-name.html#dns-associate-custom>
+* <https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-to-vpc-lattice-service.html>
+* <https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-ec2-vpcendpoint-dnsoptionsspecification.html>
+* <https://docs.aws.amazon.com/vpc-lattice/latest/ug/service-custom-domain-name.html>
+* <https://aws.amazon.com/blogs/networking-and-content-delivery/managing-dns-resolution-with-amazon-vpc-lattice-and-vpc-resources/>
+* <https://aws.amazon.com/blogs/networking-and-content-delivery/custom-domain-names-for-vpc-lattice-resources/>
+* <https://docs.aws.amazon.com/vpc-lattice/latest/APIReference/API_DnsOptions.html>

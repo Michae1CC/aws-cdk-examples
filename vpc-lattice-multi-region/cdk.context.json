@@ -64,5 +64,11 @@
     "ap-southeast-2a",
     "ap-southeast-2b",
     "ap-southeast-2c"
+  ],
+  "cc-api-provider:account=786511284175:expectedMatchCount=exactly-one:propertiesToReturn.0=PrefixListId:propertyMatch.PrefixListName=com.amazonaws.ap-southeast-2.vpc-lattice:region=ap-southeast-2:typeName=AWS$:$:EC2$:$:PrefixList": [
+    {
+      "PrefixListId": "pl-0c711dc34c6f2a9d0",
+      "Identifier": "pl-0c711dc34c6f2a9d0"
+    }
   ]
 }

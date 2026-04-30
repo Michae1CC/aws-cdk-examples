@@ -25,7 +25,7 @@ const serviceStack = new ServiceStack(app, "service-stack", {
   hostedZone: dnsStack.hostedZone,
 });
 
-// const clientStack = new ClientStack(app, "client-stack", {
-//   env: env,
-//   serviceNlb: serviceStack.serviceNlb,
-// });
+const clientStack = new ClientStack(app, "client-stack", {
+  env: env,
+  serviceNlb: serviceStack.serviceNlb,
+});

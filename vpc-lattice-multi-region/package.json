@@ -5,6 +5,7 @@
     "vpc-lattice-multi-region": "bin/vpc-lattice-multi-region.js"
   },
   "scripts": {
+    "format": "prettier --write ./{lib,bin}/*.ts",
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",

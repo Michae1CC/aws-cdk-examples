@@ -2,6 +2,8 @@ import {
   aws_ec2 as ec2,
   aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
+  aws_route53 as route53,
+  aws_route53_targets as route53_targets,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
@@ -16,6 +18,13 @@ const VPC_CIDR = "10.0.0.0/16" as const;
 export class ClientStack extends Stack {
   constructor(scope: Construct, id: string, props: ClientStackProps) {
     super(scope, id, props);
+
+    if (process.env.APEX_DOMAIN === undefined) {
+      throw new Error("ENVARS not set");
+    }
+
+    const apexDomain: string = process.env.APEX_DOMAIN;
+    const domainName: string = `testservice.${apexDomain}`;
 
     const vpc = new ec2.Vpc(this, "vpc", {
       ipProtocol: ec2.IpProtocol.IPV4_ONLY,
@@ -96,6 +105,25 @@ export class ClientStack extends Stack {
       subnets: vpc.selectSubnets({
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       }),
+    });
+
+    const privateHostedZone = new route53.PrivateHostedZone(
+      this,
+      "private-hosted-zone",
+      {
+        vpc: vpc,
+        zoneName: apexDomain,
+      },
+    );
+
+    new route53.ARecord(this, "NlbAliasRecord", {
+      zone: privateHostedZone,
+      recordName: "testservice", // This will create api.example.com
+      target: route53.RecordTarget.fromAlias(
+        new route53_targets.LoadBalancerTarget(props.serviceNlb, {
+          evaluateTargetHealth: false,
+        }),
+      ),
     });
   }
 }
