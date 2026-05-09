@@ -10,7 +10,7 @@ import {
 import { Construct } from "constructs";
 
 interface ClientStackProps extends StackProps {
-  serviceNlb: elbv2.NetworkLoadBalancer;
+  nlbEndpointService: ec2.VpcEndpointService;
 }
 
 const VPC_CIDR = "10.0.0.0/16" as const;
@@ -87,43 +87,55 @@ export class ClientStack extends Stack {
       securityGroupIds: [instanceSg.securityGroupId],
     });
 
-    const nlbEndpointService = new ec2.VpcEndpointService(
+    const interfaceVpcEndpointSg = new ec2.SecurityGroup(
       this,
-      "nlb-endpoint-service",
+      "interface-vpc-endpoint-sg",
       {
-        vpcEndpointServiceLoadBalancers: [props.serviceNlb],
-        acceptanceRequired: false,
-        allowedPrincipals: [new iam.AccountPrincipal(this.account)],
+        vpc: vpc,
+        allowAllOutbound: true,
       },
+    );
+
+    interfaceVpcEndpointSg.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow pings from any connection",
+    );
+
+    interfaceVpcEndpointSg.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.HTTP,
+      "Allow HTTP from any connection",
+    );
+
+    interfaceVpcEndpointSg.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.HTTPS,
+      "Allow HTTPS from any connection",
     );
 
     new ec2.InterfaceVpcEndpoint(this, "vpc-a-nlb-service-endpoint", {
       vpc: vpc,
       service: new ec2.InterfaceVpcEndpointService(
-        nlbEndpointService.vpcEndpointServiceName,
+        props.nlbEndpointService.vpcEndpointServiceName,
       ),
+      ipAddressType: ec2.VpcEndpointIpAddressType.IPV4,
+      privateDnsEnabled: true,
       subnets: vpc.selectSubnets({
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       }),
+      open: true,
+      securityGroups: [interfaceVpcEndpointSg],
     });
 
-    const privateHostedZone = new route53.PrivateHostedZone(
-      this,
-      "private-hosted-zone",
-      {
-        vpc: vpc,
-        zoneName: apexDomain,
-      },
-    );
-
-    new route53.ARecord(this, "NlbAliasRecord", {
-      zone: privateHostedZone,
-      recordName: "testservice", // This will create api.example.com
-      target: route53.RecordTarget.fromAlias(
-        new route53_targets.LoadBalancerTarget(props.serviceNlb, {
-          evaluateTargetHealth: false,
-        }),
-      ),
-    });
+    // new route53.ARecord(this, "NlbAliasRecord", {
+    //   zone: privateHostedZone,
+    //   recordName: "testservice",
+    //   target: route53.RecordTarget.fromAlias(
+    //     new route53_targets.LoadBalancerTarget(props.serviceNlb, {
+    //       evaluateTargetHealth: false,
+    //     }),
+    //   ),
+    // });
   }
 }

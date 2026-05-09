@@ -26,6 +26,11 @@ const serviceStack = new ServiceStack(app, "service-stack", {
 });
 
 const clientStack = new ClientStack(app, "client-stack", {
-  env: env,
-  serviceNlb: serviceStack.serviceNlb,
+  // env: env,
+  env: {
+    account: process.env.ACCOUNT,
+    // TODO: Change!!!
+    region: "ap-southeast-2",
+  },
+  nlbEndpointService: serviceStack.nlbEndpointService,
 });

@@ -5,25 +5,29 @@ import {
   aws_iam as iam,
   aws_elasticloadbalancingv2 as elbv2,
   aws_elasticloadbalancingv2_targets as elbv2_targets,
+  aws_lambda as lambda,
+  aws_logs as logs,
   aws_route53 as route53,
   aws_vpclattice as vpclattice,
   CfnOutput,
+  CustomResource,
   Duration,
-  Fn,
   Stack,
   StackProps,
+  RemovalPolicy,
 } from "aws-cdk-lib";
+import * as cr from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
+import { join } from "path";
 
 interface ServiceStackProps extends StackProps {
   hostedZone: route53.IHostedZone;
 }
 
 const VPC_CIDR = "10.0.0.0/16" as const;
-const SERVICE_HTTP_PORT_NAME = "service-port";
 
 export class ServiceStack extends Stack {
-  public readonly serviceNlb: elbv2.NetworkLoadBalancer;
+  public readonly nlbEndpointService: ec2.VpcEndpointService;
 
   constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
@@ -61,90 +65,30 @@ export class ServiceStack extends Stack {
       },
     });
 
-    const ecsSecurityGroup = new ec2.SecurityGroup(this, "ecs-sg", {
-      vpc: vpc,
-      allowAllOutbound: true,
-      allowAllIpv6Outbound: true,
+    const serviceLambda = new lambda.Function(this, "service-lambda", {
+      runtime: lambda.Runtime.NODEJS_24_X,
+      handler: "index.handler",
+      code: lambda.Code.fromInline(`
+        exports.handler = async (event) => {
+          console.log('VPC Lattice Event:', JSON.stringify(event, null, 2));
+          
+          return {
+            statusCode: 200,
+            statusDescription: '200 OK',
+            isBase64Encoded: false,
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: 'Hello from Lambda via VPC Lattice!',
+              path: event.path,
+              method: event.method
+            })
+          };
+        };
+      `),
+      timeout: Duration.seconds(30),
     });
-
-    ecsSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.icmpPing(),
-      "Allow Pings from Ipv4",
-    );
-
-    // You need to allow the inbound rule vpc-lattice prefix to your security
-    // group or tasks and health checks can fail.
-    //
-    // see:
-    //  - https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-vpc-lattice-create-service.html
-    //  - https://docs.aws.amazon.com/vpc/latest/userguide/working-with-aws-managed-prefix-lists.html
-    const vpcLatticePrefixList = ec2.PrefixList.fromLookup(
-      this,
-      "vpc-lattice-prefix-list",
-      {
-        prefixListName: `com.amazonaws.${this.region}.vpc-lattice`,
-      },
-    );
-
-    ecsSecurityGroup.addIngressRule(
-      ec2.Peer.prefixList(vpcLatticePrefixList.prefixListId),
-      ec2.Port.HTTP,
-    );
-
-    const cluster = new ecs.Cluster(this, "cluster", {
-      vpc: vpc,
-      enableFargateCapacityProviders: true,
-    });
-
-    cluster.addDefaultCapacityProviderStrategy([
-      {
-        capacityProvider: "FARGATE",
-        // Direct all the traffic in this cluster to Fargate
-        weight: 1,
-      },
-    ]);
-
-    const taskDefinition = new ecs.FargateTaskDefinition(
-      this,
-      "task-definition",
-      {
-        cpu: 256,
-        memoryLimitMiB: 512,
-      },
-    );
-
-    taskDefinition.addContainer("nginx", {
-      essential: true,
-      containerName: "nginx",
-      image: ecs.ContainerImage.fromRegistry("nginx"),
-      portMappings: [
-        {
-          containerPort: 80,
-          protocol: ecs.Protocol.TCP,
-          name: SERVICE_HTTP_PORT_NAME,
-        },
-      ],
-    });
-
-    const ecsService = new ecs.FargateService(this, "service", {
-      cluster: cluster,
-      taskDefinition: taskDefinition,
-      assignPublicIp: false,
-      securityGroups: [ecsSecurityGroup],
-      desiredCount: 1,
-      minHealthyPercent: 100,
-      maxHealthyPercent: 200,
-    });
-
-    const privateHostedZone = new route53.PrivateHostedZone(
-      this,
-      "private-hosted-zone",
-      {
-        vpc: vpc,
-        zoneName: apexDomain,
-      },
-    );
 
     const latticeServiceNetwork = new vpclattice.CfnServiceNetwork(
       this,
@@ -178,52 +122,24 @@ export class ServiceStack extends Stack {
     );
 
     /**
-     * An vpc lattice HTTP target group for the service internal alb.
+     * An vpc lattice lambda target group.
      */
-    const httpTargetGroup = new vpclattice.CfnTargetGroup(
+    const lambdaTargetGroup = new vpclattice.CfnTargetGroup(
       this,
-      "vpc-lattice-service-http-target-group",
+      "vpc-lattice-service-lambda-target-group",
       {
-        type: "IP", // Use IP type for ECS Fargate tasks
+        type: "LAMBDA",
+        name: "service-lambda-target-group",
         config: {
-          protocol: "HTTP",
-          port: 80,
-          vpcIdentifier: vpc.vpcId,
-          healthCheck: {
-            enabled: true,
-            path: "/",
-            protocol: "HTTP",
-            port: 80,
-            healthyThresholdCount: 2,
-            unhealthyThresholdCount: 3,
-            healthCheckIntervalSeconds: 30,
-            healthCheckTimeoutSeconds: 5,
-          },
+          lambdaEventStructureVersion: "V2",
         },
+        targets: [
+          {
+            id: serviceLambda.functionArn,
+          },
+        ],
       },
     );
-
-    // Create IAM role for ECS VPC Lattice integration
-    const ecsVpcLatticeRole = new iam.Role(this, "ecs-vpc-lattice-role", {
-      assumedBy: new iam.ServicePrincipal("ecs.amazonaws.com"),
-      managedPolicies: [
-        // Provides access to other AWS service resources required to manage VPC Lattice feature in ECS workloads on your behalf.
-        // see: https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonECSInfrastructureRolePolicyForVpcLattice.html
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "AmazonECSInfrastructureRolePolicyForVpcLattice",
-        ),
-      ],
-    });
-
-    // Configure VPC Lattice for ECS Service using L1 construct
-    const cfnEcsService = ecsService.node.defaultChild as ecs.CfnService;
-    cfnEcsService.vpcLatticeConfigurations = [
-      {
-        targetGroupArn: httpTargetGroup.attrArn,
-        portName: SERVICE_HTTP_PORT_NAME,
-        roleArn: ecsVpcLatticeRole.roleArn,
-      },
-    ];
 
     /**
      * https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_vpclattice.CfnListener.html
@@ -236,7 +152,7 @@ export class ServiceStack extends Stack {
         forward: {
           targetGroups: [
             {
-              targetGroupIdentifier: httpTargetGroup.attrId,
+              targetGroupIdentifier: lambdaTargetGroup.attrId,
               weight: 100,
             },
           ],
@@ -255,7 +171,7 @@ export class ServiceStack extends Stack {
           forward: {
             targetGroups: [
               {
-                targetGroupIdentifier: httpTargetGroup.attrId,
+                targetGroupIdentifier: lambdaTargetGroup.attrId,
                 weight: 100,
               },
             ],
@@ -273,10 +189,91 @@ export class ServiceStack extends Stack {
       },
     );
 
+    // Associate the service vpc to the vpc lattice network.
+    new vpclattice.CfnServiceNetworkVpcAssociation(
+      this,
+      "client-vpc-service-network-association",
+      {
+        serviceNetworkIdentifier: latticeServiceNetwork.attrId,
+        vpcIdentifier: vpc.vpcId,
+      },
+    );
+
+    const ecsSecurityGroup = new ec2.SecurityGroup(this, "ecs-sg", {
+      vpc: vpc,
+      allowAllOutbound: true,
+    });
+
+    const ecsTaskLogGroup = new logs.LogGroup(this, "ecs-task", {
+      retention: logs.RetentionDays.ONE_DAY,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    const cluster = new ecs.Cluster(this, "cluster", {
+      vpc: vpc,
+      enableFargateCapacityProviders: true,
+    });
+
+    cluster.addDefaultCapacityProviderStrategy([
+      {
+        capacityProvider: "FARGATE",
+        // Direct all the traffic in this cluster to Fargate
+        weight: 1,
+      },
+    ]);
+
+    const taskDefinition = new ecs.FargateTaskDefinition(
+      this,
+      "task-definition",
+      {
+        cpu: 256,
+        memoryLimitMiB: 512,
+        runtimePlatform: {
+          operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+          cpuArchitecture: ecs.CpuArchitecture.ARM64,
+        },
+      },
+    );
+
+    taskDefinition.addContainer("nginx", {
+      essential: true,
+      containerName: "nginx",
+      image: ecs.ContainerImage.fromAsset(join(__dirname, "..", "docker")),
+      logging: ecs.LogDriver.awsLogs({
+        streamPrefix: "ecs",
+        logGroup: ecsTaskLogGroup,
+        mode: ecs.AwsLogDriverMode.NON_BLOCKING,
+      }),
+      portMappings: [
+        {
+          containerPort: 80,
+          protocol: ecs.Protocol.TCP,
+        },
+      ],
+    });
+
+    const ecsService = new ecs.FargateService(this, "service", {
+      cluster: cluster,
+      taskDefinition: taskDefinition,
+      assignPublicIp: false,
+      securityGroups: [ecsSecurityGroup],
+      desiredCount: 1,
+      circuitBreaker: {
+        enable: true,
+        rollback: false,
+      },
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
+    });
+
     const sneSg = new ec2.SecurityGroup(this, "sne-sg", {
       vpc: vpc,
       allowAllOutbound: true,
     });
+
+    ecsSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTP);
+    ecsSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTPS);
+    ecsSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.icmpPing());
 
     sneSg.addIngressRule(
       ec2.Peer.anyIpv4(),
@@ -288,42 +285,81 @@ export class ServiceStack extends Stack {
 
     sneSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTPS);
 
-    // Create the service network endpoint
-    //
-    // NOTE: The endpoint will provide a DNS host name to access the service,
-    //  see: https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-access-service-networks.html#sn-endpoint-dns
-    const serviceNetworkEndpoint = new ec2.CfnVPCEndpoint(
-      this,
-      "lattice-service-network-endpoint",
-      {
-        // Specify the VPC where the endpoint will be created
-        vpcId: vpc.vpcId,
-        // Automatic DNS management feature on VPC Lattice only applies to
-        // Resource Configurations (e.g. RDS databases shared via VPC Lattice),
-        // not to VPC Lattice services
-        dnsOptions: undefined,
-        // This VPC only supports ipv4
-        ipAddressType: ec2.IpAddressType.IPV4,
-        // Set the endpoint type to ServiceNetwork for VPC Lattice
-        vpcEndpointType: ec2.VpcEndpointType.SERVICENETWORK,
-        // Specify your service network ARN
-        serviceNetworkArn: latticeServiceNetwork.attrArn,
-        // Specify the subnets where endpoint network interfaces will be created
-        subnetIds: vpc.privateSubnets.map((subnet) => subnet.subnetId),
-        // Specify security groups to control access to the endpoint
-        securityGroupIds: [sneSg.securityGroupId],
-        // Enable private DNS to access services using their private DNS names
-        privateDnsEnabled: true,
-      },
-    );
+    // // Create the service network endpoint
+    // //
+    // // NOTE: The endpoint will provide a DNS host name to access the service,
+    // //  see: https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-access-service-networks.html#sn-endpoint-dns
+    // const serviceNetworkEndpoint = new ec2.CfnVPCEndpoint(
+    //   this,
+    //   "lattice-service-network-endpoint",
+    //   {
+    //     // Specify the VPC where the endpoint will be created
+    //     vpcId: vpc.vpcId,
+    //     // Automatic DNS management feature on VPC Lattice only applies to
+    //     // Resource Configurations (e.g. RDS databases shared via VPC Lattice),
+    //     // not to VPC Lattice services
+    //     dnsOptions: undefined,
+    //     // This VPC only supports ipv4
+    //     ipAddressType: ec2.IpAddressType.IPV4,
+    //     // Set the endpoint type to ServiceNetwork for VPC Lattice
+    //     vpcEndpointType: ec2.VpcEndpointType.SERVICENETWORK,
+    //     // Specify your service network ARN
+    //     serviceNetworkArn: latticeServiceNetwork.attrArn,
+    //     // Specify the subnets where endpoint network interfaces will be created
+    //     subnetIds: vpc.privateSubnets.map((subnet) => subnet.subnetId),
+    //     // Specify security groups to control access to the endpoint
+    //     securityGroupIds: [sneSg.securityGroupId],
+    //     // Enable private DNS to access services using their private DNS names
+    //     privateDnsEnabled: true,
+    //   },
+    // );
 
-    new route53.CnameRecord(this, "service-endpoint-1-cname-record", {
-      recordName: "testservice",
-      zone: privateHostedZone,
-      // Taken from console, you will need a custom construct to automate this
-      domainName:
-        "vpce-0e769ab91dcb10b19-snsa-07b06c66e01bdd93f.7d67968.vpc-lattice-svcs.ap-southeast-2.on.aws",
-    });
+    // // aws ec2 describe-vpc-endpoint-associations --region=ap-southeast-2 --vpc-endpoint-ids vpce-0e769ab91dcb10b19 --query 'VpcEndpointAssociations[0].DnsEntry.DnsName' --output text
+    // // https://github.com/aws/aws-cdk/tree/v1-main/packages/@aws-cdk/custom-resources#custom-resources-for-aws-apis
+    // // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVpcEndpointAssociations.html
+    // const awsCustomResource = new cr.AwsCustomResource(
+    //   this,
+    //   "service-endpoint-dns-name-cr",
+    //   {
+    //     onCreate: {
+    //       service: "EC2",
+    //       action: "describeVpcEndpointAssociations",
+    //       parameters: {
+    //         Region: this.region,
+    //         VpcEndpointIds: ["vpce-0e769ab91dcb10b19"],
+    //       },
+    //       physicalResourceId: cr.PhysicalResourceId.of(
+    //         `describe-vpc-endpoint-associations-${Date.now()}`,
+    //       ),
+    //     },
+    //     onUpdate: {
+    //       service: "EC2",
+    //       action: "describeVpcEndpointAssociations",
+    //       parameters: {
+    //         Region: this.region,
+    //         VpcEndpointIds: ["vpce-0e769ab91dcb10b19"],
+    //       },
+    //       physicalResourceId: cr.PhysicalResourceId.of(
+    //         `describe-vpc-endpoint-associations-${Date.now()}`,
+    //       ),
+    //     },
+    //     policy: cr.AwsCustomResourcePolicy.fromStatements([
+    //       new iam.PolicyStatement({
+    //         effect: iam.Effect.ALLOW,
+    //         actions: ["ec2:DescribeVpcEndpointAssociations"],
+    //         resources: ["*"],
+    //       }),
+    //     ]),
+    //     logRetention: logs.RetentionDays.ONE_WEEK,
+    //     timeout: Duration.minutes(5),
+    //   },
+    // );
+
+    // new CfnOutput(this, "test-output", {
+    //   value: awsCustomResource.getResponseField(
+    //     "VpcEndpointAssociations.0.DnsEntry.DnsName",
+    //   ),
+    // });
 
     const nlbSg = new ec2.SecurityGroup(this, "nlb-sg", {
       vpc: vpc,
@@ -349,7 +385,7 @@ export class ServiceStack extends Stack {
     );
 
     // Create an NLB in VPC B to act as a service endpoint
-    this.serviceNlb = new elbv2.NetworkLoadBalancer(
+    const serviceNlb = new elbv2.NetworkLoadBalancer(
       this,
       "interface-endpoint-nlb",
       {
@@ -367,18 +403,12 @@ export class ServiceStack extends Stack {
     // Note: You'll need to use the Lattice service's DNS name as targets
     const nlbTargetGroup = new elbv2.NetworkTargetGroup(
       this,
-      "nlb-target-group",
+      "http-nlb-target-group",
       {
         vpc: vpc,
         port: 80,
         protocol: elbv2.Protocol.TCP,
         targetType: elbv2.TargetType.IP,
-        // Ip addresses of the service endpoint taken from the console,
-        // you will need a custom construct to automate this
-        targets: [
-          new elbv2_targets.IpTarget("10.0.228.235", 80),
-          new elbv2_targets.IpTarget("10.0.153.0", 80),
-        ],
         healthCheck: {
           enabled: true,
           protocol: elbv2.Protocol.HTTP,
@@ -389,12 +419,36 @@ export class ServiceStack extends Stack {
       },
     );
 
+    nlbTargetGroup.addTarget(ecsService);
+
     // Add listener to NLB
-    const serviceNlbListener = this.serviceNlb.addListener("nlb-listener", {
+    const serviceNlbListener = serviceNlb.addListener("nlb-listener", {
       port: 80,
       protocol: elbv2.Protocol.TCP,
       defaultTargetGroups: [nlbTargetGroup],
     });
+
+    this.nlbEndpointService = new ec2.VpcEndpointService(
+      this,
+      "nlb-endpoint-service",
+      {
+        vpcEndpointServiceLoadBalancers: [serviceNlb],
+        acceptanceRequired: false,
+        allowedPrincipals: [new iam.AccountPrincipal(this.account)],
+        allowedRegions: ["ap-southeast-2", "us-east-1"],
+        supportedIpAddressTypes: [ec2.IpAddressType.IPV4],
+      },
+    );
+
+    new route53.VpcEndpointServiceDomainName(
+      this,
+      "nlb-endpoint-service-domain-name",
+      {
+        endpointService: this.nlbEndpointService,
+        domainName: domainName,
+        publicHostedZone: props.hostedZone,
+      },
+    );
 
     const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
       vpc: vpc,
