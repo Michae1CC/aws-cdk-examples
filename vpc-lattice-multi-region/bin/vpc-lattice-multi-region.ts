@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
-import { VpcLatticeStack } from "../lib/VpcLatticeStack";
 import { DnsStack } from "../lib/DnsStack";
 import { ClientStack } from "../lib/ClientStack";
 import { ServiceStack } from "../lib/ServiceStack";
@@ -16,21 +15,22 @@ const env: cdk.Environment = {
   account: process.env.ACCOUNT,
 };
 
-// const vpcLatticeStack = new VpcLatticeStack(app, "vpc-lattice-stack", { env });
 const dnsStack = new DnsStack(app, "dns-stack", { env });
 
 const serviceStack = new ServiceStack(app, "service-stack", {
-  env: env,
+  env: {
+    account: process.env.ACCOUNT,
+    region: "us-east-1",
+  },
   crossRegionReferences: true,
   hostedZone: dnsStack.hostedZone,
 });
 
 const clientStack = new ClientStack(app, "client-stack", {
-  // env: env,
   env: {
     account: process.env.ACCOUNT,
-    // TODO: Change!!!
     region: "ap-southeast-2",
   },
+  crossRegionReferences: true,
   nlbEndpointService: serviceStack.nlbEndpointService,
 });

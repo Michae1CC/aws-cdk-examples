@@ -114,7 +114,7 @@ export class ClientStack extends Stack {
       "Allow HTTPS from any connection",
     );
 
-    new ec2.InterfaceVpcEndpoint(this, "vpc-a-nlb-service-endpoint", {
+    new ec2.InterfaceVpcEndpoint(this, "endpoint-service-interface-endpoint", {
       vpc: vpc,
       service: new ec2.InterfaceVpcEndpointService(
         props.nlbEndpointService.vpcEndpointServiceName,
@@ -127,15 +127,5 @@ export class ClientStack extends Stack {
       open: true,
       securityGroups: [interfaceVpcEndpointSg],
     });
-
-    // new route53.ARecord(this, "NlbAliasRecord", {
-    //   zone: privateHostedZone,
-    //   recordName: "testservice",
-    //   target: route53.RecordTarget.fromAlias(
-    //     new route53_targets.LoadBalancerTarget(props.serviceNlb, {
-    //       evaluateTargetHealth: false,
-    //     }),
-    //   ),
-    // });
   }
 }

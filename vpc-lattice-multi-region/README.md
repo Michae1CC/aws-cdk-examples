@@ -34,3 +34,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://aws.amazon.com/solutions/guidance/external-connectivity-to-amazon-vpc-lattice/>
 * <https://aws.amazon.com/blogs/networking-and-content-delivery/managing-dns-resolution-with-amazon-vpc-lattice-and-vpc-resources/>
 * <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-prefix-eni.html>
+* <https://docs.aws.amazon.com/vpc/latest/privatelink/manage-dns-names.html>
