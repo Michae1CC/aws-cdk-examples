@@ -18,19 +18,13 @@ const env: cdk.Environment = {
 const dnsStack = new DnsStack(app, "dns-stack", { env });
 
 const serviceStack = new ServiceStack(app, "service-stack", {
-  env: {
-    account: process.env.ACCOUNT,
-    region: "us-east-1",
-  },
+  env: env,
   crossRegionReferences: true,
   hostedZone: dnsStack.hostedZone,
 });
 
 const clientStack = new ClientStack(app, "client-stack", {
-  env: {
-    account: process.env.ACCOUNT,
-    region: "ap-southeast-2",
-  },
+  env: env,
   crossRegionReferences: true,
   nlbEndpointService: serviceStack.nlbEndpointService,
 });

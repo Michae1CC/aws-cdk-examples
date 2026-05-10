@@ -1,17 +1,15 @@
-# Welcome to your CDK TypeScript project
+# VPC Lattice Multi-Region
 
-This is a blank project for CDK development with TypeScript.
+This example demonstrates how a vpc lattice service may be exposed across
+multiple regions.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
-## Useful commands
-
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
+AWS Private Link does not support cross-region service network endpoints.
+To expose a lattice service region cross-region we need to create an
+endpoint service which does support cross-region access. However a
+endpoint service can only target a NLB which cannot perform DNS
+resolution required to forward traffic bound for a lattice service via
+a service network vpc association. As a work around, we can point the NLB
+at a ECS Nginx cluster which will proxy requests for us.
 
 ## References
 

@@ -4,8 +4,17 @@ FROM --platform=linux/arm64 nginx:alpine
 
 RUN rm /etc/nginx/conf.d/default.conf
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy the main nginx config
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy template instead of final config
+COPY default.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/bin/sh", "-c", "\
+    envsubst '$VPC_LATTICE_SERVICE_DOMAIN_NAME' \
+    < /etc/nginx/templates/default.conf.template \
+    > /etc/nginx/conf.d/default.conf && \
+    nginx -g 'daemon off;' \
+    "]

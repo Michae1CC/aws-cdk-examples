@@ -1,12 +1,4 @@
-import {
-  aws_ec2 as ec2,
-  aws_elasticloadbalancingv2 as elbv2,
-  aws_iam as iam,
-  aws_route53 as route53,
-  aws_route53_targets as route53_targets,
-  Stack,
-  StackProps,
-} from "aws-cdk-lib";
+import { aws_ec2 as ec2, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 interface ClientStackProps extends StackProps {

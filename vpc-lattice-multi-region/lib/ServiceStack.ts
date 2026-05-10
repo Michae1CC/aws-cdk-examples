@@ -10,7 +10,6 @@ import {
   aws_route53 as route53,
   aws_vpclattice as vpclattice,
   CfnOutput,
-  CustomResource,
   Duration,
   Stack,
   StackProps,
@@ -221,10 +220,6 @@ export class ServiceStack extends Stack {
       },
     );
 
-    new CfnOutput(this, "lattice-service-network-endpoint-dns-name-output", {
-      value: serviceNetworkEndpoint.attrId,
-    });
-
     const serviceNetworkEndpointCustomResourceOnEvent: cr.AwsSdkCall = {
       service: "EC2",
       action: "describeVpcEndpointAssociations",
@@ -240,30 +235,30 @@ export class ServiceStack extends Stack {
     // // aws ec2 describe-vpc-endpoint-associations --region=ap-southeast-2 --vpc-endpoint-ids vpce-0e769ab91dcb10b19 --query 'VpcEndpointAssociations[0].DnsEntry.DnsName' --output text
     // // https://github.com/aws/aws-cdk/tree/v1-main/packages/@aws-cdk/custom-resources#custom-resources-for-aws-apis
     // // https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVpcEndpointAssociations.html
-    // const serviceNetworkEndpointCustomResource = new cr.AwsCustomResource(
-    //   this,
-    //   "service-endpoint-dns-name-cr",
-    //   {
-    //     onCreate: serviceNetworkEndpointCustomResourceOnEvent,
-    //     onUpdate: serviceNetworkEndpointCustomResourceOnEvent,
-    //     onDelete: serviceNetworkEndpointCustomResourceOnEvent,
-    //     policy: cr.AwsCustomResourcePolicy.fromStatements([
-    //       new iam.PolicyStatement({
-    //         effect: iam.Effect.ALLOW,
-    //         actions: ["ec2:DescribeVpcEndpointAssociations"],
-    //         resources: ["*"],
-    //       }),
-    //     ]),
-    //     logRetention: logs.RetentionDays.ONE_WEEK,
-    //     timeout: Duration.minutes(5),
-    //   },
-    // );
+    const serviceNetworkEndpointCustomResource = new cr.AwsCustomResource(
+      this,
+      "service-endpoint-dns-name-cr",
+      {
+        onCreate: serviceNetworkEndpointCustomResourceOnEvent,
+        onUpdate: serviceNetworkEndpointCustomResourceOnEvent,
+        onDelete: serviceNetworkEndpointCustomResourceOnEvent,
+        policy: cr.AwsCustomResourcePolicy.fromStatements([
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["ec2:DescribeVpcEndpointAssociations"],
+            resources: ["*"],
+          }),
+        ]),
+        logRetention: logs.RetentionDays.ONE_WEEK,
+        timeout: Duration.minutes(5),
+      },
+    );
 
-    // new CfnOutput(this, "lattice-service-network-endpoint-dns-name-output", {
-    //   value: serviceNetworkEndpointCustomResource.getResponseField(
-    //     "VpcEndpointAssociations.0.DnsEntry.DnsName",
-    //   ),
-    // });
+    new CfnOutput(this, "lattice-service-network-endpoint-dns-name-output", {
+      value: serviceNetworkEndpointCustomResource.getResponseField(
+        "VpcEndpointAssociations.0.DnsEntry.DnsName",
+      ),
+    });
 
     /***************************************************************************
      * AWS Private Link does not support cross-region service network endpoints.
@@ -431,7 +426,7 @@ export class ServiceStack extends Stack {
         vpcEndpointServiceLoadBalancers: [serviceNlb],
         acceptanceRequired: false,
         allowedPrincipals: [new iam.AccountPrincipal(this.account)],
-        allowedRegions: ["ap-southeast-2", "us-east-1"],
+        // allowedRegions: ["ap-southeast-2", "us-east-1"],
         supportedIpAddressTypes: [ec2.IpAddressType.IPV4],
       },
     );
@@ -441,15 +436,16 @@ export class ServiceStack extends Stack {
      * private hosted zone and associate it with the service consumer VPC, see:
      *  https://docs.aws.amazon.com/vpc/latest/privatelink/manage-dns-names.html
      */
-    new route53.VpcEndpointServiceDomainName(
-      this,
-      "nlb-endpoint-service-domain-name",
-      {
-        endpointService: this.nlbEndpointService,
-        domainName: domainName,
-        publicHostedZone: props.hostedZone,
-      },
-    );
+    const vpcEndpointServiceDomainName =
+      new route53.VpcEndpointServiceDomainName(
+        this,
+        "nlb-endpoint-service-domain-name",
+        {
+          endpointService: this.nlbEndpointService,
+          domainName: domainName,
+          publicHostedZone: props.hostedZone,
+        },
+      );
 
     const interfaceVpcEndpointSg = new ec2.SecurityGroup(
       this,
@@ -478,19 +474,31 @@ export class ServiceStack extends Stack {
       "Allow HTTPS from any connection",
     );
 
-    new ec2.InterfaceVpcEndpoint(this, "endpoint-service-interface-endpoint", {
-      vpc: vpc,
-      service: new ec2.InterfaceVpcEndpointService(
-        this.nlbEndpointService.vpcEndpointServiceName,
-      ),
-      ipAddressType: ec2.VpcEndpointIpAddressType.IPV4,
-      privateDnsEnabled: true,
-      subnets: vpc.selectSubnets({
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-      }),
-      open: true,
-      securityGroups: [interfaceVpcEndpointSg],
-    });
+    /**
+     * Create an interface endpoint for the VPC created in this stack to access
+     * the endpoint service.
+     */
+    const endpointServiceInterfaceVpcEndpoint = new ec2.InterfaceVpcEndpoint(
+      this,
+      "endpoint-service-interface-endpoint",
+      {
+        vpc: vpc,
+        service: new ec2.InterfaceVpcEndpointService(
+          this.nlbEndpointService.vpcEndpointServiceName,
+        ),
+        ipAddressType: ec2.VpcEndpointIpAddressType.IPV4,
+        privateDnsEnabled: true,
+        subnets: vpc.selectSubnets({
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        }),
+        open: true,
+        securityGroups: [interfaceVpcEndpointSg],
+      },
+    );
+
+    endpointServiceInterfaceVpcEndpoint.node.addDependency(
+      vpcEndpointServiceDomainName,
+    );
 
     const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
       vpc: vpc,
