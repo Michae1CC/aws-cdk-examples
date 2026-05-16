@@ -1,19 +1,19 @@
 import {
-  aws_certificatemanager as acm,
   aws_ec2 as ec2,
   aws_ecs as ecs,
   aws_iam as iam,
   aws_elasticloadbalancingv2 as elbv2,
-  aws_elasticloadbalancingv2_targets as elbv2_targets,
   aws_lambda as lambda,
   aws_logs as logs,
   aws_route53 as route53,
   aws_vpclattice as vpclattice,
   CfnOutput,
+  CfnResource,
   Duration,
   Stack,
   StackProps,
   RemovalPolicy,
+  ArnFormat,
 } from "aws-cdk-lib";
 import * as cr from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
@@ -31,12 +31,11 @@ export class ServiceStack extends Stack {
   constructor(scope: Construct, id: string, props: ServiceStackProps) {
     super(scope, id, props);
 
-    if (process.env.APEX_DOMAIN === undefined) {
+    if (process.env.DOMAIN === undefined) {
       throw new Error("ENVARS not set");
     }
 
-    const apexDomain: string = process.env.APEX_DOMAIN;
-    const domainName: string = `testservice.${apexDomain}`;
+    const subDomain: string = `testservice.${process.env.DOMAIN}`;
 
     const vpc = new ec2.Vpc(this, "vpc", {
       ipProtocol: ec2.IpProtocol.IPV4_ONLY,
@@ -109,7 +108,7 @@ export class ServiceStack extends Stack {
       "vpc-lattice-service",
       {
         name: "vpc-lattice-service",
-        customDomainName: domainName,
+        customDomainName: subDomain,
         authType: "NONE",
       },
     );
@@ -426,7 +425,7 @@ export class ServiceStack extends Stack {
         vpcEndpointServiceLoadBalancers: [serviceNlb],
         acceptanceRequired: false,
         allowedPrincipals: [new iam.AccountPrincipal(this.account)],
-        // allowedRegions: ["ap-southeast-2", "us-east-1"],
+        allowedRegions: ["ap-southeast-2", "us-east-1"],
         supportedIpAddressTypes: [ec2.IpAddressType.IPV4],
       },
     );
@@ -442,104 +441,37 @@ export class ServiceStack extends Stack {
         "nlb-endpoint-service-domain-name",
         {
           endpointService: this.nlbEndpointService,
-          domainName: domainName,
+          domainName: subDomain,
           publicHostedZone: props.hostedZone,
         },
       );
 
-    const interfaceVpcEndpointSg = new ec2.SecurityGroup(
-      this,
-      "interface-vpc-endpoint-sg",
+    const policy = vpcEndpointServiceDomainName.node
+      .findChild("EnableDns")
+      .node.findChild("CustomResourcePolicy").node.defaultChild as CfnResource;
+
+    // See: https://github.com/aws/aws-cdk/issues/36216
+    policy.addPropertyOverride("PolicyDocument.Statement", [
       {
-        vpc: vpc,
-        allowAllOutbound: true,
-      },
-    );
-
-    interfaceVpcEndpointSg.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.icmpPing(),
-      "Allow pings from any connection",
-    );
-
-    interfaceVpcEndpointSg.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.HTTP,
-      "Allow HTTP from any connection",
-    );
-
-    interfaceVpcEndpointSg.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.HTTPS,
-      "Allow HTTPS from any connection",
-    );
-
-    /**
-     * Create an interface endpoint for the VPC created in this stack to access
-     * the endpoint service.
-     */
-    const endpointServiceInterfaceVpcEndpoint = new ec2.InterfaceVpcEndpoint(
-      this,
-      "endpoint-service-interface-endpoint",
-      {
-        vpc: vpc,
-        service: new ec2.InterfaceVpcEndpointService(
-          this.nlbEndpointService.vpcEndpointServiceName,
-        ),
-        ipAddressType: ec2.VpcEndpointIpAddressType.IPV4,
-        privateDnsEnabled: true,
-        subnets: vpc.selectSubnets({
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        Effect: "Allow",
+        Action: "ec2:ModifyVpcEndpointServiceConfiguration",
+        Resource: Stack.of(this).formatArn({
+          service: "ec2",
+          resource: "vpc-endpoint-service",
+          resourceName: this.nlbEndpointService.vpcEndpointServiceId,
+          arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
         }),
-        open: true,
-        securityGroups: [interfaceVpcEndpointSg],
       },
-    );
-
-    endpointServiceInterfaceVpcEndpoint.node.addDependency(
-      vpcEndpointServiceDomainName,
-    );
-
-    const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
-      vpc: vpc,
-      allowAllOutbound: true,
-    });
-
-    instanceSg.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.icmpPing(),
-      "Allow pings from any connection",
-    );
-
-    instanceSg.addIngressRule(
-      ec2.Peer.ipv4(VPC_CIDR),
-      ec2.Port.SSH,
-      "Allow SSH from vpc CIDR",
-    );
-
-    new ec2.Instance(this, "client-instance", {
-      vpc: vpc,
-      allowAllOutbound: true,
-      associatePublicIpAddress: false,
-      vpcSubnets: {
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      {
+        Effect: "Allow",
+        Action: "vpce:AllowMultiRegion",
+        Resource: Stack.of(this).formatArn({
+          service: "ec2",
+          resource: "vpc-endpoint-service",
+          resourceName: this.nlbEndpointService.vpcEndpointServiceId,
+          arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+        }),
       },
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.T2,
-        ec2.InstanceSize.MICRO,
-      ),
-      machineImage: new ec2.AmazonLinuxImage({
-        generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2023,
-        cpuType: ec2.AmazonLinuxCpuType.X86_64,
-      }),
-      securityGroup: instanceSg,
-    });
-
-    new ec2.CfnInstanceConnectEndpoint(this, "instance-connect", {
-      subnetId: vpc.selectSubnets({
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-      }).subnetIds[0],
-      securityGroupIds: [instanceSg.securityGroupId],
-    });
+    ]);
   }
 }

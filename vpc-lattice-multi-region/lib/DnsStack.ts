@@ -11,12 +11,12 @@ export class DnsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
-    if (process.env.APEX_DOMAIN === undefined) {
-      throw new Error("APEX_DOMAIN not set in environment");
+    if (process.env.DOMAIN === undefined) {
+      throw new Error("DOMAIN not set in environment");
     }
 
     this.hostedZone = route53.HostedZone.fromLookup(this, "hostedzone", {
-      domainName: process.env.APEX_DOMAIN,
+      domainName: process.env.DOMAIN,
     });
   }
 }

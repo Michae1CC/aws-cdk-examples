@@ -7,16 +7,9 @@ interface ClientStackProps extends StackProps {
 
 const VPC_CIDR = "10.0.0.0/16" as const;
 
-export class ClientStack extends Stack {
+export class ConsumerStack extends Stack {
   constructor(scope: Construct, id: string, props: ClientStackProps) {
     super(scope, id, props);
-
-    if (process.env.APEX_DOMAIN === undefined) {
-      throw new Error("ENVARS not set");
-    }
-
-    const apexDomain: string = process.env.APEX_DOMAIN;
-    const domainName: string = `testservice.${apexDomain}`;
 
     const vpc = new ec2.Vpc(this, "vpc", {
       ipProtocol: ec2.IpProtocol.IPV4_ONLY,
@@ -106,11 +99,19 @@ export class ClientStack extends Stack {
       "Allow HTTPS from any connection",
     );
 
+    const serviceRegion = "us-east-1";
+
+    const interfaceVpcEndpoint = new ec2.InterfaceVpcEndpointService(
+      // XXX: Getting the service name directly from the imported VpcEndpointService
+      // construct will fail since the service name region will change to the
+      // region this stack is created in
+      `com.amazonaws.vpce.${serviceRegion}.${props.nlbEndpointService.vpcEndpointServiceId}`,
+    );
+
     new ec2.InterfaceVpcEndpoint(this, "endpoint-service-interface-endpoint", {
       vpc: vpc,
-      service: new ec2.InterfaceVpcEndpointService(
-        props.nlbEndpointService.vpcEndpointServiceName,
-      ),
+      service: interfaceVpcEndpoint,
+      serviceRegion: "us-east-1",
       ipAddressType: ec2.VpcEndpointIpAddressType.IPV4,
       privateDnsEnabled: true,
       subnets: vpc.selectSubnets({
@@ -118,6 +119,8 @@ export class ClientStack extends Stack {
       }),
       open: true,
       securityGroups: [interfaceVpcEndpointSg],
+      // Important for cross-region endpoints
+      lookupSupportedAzs: false,
     });
   }
 }
