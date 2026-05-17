@@ -10,6 +10,8 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Copy template instead of final config
 COPY default.conf.template /etc/nginx/templates/default.conf.template
 
+RUN envsubst "$(printf '${%s} ' $(env | cut -d'=' -f1))" --variables | xargs -L4 | column -t
+
 EXPOSE 80
 
 CMD ["/bin/sh", "-c", "\
