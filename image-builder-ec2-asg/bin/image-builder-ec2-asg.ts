@@ -7,8 +7,8 @@ import { config } from "dotenv";
 config();
 
 const env: cdk.Environment = {
-  region: process.env.ACCOUNT,
-  account: process.env.REGION,
+  account: process.env.ACCOUNT,
+  region: process.env.REGION,
 };
 
 const app = new cdk.App();

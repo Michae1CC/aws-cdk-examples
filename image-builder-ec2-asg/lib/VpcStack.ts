@@ -30,5 +30,42 @@ export class VpcStack extends cdk.Stack {
         },
       ],
     });
+
+    // Create VPC endpoints for SSM (required for private subnet access)
+    // const ssmEndpoint = new ec2.InterfaceVpcEndpoint(
+    //   this,
+    //   "ssm-interface-endpoint",
+    //   {
+    //     vpc: this.vpc,
+    //     service: ec2.InterfaceVpcEndpointAwsService.SSM,
+    //     subnets: {
+    //       subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+    //     },
+    //   },
+    // );
+
+    // const ssmMessagesEndpoint = new ec2.InterfaceVpcEndpoint(
+    //   this,
+    //   "ssm-messages-endpoint",
+    //   {
+    //     vpc: this.vpc,
+    //     service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
+    //     subnets: {
+    //       subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+    //     },
+    //   },
+    // );
+
+    // const ec2MessagesEndpoint = new ec2.InterfaceVpcEndpoint(
+    //   this,
+    //   "ec2-messages-endpoint",
+    //   {
+    //     vpc: this.vpc,
+    //     service: ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
+    //     subnets: {
+    //       subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+    //     },
+    //   },
+    // );
   }
 }
