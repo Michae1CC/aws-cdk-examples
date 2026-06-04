@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib/core";
 import { ImageBuilderStack } from "../lib/ImageBuilderStack";
+import { NginxClusterStack } from "../lib/NginxClusterStack";
 import { VpcStack } from "../lib/VpcStack";
 import { config } from "dotenv";
 
@@ -17,7 +18,13 @@ const vpcStack = new VpcStack(app, "vpc-stack", {
   env: env,
 });
 
-new ImageBuilderStack(app, "image-builder-stack", {
+const imageBuilderStack = new ImageBuilderStack(app, "image-builder-stack", {
   env: env,
   vpc: vpcStack.vpc,
+});
+
+new NginxClusterStack(app, "nginx-cluster-stack", {
+  env: env,
+  vpc: vpcStack.vpc,
+  amiParameter: imageBuilderStack.amiParameter,
 });

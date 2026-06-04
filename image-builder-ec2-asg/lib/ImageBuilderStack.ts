@@ -15,7 +15,7 @@ interface Props extends StackProps {
 }
 
 export class ImageBuilderStack extends cdk.Stack {
-  public readonly launchTemplate: ec2.LaunchTemplate;
+  public readonly amiParameter: ssm.StringParameter;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
@@ -42,6 +42,35 @@ export class ImageBuilderStack extends cdk.Stack {
             "EC2InstanceProfileForImageBuilderECRContainerBuilds",
           ),
         ],
+      },
+    );
+
+    // Get the SSM parameter name for the latest ARM Linux 2023 AMI
+    const armLinux2023ParameterName =
+      ec2.AmazonLinux2023ImageSsmParameter.ssmParameterName({
+        cpuType: ec2.AmazonLinuxCpuType.ARM_64,
+        kernel: ec2.AmazonLinux2023Kernel.DEFAULT,
+        edition: ec2.AmazonLinuxEdition.STANDARD,
+      });
+
+    /**
+     * Create a parameter to hold the AMI built for the cluster. ImageBuilder
+     * will use this AWSServiceRoleForImageBuilder service linked role to
+     * perform updates to the parameter, this service linked role only has
+     * permissions to update parameters prefixed with `/imagebuilder`.
+     */
+    this.amiParameter = new ssm.StringParameter(
+      this,
+      "nginx-cluster-ami-parameter",
+      {
+        parameterName: "/imagebuilder/cluster-ami",
+        description: "Latest ARM Linux 2023 AMI ID",
+        stringValue: ssm.StringParameter.valueFromLookup(
+          this,
+          armLinux2023ParameterName,
+        ),
+        dataType: ssm.ParameterDataType.AWS_EC2_IMAGE,
+        tier: ssm.ParameterTier.STANDARD,
       },
     );
 
@@ -134,55 +163,6 @@ export class ImageBuilderStack extends cdk.Stack {
       },
     );
 
-    /**
-     * Role for the ec2 instances in the ASG
-     */
-    const instanceRole = new iam.Role(this, "instance-role", {
-      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "AmazonSSMManagedInstanceCore",
-        ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "CloudWatchAgentServerPolicy",
-        ),
-      ],
-    });
-
-    const instanceSecurityGroup = new ec2.SecurityGroup(
-      this,
-      "monitor-instance-sg",
-      {
-        vpc: props.vpc,
-        securityGroupName: "nginx-cluster-security-group",
-        allowAllOutbound: true,
-      },
-    );
-
-    instanceSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.icmpPing(),
-    );
-    instanceSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTP);
-    instanceSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTPS);
-
-    const instanceUserData = ec2.UserData.forLinux();
-
-    /**
-     * Create a launch template that is updated by image builder every time
-     * a new AMI is created.
-     */
-    this.launchTemplate = new ec2.LaunchTemplate(this, "launch-template", {
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.M6G,
-        ec2.InstanceSize.MEDIUM,
-      ),
-      userData: instanceUserData,
-      role: instanceRole,
-      securityGroup: instanceSecurityGroup,
-      requireImdsv2: true,
-    });
-
     const distributionConfiguration =
       new imagebuilder.CfnDistributionConfiguration(
         this,
@@ -191,10 +171,17 @@ export class ImageBuilderStack extends cdk.Stack {
           name: "NginxClusterNode",
           distributions: [
             {
-              launchTemplateConfigurations: [
+              // launchTemplateConfigurations: [
+              //   {
+              //     launchTemplateId: this.launchTemplate.launchTemplateId,
+              //     setDefaultVersion: true,
+              //   },
+              // ],
+              ssmParameterConfigurations: [
                 {
-                  launchTemplateId: this.launchTemplate.launchTemplateId,
-                  setDefaultVersion: true,
+                  parameterName: this.amiParameter.parameterName,
+                  amiAccountId: this.account,
+                  dataType: ssm.ParameterDataType.AWS_EC2_IMAGE,
                 },
               ],
               region: "ap-southeast-2",
@@ -234,14 +221,6 @@ export class ImageBuilderStack extends cdk.Stack {
         imageRecipeArn: nodeImageRecipe.attrArn,
         distributionConfigurationArn: distributionConfiguration.attrArn,
         enhancedImageMetadataEnabled: false,
-      },
-    );
-
-    new cdk.CfnOutput(
-      this,
-      "launch-template-latest-version-command-cfn-output",
-      {
-        value: `aws ec2 describe-launch-template-versions --region ${this.region} --launch-template-id ${this.launchTemplate.launchTemplateId} --versions '$Latest'`,
       },
     );
   }

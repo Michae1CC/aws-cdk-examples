@@ -13,6 +13,14 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * `npx cdk diff`    compare deployed stack with current state
 * `npx cdk synth`   emits the synthesized CloudFormation template
 
+## Chores
+
+* [ ] Set up nginx to serve files
+* [ ] Get cfn init working
+* [ ] Export logs and metrics from ec2
+
 ## References
 
 * <https://aws.plainenglish.io/what-is-aws-ssm-session-manager-74babf3d5361>
+* <https://docs.aws.amazon.com/autoscaling/ec2/userguide/using-systems-manager-parameters.html>
+* <https://nginx.org/en/docs/beginners_guide.html>

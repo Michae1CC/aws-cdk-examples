@@ -3,5 +3,6 @@
     "ap-southeast-2a",
     "ap-southeast-2b",
     "ap-southeast-2c"
-  ]
+  ],
+  "ssm:account=786511284175:parameterName=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64:region=ap-southeast-2": "ami-06ef0823cb7e4f283"
 }
