@@ -24,3 +24,6 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://aws.plainenglish.io/what-is-aws-ssm-session-manager-74babf3d5361>
 * <https://docs.aws.amazon.com/autoscaling/ec2/userguide/using-systems-manager-parameters.html>
 * <https://nginx.org/en/docs/beginners_guide.html>
+* <https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-attribute-creationpolicy.html>
+* <https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-attribute-updatepolicy.html>
+* <https://docs.aws.amazon.com/imagebuilder/latest/userguide/security-iam.html>
