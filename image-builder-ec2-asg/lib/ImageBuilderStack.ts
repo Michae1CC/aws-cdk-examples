@@ -122,6 +122,8 @@ export class ImageBuilderStack extends cdk.Stack {
                           "whoami",
                           "dnf update",
                           "dnf install -y cowsay nginx",
+                          // This is relying on Amazon linux AMIS to have AWS SSM agent pre-installed
+                          //  see: https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-al2.html
                           "systemctl enable amazon-ssm-agent",
                           "systemctl enable nginx",
                         ].join("\n"),
@@ -171,12 +173,6 @@ export class ImageBuilderStack extends cdk.Stack {
           name: "NginxClusterNode",
           distributions: [
             {
-              // launchTemplateConfigurations: [
-              //   {
-              //     launchTemplateId: this.launchTemplate.launchTemplateId,
-              //     setDefaultVersion: true,
-              //   },
-              // ],
               ssmParameterConfigurations: [
                 {
                   parameterName: this.amiParameter.parameterName,

@@ -18,6 +18,9 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * [ ] Set up nginx to serve files
 * [ ] Get cfn init working
 * [ ] Export logs and metrics from ec2
+* [ ] Metric dashboards
+* [ ] Access log querying
+* [ ] Request metrics from access logs
 
 ## References
 
@@ -27,3 +30,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-attribute-creationpolicy.html>
 * <https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-attribute-updatepolicy.html>
 * <https://docs.aws.amazon.com/imagebuilder/latest/userguide/security-iam.html>
+* <https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_store>
+* <https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/>
+* <https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/#enable-sendfile>
+* <https://docs.nginx.com/nginx/admin-guide/monitoring/logging/#syslog>
