@@ -120,12 +120,15 @@ export class ImageBuilderStack extends cdk.Stack {
                         [
                           "set -ex",
                           "whoami",
+                          // Update so we can install deps, but don't upgrade
+                          // Upgrading could introduce changes unexpectedly
+                          // Upgrade by changing the base image to a newer one, which is a tracked change
                           "dnf update",
                           "dnf install -y cowsay nginx",
-                          // This is relying on Amazon linux AMIS to have AWS SSM agent pre-installed
-                          //  see: https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-al2.html
-                          "systemctl enable amazon-ssm-agent",
                           "systemctl enable nginx",
+                          // This is relying on Amazon linux AMIS to have AWS SSM agent pre-installed.
+                          // SSM agents are generally enabled by default on Amazon Linux AMIs.
+                          //  see: https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-al2.html
                         ].join("\n"),
                       ],
                     },
