@@ -3,12 +3,15 @@ import {
   aws_ec2 as ec2,
   aws_ecs as ecs,
   aws_iam as iam,
+  aws_s3_assets as s3_assets,
   aws_ssm as ssm,
   StackProps,
 } from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import * as yaml from "yaml";
+import * as path from "path";
+import { assert } from "console";
 
 interface Props extends StackProps {
   vpc: ec2.Vpc;
@@ -20,9 +23,13 @@ export class ImageBuilderStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
+    const nginxConfAsset = new s3_assets.Asset(this, "nginx-conf-asset", {
+      path: path.join(__dirname, "..", "nginx", "nginx.conf"),
+    });
+
     /**
      * A role used Image builder to build instances
-     * See: https://docs.aws.amazon.com/imagebuilder/latest/userguide/getting-started-image-builder.html#image-builder-IAM-prereq
+     * See: https://docs.aws.amazon.com/imagebuilder/latest/userguide/set-up-ib-env.html
      */
     const imageBuilderWorkerIamRole = new iam.Role(
       this,
@@ -30,8 +37,6 @@ export class ImageBuilderStack extends cdk.Stack {
       {
         assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
         managedPolicies: [
-          // Allows us to use SSM to connect to instances, see:
-          //  https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-with-systems-manager-session-manager.html
           iam.ManagedPolicy.fromAwsManagedPolicyName(
             "AmazonSSMManagedInstanceCore",
           ),
@@ -42,6 +47,17 @@ export class ImageBuilderStack extends cdk.Stack {
             "EC2InstanceProfileForImageBuilderECRContainerBuilds",
           ),
         ],
+        inlinePolicies: {
+          s3: new iam.PolicyDocument({
+            statements: [
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["s3:*"],
+                resources: [nginxConfAsset.bucket.arnForObjects("*")],
+              }),
+            ],
+          }),
+        },
       },
     );
 
@@ -103,7 +119,7 @@ export class ImageBuilderStack extends cdk.Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.0.0",
+        version: "1.2.0",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -125,7 +141,31 @@ export class ImageBuilderStack extends cdk.Stack {
                           // Upgrade by changing the base image to a newer one, which is a tracked change
                           "dnf update",
                           "dnf install -y cowsay nginx",
+                        ].join("\n"),
+                      ],
+                    },
+                  },
+                  {
+                    name: "DownloadNginxConf",
+                    action: "S3Download",
+                    inputs: [
+                      {
+                        source: nginxConfAsset.s3ObjectUrl,
+                        destination: "/etc/nginx/nginx.conf",
+                        overwrite: true,
+                      },
+                    ],
+                  },
+                  {
+                    name: "ConfigureNginx",
+                    action: "ExecuteBash",
+                    inputs: {
+                      commands: [
+                        [
+                          "set -ex",
+                          "whoami",
                           "systemctl enable nginx",
+                          "nginx -t -c /etc/nginx/nginx.conf",
                           // This is relying on Amazon linux AMIS to have AWS SSM agent pre-installed.
                           // SSM agents are generally enabled by default on Amazon Linux AMIs.
                           //  see: https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-al2.html
@@ -153,7 +193,7 @@ export class ImageBuilderStack extends cdk.Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.0.0",
+        version: "1.2.0",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent
