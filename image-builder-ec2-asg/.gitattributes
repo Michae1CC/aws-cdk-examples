@@ -1,0 +1,2 @@
+# Without consistent line endings lambdas will show constant diffs due to \r in the sourcemaps
+* text=auto eol=lf

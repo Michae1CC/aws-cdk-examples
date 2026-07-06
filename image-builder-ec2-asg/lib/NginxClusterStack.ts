@@ -70,29 +70,31 @@ export class NginxClusterStack extends cdk.Stack {
       ),
     });
 
-    // const autoScalingGroup = new autoscaling.AutoScalingGroup(
-    //   this,
-    //   "nginx-cluster-asg",
-    //   {
-    //     vpc: props.vpc,
-    //     launchTemplate: props.launchTemplate,
-    //     allowAllOutbound: false,
-    //     // desiredCapacity is set to minimum if omitted https://github.com/aws/aws-cdk/issues/5215
-    //     maxCapacity: 1,
-    //     minCapacity: 1,
-    //     // By default changing the ASG doesn't actually replace the instances. Repeated for clarity.
-    //     // After deploying a change to this ASG or its dependencies, you need to manually execute
-    //     // an instance replacement.
-    //     updatePolicy: undefined,
-    //     vpcSubnets: props.vpc.selectSubnets({
-    //       subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-    //     }),
-    //     // Try to get cfn init working
-    //     healthChecks: autoscaling.HealthChecks.ec2({
-    //       gracePeriod: Duration.seconds(300),
-    //     }),
-    //   },
-    // );
+    const autoScalingGroup = new autoscaling.AutoScalingGroup(
+      this,
+      "nginx-cluster-asg",
+      {
+        vpc: props.vpc,
+        launchTemplate: launchTemplate,
+        allowAllOutbound: false,
+        // desiredCapacity is set to minimum if omitted https://github.com/aws/aws-cdk/issues/5215
+        maxCapacity: 1,
+        minCapacity: 1,
+        deletionProtection: autoscaling.DeletionProtection.NONE,
+        // By default changing the ASG doesn't actually replace the instances. Repeated for clarity.
+        // After deploying a change to this ASG or its dependencies, you need to manually execute
+        // an instance replacement.
+        updatePolicy: undefined,
+        vpcSubnets: props.vpc.selectSubnets({
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        }),
+        // signals: ...
+        // Try to get cfn init working
+        healthChecks: autoscaling.HealthChecks.ec2({
+          gracePeriod: Duration.seconds(300),
+        }),
+      },
+    );
 
     new cdk.CfnOutput(
       this,
