@@ -78,23 +78,28 @@ export class NginxClusterStack extends cdk.Stack {
         launchTemplate: launchTemplate,
         allowAllOutbound: false,
         // desiredCapacity is set to minimum if omitted https://github.com/aws/aws-cdk/issues/5215
-        maxCapacity: 1,
-        minCapacity: 1,
+        maxCapacity: 5,
+        minCapacity: 2,
         deletionProtection: autoscaling.DeletionProtection.NONE,
-        // By default changing the ASG doesn't actually replace the instances. Repeated for clarity.
-        // After deploying a change to this ASG or its dependencies, you need to manually execute
-        // an instance replacement.
-        updatePolicy: undefined,
+        updatePolicy: autoscaling.UpdatePolicy.rollingUpdate({
+          minInstancesInService: 2,
+          waitOnResourceSignals: true,
+        }),
         vpcSubnets: props.vpc.selectSubnets({
           subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
         }),
-        // signals: ...
+        signals: autoscaling.Signals.waitForMinCapacity({
+          timeout: Duration.minutes(2),
+        }),
         // Try to get cfn init working
         healthChecks: autoscaling.HealthChecks.ec2({
           gracePeriod: Duration.seconds(300),
         }),
       },
     );
+
+    // Injects a call to cfn-signal on exit
+    instanceUserData.addSignalOnExitCommand(autoScalingGroup);
 
     new cdk.CfnOutput(
       this,

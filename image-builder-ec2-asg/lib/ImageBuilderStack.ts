@@ -119,7 +119,7 @@ export class ImageBuilderStack extends cdk.Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.1",
+        version: "1.3.3",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -136,6 +136,8 @@ export class ImageBuilderStack extends cdk.Stack {
                         [
                           "set -ex",
                           "whoami",
+                          "mkdir /tmp/www",
+                          "echo 'Hello world' > index.html",
                           // Update so we can install deps, but don't upgrade
                           // Upgrading could introduce changes unexpectedly
                           // Upgrade by changing the base image to a newer one, which is a tracked change
@@ -193,7 +195,7 @@ export class ImageBuilderStack extends cdk.Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.1",
+        version: "1.3.3",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent
