@@ -1,6 +1,7 @@
 import {
   aws_autoscaling as autoscaling,
   aws_ec2 as ec2,
+  aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_ssm as ssm,
   Duration,
@@ -100,6 +101,45 @@ export class NginxClusterStack extends cdk.Stack {
 
     // Injects a call to cfn-signal on exit
     instanceUserData.addSignalOnExitCommand(autoScalingGroup);
+
+    // The security group used for the cloudfront vpc origin must allow incoming traffic
+    // from the AWS managed region specific Cloudfront origin facing prefix list,
+    // see:
+    //  https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-vpc-origins.html#vpc-origin-prerequisites
+    //  https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/LocationsOfEdgeServers.html#managed-prefix-list
+    const cloudfrontOriginFacingPrefixList = ec2.PrefixList.fromLookup(
+      this,
+      "cloudfront-origin-facing-prefix-list",
+      {
+        prefixListName: "com.amazonaws.global.cloudfront.origin-facing",
+      },
+    );
+
+    const nlbSg = new ec2.SecurityGroup(this, "nlb-sg", {
+      vpc: props.vpc,
+      allowAllOutbound: true,
+    });
+
+    nlbSg.addIngressRule(
+      ec2.Peer.prefixList(cloudfrontOriginFacingPrefixList.prefixListId),
+      ec2.Port.HTTPS,
+    );
+
+    nlbSg.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow ICMP pings on Ipv4 from anywhere",
+    );
+
+    const nlb = new elbv2.NetworkLoadBalancer(this, "nginx-cluster-nlb", {
+      vpc: props.vpc,
+      internetFacing: false,
+      ipAddressType: elbv2.IpAddressType.IPV4,
+      securityGroups: [nlbSg],
+      vpcSubnets: props.vpc.selectSubnets({
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      }),
+    });
 
     new cdk.CfnOutput(
       this,

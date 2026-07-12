@@ -136,8 +136,6 @@ export class ImageBuilderStack extends cdk.Stack {
                         [
                           "set -ex",
                           "whoami",
-                          "mkdir /tmp/www",
-                          "echo 'Hello world' > index.html",
                           // Update so we can install deps, but don't upgrade
                           // Upgrading could introduce changes unexpectedly
                           // Upgrade by changing the base image to a newer one, which is a tracked change
@@ -166,6 +164,11 @@ export class ImageBuilderStack extends cdk.Stack {
                         [
                           "set -ex",
                           "whoami",
+                          "mkdir /tmp/www",
+                          "echo 'Hello world' > index.html",
+                          "mkdir /etc/nginx/ssl",
+                          "chmod 700 /etc/nginx/ssl",
+                          "openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx-selfsigned.key -subj /C=AU/ST=/L=/O=/OU=/CN= -out /etc/nginx/ssl/nginx-selfsigned.crt -keyout /etc/nginx/ssl/nginx-selfsigned.key",
                           "nginx -t -c /etc/nginx/nginx.conf",
                           "systemctl enable nginx",
                           // This is relying on Amazon linux AMIS to have AWS SSM agent pre-installed.
