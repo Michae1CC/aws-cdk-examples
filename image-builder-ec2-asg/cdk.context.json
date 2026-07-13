@@ -4,5 +4,11 @@
     "ap-southeast-2b",
     "ap-southeast-2c"
   ],
-  "ssm:account=786511284175:parameterName=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64:region=ap-southeast-2": "ami-06ef0823cb7e4f283"
+  "ssm:account=786511284175:parameterName=/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64:region=ap-southeast-2": "ami-06ef0823cb7e4f283",
+  "cc-api-provider:account=786511284175:expectedMatchCount=exactly-one:propertiesToReturn.0=PrefixListId:propertyMatch.PrefixListName=com.amazonaws.global.cloudfront.origin-facing:region=ap-southeast-2:typeName=AWS$:$:EC2$:$:PrefixList": [
+    {
+      "PrefixListId": "pl-b8a742d1",
+      "Identifier": "pl-b8a742d1"
+    }
+  ]
 }

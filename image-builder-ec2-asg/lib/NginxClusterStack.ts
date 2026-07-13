@@ -141,6 +141,36 @@ export class NginxClusterStack extends cdk.Stack {
       }),
     });
 
+    // Create target group for the Auto Scaling Group
+    const targetGroup = new elbv2.NetworkTargetGroup(
+      this,
+      "nginx-cluster-nlb-target-group",
+      {
+        port: 80,
+        protocol: elbv2.Protocol.TCP,
+        vpc: props.vpc,
+        targetType: elbv2.TargetType.INSTANCE,
+        healthCheck: {
+          enabled: true,
+          protocol: elbv2.Protocol.HTTP,
+          port: "80",
+          healthyThresholdCount: 2,
+          unhealthyThresholdCount: 3,
+          interval: cdk.Duration.seconds(30),
+          path: "/healthcheck",
+          healthyHttpCodes: "200,202",
+        },
+      },
+    );
+
+    autoScalingGroup.attachToNetworkTargetGroup(targetGroup);
+
+    nlb.addListener("nginx-cluster-nlb-listener", {
+      port: 80,
+      protocol: elbv2.Protocol.TCP,
+      defaultTargetGroups: [targetGroup],
+    });
+
     new cdk.CfnOutput(
       this,
       "launch-template-latest-version-command-cfn-output",
