@@ -34,3 +34,5 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.nginx.com/nginx/admin-guide/load-balancer/tcp-udp-load-balancer/>
 * <https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/#enable-sendfile>
 * <https://docs.nginx.com/nginx/admin-guide/monitoring/logging/#syslog>
+* <https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-config-options.html>
+* <https://aws.amazon.com/blogs/aws/reduce-your-operational-overhead-today-with-amazon-cloudfront-saas-manager/>
