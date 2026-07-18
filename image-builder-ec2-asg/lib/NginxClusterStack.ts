@@ -16,6 +16,8 @@ interface Props extends StackProps {
 }
 
 export class NginxClusterStack extends cdk.Stack {
+  public readonly nlb: elbv2.NetworkLoadBalancer;
+
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
@@ -131,7 +133,7 @@ export class NginxClusterStack extends cdk.Stack {
       "Allow ICMP pings on Ipv4 from anywhere",
     );
 
-    const nlb = new elbv2.NetworkLoadBalancer(this, "nginx-cluster-nlb", {
+    this.nlb = new elbv2.NetworkLoadBalancer(this, "nginx-cluster-nlb", {
       vpc: props.vpc,
       internetFacing: false,
       ipAddressType: elbv2.IpAddressType.IPV4,
@@ -165,7 +167,7 @@ export class NginxClusterStack extends cdk.Stack {
 
     autoScalingGroup.attachToNetworkTargetGroup(targetGroup);
 
-    nlb.addListener("nginx-cluster-nlb-listener", {
+    this.nlb.addListener("nginx-cluster-nlb-listener", {
       port: 80,
       protocol: elbv2.Protocol.TCP,
       defaultTargetGroups: [targetGroup],
