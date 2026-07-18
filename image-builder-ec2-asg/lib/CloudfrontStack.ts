@@ -18,6 +18,7 @@ interface Props extends StackProps {
 
 export class CloudfrontStack extends cdk.Stack {
   public readonly distribution: cloudfront.IDistribution;
+  public readonly connectionGroup: cloudfront.CfnConnectionGroup;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
@@ -37,7 +38,7 @@ export class CloudfrontStack extends cdk.Stack {
       this,
       "distribution-certificate",
       {
-        domainName: process.env.DOMAIN,
+        domainName: `*.${process.env.DOMAIN}`,
         validation: acm.CertificateValidation.fromDns(props.hostedZone),
       },
     );
@@ -95,6 +96,19 @@ export class CloudfrontStack extends cdk.Stack {
         },
       ],
     });
+
+    /**
+     * A custom Connection group is required in multi-tenant distributions to be able to set network settings.
+     */
+    this.connectionGroup = new cloudfront.CfnConnectionGroup(
+      this,
+      "connection-group",
+      {
+        name: "connection-group",
+        enabled: true,
+        ipv6Enabled: true,
+      },
+    );
 
     this.distribution = new cloudfront.Distribution(this, "distribution", {
       enabled: true,

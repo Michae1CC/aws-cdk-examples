@@ -53,6 +53,8 @@ const cloudfrontTenantStack = new CloudfrontTenantStack(
       account: process.env.ACCOUNT,
       region: "us-east-1",
     },
+    hostedZone: dnsStack.hostedZone,
     distribution: cloudfrontStack.distribution,
+    connectionGroup: cloudfrontStack.connectionGroup,
   },
 );
