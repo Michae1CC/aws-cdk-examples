@@ -128,7 +128,6 @@ export class CloudfrontStack extends cdk.Stack {
 
       // Security
       certificate: distributionCertificate,
-      minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2025,
     });
 
     // Access the underlying L1 CfnDistribution

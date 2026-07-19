@@ -119,7 +119,7 @@ export class ImageBuilderStack extends cdk.Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.6",
+        version: "1.3.8",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -164,9 +164,8 @@ export class ImageBuilderStack extends cdk.Stack {
                         [
                           "set -ex",
                           "whoami",
-                          "mkdir /tmp/www",
-                          "echo 'Hello world' > index.html",
                           "nginx -t -c /etc/nginx/nginx.conf",
+                          "echo 'Hi' > /etc/nginx/index.html",
                           "systemctl enable nginx",
                           // This is relying on Amazon linux AMIS to have AWS SSM agent pre-installed.
                           // SSM agents are generally enabled by default on Amazon Linux AMIs.
@@ -195,7 +194,7 @@ export class ImageBuilderStack extends cdk.Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.6",
+        version: "1.3.8",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent

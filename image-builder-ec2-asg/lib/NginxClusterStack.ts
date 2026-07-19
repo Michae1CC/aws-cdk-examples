@@ -124,7 +124,7 @@ export class NginxClusterStack extends cdk.Stack {
 
     nlbSg.addIngressRule(
       ec2.Peer.prefixList(cloudfrontOriginFacingPrefixList.prefixListId),
-      ec2.Port.HTTPS,
+      ec2.Port.HTTP,
     );
 
     nlbSg.addIngressRule(

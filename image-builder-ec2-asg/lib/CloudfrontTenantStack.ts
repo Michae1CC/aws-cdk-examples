@@ -24,7 +24,8 @@ export class CloudfrontTenantStack extends Stack {
       throw new Error("DOMAIN not set in environment");
     }
 
-    const tenantDomain = `file.${process.env.DOMAIN}`;
+    const domainPrefix = "files";
+    const tenantDomain = `${domainPrefix}.${process.env.DOMAIN}`;
 
     /**
      * WAF ACL which is attached to the stack's tenant.
@@ -131,7 +132,7 @@ export class CloudfrontTenantStack extends Stack {
       // For example, if you want to create a record for acme.example.com, specify "acme".
       // You can also specify the fully qualified domain name which terminates with a
       // ".". For example, "acme.example.com.".
-      recordName: "file",
+      recordName: domainPrefix,
       target: route53.RecordTarget.fromAlias({
         bind: () => ({
           dnsName: props.connectionGroup.attrRoutingEndpoint,
@@ -140,44 +141,44 @@ export class CloudfrontTenantStack extends Stack {
       }),
     });
 
-    // const aaaaRecord = new route53.AaaaRecord(
-    //   this,
-    //   "distribution-aaaa-record",
-    //   {
-    //     // NOTE: The ttl cannot be set for AWS alias records
-    //     zone: props.hostedZone,
-    //     recordName: "file",
-    //     target: route53.RecordTarget.fromAlias(
-    //       new route53_targets.CloudFrontTarget(props.distribution),
-    //     ),
-    //   },
-    // );
+    const aaaaRecord = new route53.AaaaRecord(
+      this,
+      "distribution-aaaa-record",
+      {
+        // NOTE: The ttl cannot be set for AWS alias records
+        zone: props.hostedZone,
+        recordName: domainPrefix,
+        target: route53.RecordTarget.fromAlias({
+          bind: () => ({
+            dnsName: props.connectionGroup.attrRoutingEndpoint,
+            hostedZoneId: "Z2FDTNDATAQYW2", // CloudFront's hosted zone ID (never changes)
+          }),
+        }),
+      },
+    );
 
-    // const distributionTenant = new cloudfront.CfnDistributionTenant(
-    //   this,
-    //   "PremiumTenant",
-    //   {
-    //     distributionId: props.distribution.distributionId,
-    //     domains: [`files.${process.env.DOMAIN}`],
-    //     name: "tenant1",
-    //     enabled: true,
-    //     parameters: [
-    //       {
-    //         name: "tenantName",
-    //         value: "tenant1",
-    //       },
-    //     ],
-    //     // Override default WAF
-    //     customizations: {
-    //       webAcl: {
-    //         action: "override",
-    //         arn: cfTenantWafAcl.attrArn,
-    //       },
-    //     },
-    //   },
-    // );
-
-    // distributionTenant.node.addDependency(aRecord);
-    // distributionTenant.node.addDependency(aaaaRecord);
+    const distributionTenant = new cloudfront.CfnDistributionTenant(
+      this,
+      "distribution-tenant",
+      {
+        distributionId: props.distribution.distributionId,
+        domains: [tenantDomain],
+        name: "tenant1",
+        enabled: true,
+        parameters: [
+          {
+            name: "tenantName",
+            value: "tenant1",
+          },
+        ],
+        // Override default WAF
+        customizations: {
+          webAcl: {
+            action: "override",
+            arn: cfTenantWafAcl.attrArn,
+          },
+        },
+      },
+    );
   }
 }
