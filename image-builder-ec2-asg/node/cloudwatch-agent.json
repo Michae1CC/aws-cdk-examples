@@ -1,0 +1,66 @@
+{
+  "agent": {
+    "metrics_collection_interval": 10,
+    "logfile": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+    "debug": false,
+    "omit_hostname": false,
+    "usage_data": true,
+    "use_dualstack_endpoint": false
+  },
+  "metrics": {
+    "namespace": "Service/NginxCluster",
+    "append_dimensions": {
+      "InstanceId": "${aws:InstanceId}",
+      "InstanceType": "${aws:InstanceType}",
+      "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
+    },
+    "aggregation_dimensions": [["AutoScalingGroupName"], ["InstanceId"]],
+    "force_flush_interval": 30,
+    "metrics_collected": {
+      "cpu": {
+        "totalcpu": true,
+        "measurement": [
+          "cpu_usage_idle",
+          "cpu_usage_irq",
+          "cpu_usage_softirq",
+          "cpu_usage_active"
+        ]
+      },
+      "mem": {
+        "measurement": ["active", "available", "used_percent"]
+      },
+      "net": {
+        "resources": ["*"],
+        "measurement": [
+          "bytes_sent",
+          "bytes_recv",
+          "drop_in",
+          "drop_out",
+          "err_in",
+          "err_out",
+          "packets_sent",
+          "packets_recv"
+        ]
+      },
+      "netstat": {
+        "measurement": [
+          "tcp_close",
+          "tcp_close_wait",
+          "tcp_closing",
+          "tcp_established",
+          "tcp_fin_wait1",
+          "tcp_fin_wait2",
+          "tcp_last_ack",
+          "tcp_listen",
+          "tcp_none",
+          "tcp_syn_sent",
+          "tcp_syn_recv",
+          "tcp_time_wait"
+        ]
+      },
+      "processes": {
+        "measurement": ["total", "running", "dead", "idle"]
+      }
+    }
+  }
+}

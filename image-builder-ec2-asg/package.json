@@ -2,7 +2,7 @@
   "name": "image-builder-ec2-asg",
   "version": "0.1.0",
   "scripts": {
-    "format": "prettier --write ./**/*.ts",
+    "format": "prettier --write ./**/*.ts ./node/cloudwatch-agent.json",
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",

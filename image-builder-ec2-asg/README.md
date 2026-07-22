@@ -37,3 +37,5 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-config-options.html>
 * <https://aws.amazon.com/blogs/aws/reduce-your-operational-overhead-today-with-amazon-cloudfront-saas-manager/>
 * <https://aws.amazon.com/blogs/networking-and-content-delivery/adding-http-security-headers-using-amazon-cloudfront/>
+* <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/prerequisites.html>
+* <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/metrics-collected-by-CloudWatch-agent.html>

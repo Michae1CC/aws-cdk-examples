@@ -47,6 +47,7 @@ export class NginxClusterStack extends cdk.Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName(
           "AmazonSSMManagedInstanceCore",
         ),
+        // Provide the cloudwatch agent with permissions to push to cloudwatch
         iam.ManagedPolicy.fromAwsManagedPolicyName(
           "CloudWatchAgentServerPolicy",
         ),
@@ -102,6 +103,12 @@ export class NginxClusterStack extends cdk.Stack {
     );
 
     // Injects a call to cfn-signal on exit
+    instanceUserData.addCommands(
+      // Use bash strict mode so the instance cfn signal set at the end of the script is not run if any prior commands fail
+      "set -euxo pipefail",
+      // Set the the cloudwatch agent configuration file
+      "amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+    )
     instanceUserData.addSignalOnExitCommand(autoScalingGroup);
 
     // The security group used for the cloudfront vpc origin must allow incoming traffic

@@ -11,7 +11,6 @@ import * as cdk from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import * as yaml from "yaml";
 import * as path from "path";
-import { assert } from "console";
 
 interface Props extends StackProps {
   vpc: ec2.Vpc;
@@ -24,8 +23,13 @@ export class ImageBuilderStack extends cdk.Stack {
     super(scope, id, props);
 
     const nginxConfAsset = new s3_assets.Asset(this, "nginx-conf-asset", {
-      path: path.join(__dirname, "..", "nginx", "nginx.conf"),
+      path: path.join(__dirname, "..", "node", "nginx.conf"),
     });
+
+    const cloudwatchAgentConfAsset = new s3_assets.Asset(this, "cloudwatch-agent-conf-asset", {
+      path: path.join(__dirname, "..", "node", "cloudwatch-agent.json"),
+    });
+
 
     /**
      * A role used Image builder to build instances
@@ -119,7 +123,7 @@ export class ImageBuilderStack extends cdk.Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.8",
+        version: "1.3.10",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -140,10 +144,21 @@ export class ImageBuilderStack extends cdk.Stack {
                           // Upgrading could introduce changes unexpectedly
                           // Upgrade by changing the base image to a newer one, which is a tracked change
                           "dnf update",
-                          "dnf install -y cowsay nginx",
+                          "dnf install -y cowsay nginx jq",
                         ].join("\n"),
                       ],
                     },
+                  },
+                  {
+                    name: "DownloadCloudwatchAgentConf",
+                    action: "S3Download",
+                    inputs: [
+                      {
+                        source: cloudwatchAgentConfAsset.s3ObjectUrl,
+                        destination: "/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+                        overwrite: true,
+                      },
+                    ],
                   },
                   {
                     name: "DownloadNginxConf",
@@ -164,6 +179,9 @@ export class ImageBuilderStack extends cdk.Stack {
                         [
                           "set -ex",
                           "whoami",
+                          // Check the cloudwatch agent config file is valid json
+                          "jq empty /opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+                          // Validate the nginx config file
                           "nginx -t -c /etc/nginx/nginx.conf",
                           "echo 'Hi' > /etc/nginx/index.html",
                           "systemctl enable nginx",
@@ -194,7 +212,7 @@ export class ImageBuilderStack extends cdk.Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.8",
+        version: "1.3.10",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent
