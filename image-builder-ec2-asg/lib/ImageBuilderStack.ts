@@ -26,10 +26,21 @@ export class ImageBuilderStack extends cdk.Stack {
       path: path.join(__dirname, "..", "node", "nginx.conf"),
     });
 
-    const cloudwatchAgentConfAsset = new s3_assets.Asset(this, "cloudwatch-agent-conf-asset", {
-      path: path.join(__dirname, "..", "node", "cloudwatch-agent.json"),
-    });
+    const prometheusConfAsset = new s3_assets.Asset(
+      this,
+      "prometheus-conf-asset",
+      {
+        path: path.join(__dirname, "..", "node", "prometheus.yaml"),
+      },
+    );
 
+    const cloudwatchAgentConfAsset = new s3_assets.Asset(
+      this,
+      "cloudwatch-agent-conf-asset",
+      {
+        path: path.join(__dirname, "..", "node", "cloudwatch-agent.json"),
+      },
+    );
 
     /**
      * A role used Image builder to build instances
@@ -123,7 +134,7 @@ export class ImageBuilderStack extends cdk.Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.10",
+        version: "1.3.13",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -138,13 +149,22 @@ export class ImageBuilderStack extends cdk.Stack {
                     inputs: {
                       commands: [
                         [
-                          "set -ex",
+                          "set -euxo pipefail",
                           "whoami",
                           // Update so we can install deps, but don't upgrade
                           // Upgrading could introduce changes unexpectedly
                           // Upgrade by changing the base image to a newer one, which is a tracked change
                           "dnf update",
                           "dnf install -y cowsay nginx jq",
+                          // Install the nginx-prometheus-exporter
+                          "cd /tmp",
+                          "wget https://github.com/nginx/nginx-prometheus-exporter/releases/download/v1.5.1/nginx-prometheus-exporter_1.5.1_linux_arm64.tar.gz",
+                          "tar -xzvf nginx-prometheus-exporter_1.5.1_linux_arm64.tar.gz",
+                          "cp nginx-prometheus-exporter /usr/local/bin/",
+                          "rm -f /tmp/nginx-prometheus-exporter*",
+                          "cd -",
+                          "mkdir -p /etc/nginx",
+                          "mkdir -p /opt/aws/amazon-cloudwatch-agent/etc",
                         ].join("\n"),
                       ],
                     },
@@ -155,7 +175,20 @@ export class ImageBuilderStack extends cdk.Stack {
                     inputs: [
                       {
                         source: cloudwatchAgentConfAsset.s3ObjectUrl,
-                        destination: "/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+                        destination:
+                          "/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+                        overwrite: true,
+                      },
+                    ],
+                  },
+                  {
+                    name: "DownloadPrometheusConf",
+                    action: "S3Download",
+                    inputs: [
+                      {
+                        source: prometheusConfAsset.s3ObjectUrl,
+                        destination:
+                          "/opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
                         overwrite: true,
                       },
                     ],
@@ -177,7 +210,7 @@ export class ImageBuilderStack extends cdk.Stack {
                     inputs: {
                       commands: [
                         [
-                          "set -ex",
+                          "set -euxo pipefail",
                           "whoami",
                           // Check the cloudwatch agent config file is valid json
                           "jq empty /opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
@@ -212,7 +245,7 @@ export class ImageBuilderStack extends cdk.Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.10",
+        version: "1.3.13",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent

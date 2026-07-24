@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+- job_name: 'nginx'
+  metrics_path: /metrics
+  static_configs:
+    # nginx-prometheus-exporter listens of port 9113 by default: https://github.com/nginx/nginx-prometheus-exporter/blob/main/README.md
+    - targets: ['127.0.0.1:9113']
+  labels:
+    InstanceId: 'i-0e6dafcbcd5250e46'
+    AutoScalingGroupName: 'nginxclusterasgASG2E4CDAB7'
+  metric_relabel_configs:
+    - source_labels: ['name']
+      regex: 'nginx_up|nginx_http_requests_total|nginx_connections_.*'
+      action: keep

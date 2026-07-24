@@ -62,5 +62,28 @@
         "measurement": ["total", "running", "dead", "idle"]
       }
     }
+  },
+  "logs": {
+    "metrics_collected": {
+      "prometheus": {
+        "log_group_name": "nginx",
+        "prometheus_config_path": "/opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
+        "emf_processor": {
+          "metric_declaration_dedup": true,
+          "metric_namespace": "Service/NginxStatus",
+          "metric_declaration": [
+            {
+              "source_labels": ["InstanceId"],
+              "metric_selectors": [
+                "nginx_up",
+                "nginx_http_requests_total",
+                "nginx_connections*"
+              ],
+              "dimensions": [["AutoScalingGroupName"], ["InstanceId"]]
+            }
+          ]
+        }
+      }
+    }
   }
 }

@@ -62,12 +62,14 @@ export class NginxClusterStack extends cdk.Stack {
      */
     const launchTemplate = new ec2.LaunchTemplate(this, "launch-template", {
       instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.M6G,
+        ec2.InstanceClass.C8GN,
         ec2.InstanceSize.MEDIUM,
       ),
       userData: instanceUserData,
       role: instanceRole,
       securityGroup: instanceSecurityGroup,
+      // Enable access to instance tags via IMDS
+      instanceMetadataTags: true,
       requireImdsv2: true,
       machineImage: ec2.MachineImage.resolveSsmParameterAtLaunch(
         props.amiParameter.parameterArn,
@@ -106,10 +108,18 @@ export class NginxClusterStack extends cdk.Stack {
     instanceUserData.addCommands(
       // Use bash strict mode so the instance cfn signal set at the end of the script is not run if any prior commands fail
       "set -euxo pipefail",
+      // Retrieve the instance id and autoscaling group via the metadata service
+      'TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`',
+      'INSTANCE_ID=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id`',
       // Set the the cloudwatch agent configuration file
       "amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
-    )
+      "nohup /usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1/stub_status &> /dev/null &",
+    );
     instanceUserData.addSignalOnExitCommand(autoScalingGroup);
+
+    // sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a stop
+    // sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status
+    // less /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log
 
     // The security group used for the cloudfront vpc origin must allow incoming traffic
     // from the AWS managed region specific Cloudfront origin facing prefix list,
