@@ -163,6 +163,7 @@ export class ImageBuilderStack extends Stack {
                           "cp nginx-prometheus-exporter /usr/local/bin/",
                           "rm -f /tmp/nginx-prometheus-exporter*",
                           "cd -",
+                          // Create the directories required for the S3 downloads
                           "mkdir -p /etc/nginx",
                           "mkdir -p /opt/aws/amazon-cloudwatch-agent/etc",
                         ].join("\n"),

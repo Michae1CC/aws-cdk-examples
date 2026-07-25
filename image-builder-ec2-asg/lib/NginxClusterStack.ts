@@ -113,9 +113,15 @@ export class NginxClusterStack extends cdk.Stack {
       // Retrieve the instance id and autoscaling group via the metadata service
       'TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`',
       'INSTANCE_ID=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id`',
-      // Set the the cloudwatch agent configuration file
-      "amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+      // NOTE: The scrape-uri path should match the path in the nginx.conf file where the 'stub_status' configuration is 'on'
       "/usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1/nginx_status &> /dev/null &",
+      "amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+      // Wait for cloudwatch agent and prometheus exporter to start
+      "sleep 5",
+      // Check if the nginx prometheus exporter is running, process names are truncated
+      `if ! pgrep nginx-prometheu >/dev/null; then exit 1; fi`,
+      // Check if the cloudwatch agent is running
+      `if [[ $(/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status | jq .status) != '"running"' ]]; then exit 1; fi`,
     );
     instanceUserData.addSignalOnExitCommand(autoScalingGroup);
 
