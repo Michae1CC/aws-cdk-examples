@@ -62,11 +62,7 @@ export class NginxClusterStack extends cdk.Stack {
      */
     const launchTemplate = new ec2.LaunchTemplate(this, "launch-template", {
       instanceType: ec2.InstanceType.of(
-<<<<<<< HEAD
         ec2.InstanceClass.C8GN,
-=======
-        ec2.InstanceClass.M7G,
->>>>>>> 04cdccb (import changes)
         ec2.InstanceSize.MEDIUM,
       ),
       userData: instanceUserData,
@@ -119,7 +115,7 @@ export class NginxClusterStack extends cdk.Stack {
       'INSTANCE_ID=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id`',
       // Set the the cloudwatch agent configuration file
       "amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
-      "nohup /usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1/stub_status &> /dev/null &",
+      "/usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1/nginx_status &> /dev/null &",
     );
     instanceUserData.addSignalOnExitCommand(autoScalingGroup);
 
