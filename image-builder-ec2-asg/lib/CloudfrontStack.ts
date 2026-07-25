@@ -6,9 +6,9 @@ import {
   aws_route53 as route53,
   aws_wafv2 as wafv2,
   Annotations,
+  Stack,
   StackProps,
 } from "aws-cdk-lib";
-import * as cdk from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 
 interface Props extends StackProps {
@@ -16,7 +16,7 @@ interface Props extends StackProps {
   hostedZone: route53.IHostedZone;
 }
 
-export class CloudfrontStack extends cdk.Stack {
+export class CloudfrontStack extends Stack {
   public readonly distribution: cloudfront.IDistribution;
   public readonly connectionGroup: cloudfront.CfnConnectionGroup;
 

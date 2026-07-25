@@ -62,7 +62,11 @@ export class NginxClusterStack extends cdk.Stack {
      */
     const launchTemplate = new ec2.LaunchTemplate(this, "launch-template", {
       instanceType: ec2.InstanceType.of(
+<<<<<<< HEAD
         ec2.InstanceClass.C8GN,
+=======
+        ec2.InstanceClass.M7G,
+>>>>>>> 04cdccb (import changes)
         ec2.InstanceSize.MEDIUM,
       ),
       userData: instanceUserData,
@@ -88,6 +92,7 @@ export class NginxClusterStack extends cdk.Stack {
         minCapacity: 2,
         deletionProtection: autoscaling.DeletionProtection.NONE,
         updatePolicy: autoscaling.UpdatePolicy.rollingUpdate({
+          maxBatchSize: 1,
           minInstancesInService: 2,
           waitOnResourceSignals: true,
         }),
@@ -97,6 +102,7 @@ export class NginxClusterStack extends cdk.Stack {
         signals: autoscaling.Signals.waitForMinCapacity({
           timeout: Duration.minutes(2),
         }),
+        // TODO: Investigate ELB health checks
         // Try to get cfn init working
         healthChecks: autoscaling.HealthChecks.ec2({
           gracePeriod: Duration.seconds(300),

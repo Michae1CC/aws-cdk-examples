@@ -5,9 +5,9 @@ import {
   aws_iam as iam,
   aws_s3_assets as s3_assets,
   aws_ssm as ssm,
+  Stack,
   StackProps,
 } from "aws-cdk-lib";
-import * as cdk from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import * as yaml from "yaml";
 import * as path from "path";
@@ -16,7 +16,7 @@ interface Props extends StackProps {
   vpc: ec2.Vpc;
 }
 
-export class ImageBuilderStack extends cdk.Stack {
+export class ImageBuilderStack extends Stack {
   public readonly amiParameter: ssm.StringParameter;
 
   constructor(scope: Construct, id: string, props: Props) {

@@ -1,11 +1,9 @@
-import { aws_ec2 as ec2, StackProps } from "aws-cdk-lib";
-import * as cdk from "aws-cdk-lib/core";
+import { aws_ec2 as ec2, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import * as yaml from "yaml";
 
 interface Props extends StackProps {}
 
-export class VpcStack extends cdk.Stack {
+export class VpcStack extends Stack {
   public readonly vpc: ec2.Vpc;
 
   constructor(scope: Construct, id: string, props: Props) {

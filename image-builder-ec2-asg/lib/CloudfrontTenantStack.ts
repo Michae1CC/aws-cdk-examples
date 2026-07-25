@@ -1,5 +1,4 @@
 import {
-  aws_certificatemanager as acm,
   aws_cloudfront as cloudfront,
   aws_route53 as route53,
   aws_wafv2 as wafv2,
