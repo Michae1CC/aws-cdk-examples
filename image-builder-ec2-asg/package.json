@@ -2,10 +2,9 @@
   "name": "image-builder-ec2-asg",
   "version": "0.1.0",
   "scripts": {
-    "format": "prettier --write ./**/*.ts ./node/*.{json,yaml}",
+    "format": "prettier --write ./**/*.ts ./node/*.json",
     "build": "tsc",
     "watch": "tsc -w",
-    "test": "jest",
     "cdk": "cdk"
   },
   "devDependencies": {

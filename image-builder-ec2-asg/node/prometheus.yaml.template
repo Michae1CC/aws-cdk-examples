@@ -9,8 +9,8 @@ scrape_configs:
       # nginx-prometheus-exporter listens of port 9113 by default: https://github.com/nginx/nginx-prometheus-exporter/blob/main/README.md
       - targets: ["127.0.0.1:9113"]
         labels:
-          InstanceId: "i-0e6dafcbcd5250e46"
-          AutoScalingGroupName: "nginxclusterasgASG2E4CDAB7"
+          InstanceId: "${INSTANCE_ID}"
+          AutoScalingGroupName: "${AUTO_SCALING_GROUP_NAME}"
     metric_relabel_configs:
       - source_labels: ["__name__"]
         regex: "nginx_up|nginx_http_requests_total|nginx_connections_.*"

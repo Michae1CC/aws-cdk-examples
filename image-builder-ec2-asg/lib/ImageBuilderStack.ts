@@ -26,11 +26,11 @@ export class ImageBuilderStack extends Stack {
       path: path.join(__dirname, "..", "node", "nginx.conf"),
     });
 
-    const prometheusConfAsset = new s3_assets.Asset(
+    const prometheusConfTemplateAsset = new s3_assets.Asset(
       this,
-      "prometheus-conf-asset",
+      "prometheus-conf-template-asset",
       {
-        path: path.join(__dirname, "..", "node", "prometheus.yaml"),
+        path: path.join(__dirname, "..", "node", "prometheus.yaml.template"),
       },
     );
 
@@ -134,7 +134,7 @@ export class ImageBuilderStack extends Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.13",
+        version: "1.3.15",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -183,13 +183,13 @@ export class ImageBuilderStack extends Stack {
                     ],
                   },
                   {
-                    name: "DownloadPrometheusConf",
+                    name: "DownloadPrometheusConfTemplate",
                     action: "S3Download",
                     inputs: [
                       {
-                        source: prometheusConfAsset.s3ObjectUrl,
+                        source: prometheusConfTemplateAsset.s3ObjectUrl,
                         destination:
-                          "/opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
+                          "/opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml.template",
                         overwrite: true,
                       },
                     ],
@@ -246,7 +246,7 @@ export class ImageBuilderStack extends Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.13",
+        version: "1.3.15",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent

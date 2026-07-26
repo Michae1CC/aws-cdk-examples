@@ -68,7 +68,8 @@ export class NginxClusterStack extends cdk.Stack {
       userData: instanceUserData,
       role: instanceRole,
       securityGroup: instanceSecurityGroup,
-      // Enable access to instance tags via IMDS
+      // Enable access to instance tags via IMDS, this is required to query the
+      // the ASG name in the user data using the instance metadata service
       instanceMetadataTags: true,
       requireImdsv2: true,
       machineImage: ec2.MachineImage.resolveSsmParameterAtLaunch(
@@ -112,7 +113,9 @@ export class NginxClusterStack extends cdk.Stack {
       "set -euxo pipefail",
       // Retrieve the instance id and autoscaling group via the metadata service
       'TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`',
-      'INSTANCE_ID=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id`',
+      'export INSTANCE_ID=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id`',
+      'export AUTO_SCALING_GROUP_NAME=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance/aws:autoscaling:groupName`',
+      "envsubst '$INSTANCE_ID $AUTO_SCALING_GROUP_NAME' < /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml.template > /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
       // NOTE: The scrape-uri path should match the path in the nginx.conf file where the 'stub_status' configuration is 'on'
       "/usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1/nginx_status &> /dev/null &",
       "amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
@@ -123,6 +126,7 @@ export class NginxClusterStack extends cdk.Stack {
       // Check if the cloudwatch agent is running
       `if [[ $(/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status | jq .status) != '"running"' ]]; then exit 1; fi`,
     );
+
     instanceUserData.addSignalOnExitCommand(autoScalingGroup);
 
     // sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a stop
