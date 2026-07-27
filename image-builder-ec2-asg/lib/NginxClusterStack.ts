@@ -114,11 +114,12 @@ export class NginxClusterStack extends cdk.Stack {
       // Retrieve the instance id and autoscaling group via the metadata service
       'TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`',
       'export INSTANCE_ID=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id`',
+      'export INSTANCE_TYPE=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type`',
       'export AUTO_SCALING_GROUP_NAME=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance/aws:autoscaling:groupName`',
-      "envsubst '$INSTANCE_ID $AUTO_SCALING_GROUP_NAME' < /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml.template > /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
+      "envsubst '$INSTANCE_ID $INSTANCE_TYPE $AUTO_SCALING_GROUP_NAME' < /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml.template > /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
       // NOTE: The scrape-uri path should match the path in the nginx.conf file where the 'stub_status' configuration is 'on'
       "/usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1/nginx_status &> /dev/null &",
-      "amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+      "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
       // Wait for cloudwatch agent and prometheus exporter to start
       "sleep 5",
       // Check if the nginx prometheus exporter is running, process names are truncated
