@@ -1,0 +1,16 @@
+[Unit]
+Description=NGINX Prometheus Exporter
+After=network-online.target nginx.service
+Requires=nginx.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/bin/nginx-prometheus-exporter \
+  --nginx.scrape-uri=http://127.0.0.1/nginx_status
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

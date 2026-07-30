@@ -113,6 +113,7 @@ export class CloudfrontStack extends Stack {
     this.distribution = new cloudfront.Distribution(this, "distribution", {
       enabled: true,
       webAclId: cfWafAcl.attrArn,
+      publishAdditionalMetrics: true,
 
       // Default to the lattice proxy
       defaultBehavior: {

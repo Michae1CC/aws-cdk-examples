@@ -3,9 +3,11 @@ import {
   aws_ec2 as ec2,
   aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
+  aws_logs as logs,
   aws_ssm as ssm,
   Duration,
   StackProps,
+  RemovalPolicy,
 } from "aws-cdk-lib";
 import * as cdk from "aws-cdk-lib/core";
 import { Construct } from "constructs";
@@ -17,9 +19,25 @@ interface Props extends StackProps {
 
 export class NginxClusterStack extends cdk.Stack {
   public readonly nlb: elbv2.NetworkLoadBalancer;
+  public readonly nlbTargetGroup: elbv2.NetworkTargetGroup;
+  public readonly autoScalingGroup: autoscaling.AutoScalingGroup;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
+
+    /**
+     * Creates the log group used by the cloudwatch agent for the nginx
+     * prometheus exporter. These are do not need to be retained for log
+     * since they're only used for creating metrics.
+     *
+     * NOTE: The `logGroupName` set in the resource should match the
+     * `log_group_name` found in the nginx cluster cw agent configuration.
+     */
+    new logs.LogGroup(this, "nginx-prometheus-exporter", {
+      logGroupName: "service/nginx-prometheus-exporter",
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
 
     const instanceSecurityGroup = new ec2.SecurityGroup(
       this,
@@ -84,7 +102,7 @@ export class NginxClusterStack extends cdk.Stack {
         vpc: props.vpc,
         launchTemplate: launchTemplate,
         allowAllOutbound: false,
-        // desiredCapacity is set to minimum if omitted https://github.com/aws/aws-cdk/issues/5215
+        desiredCapacity: 2,
         maxCapacity: 5,
         minCapacity: 2,
         deletionProtection: autoscaling.DeletionProtection.NONE,
@@ -104,8 +122,11 @@ export class NginxClusterStack extends cdk.Stack {
         healthChecks: autoscaling.HealthChecks.ec2({
           gracePeriod: Duration.seconds(300),
         }),
+        groupMetrics: [autoscaling.GroupMetrics.all()],
       },
     );
+
+    this.autoScalingGroup = autoScalingGroup;
 
     // Injects a call to cfn-signal on exit
     instanceUserData.addCommands(
@@ -118,14 +139,14 @@ export class NginxClusterStack extends cdk.Stack {
       'export AUTO_SCALING_GROUP_NAME=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance/aws:autoscaling:groupName`',
       "envsubst '$INSTANCE_ID $INSTANCE_TYPE $AUTO_SCALING_GROUP_NAME' < /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml.template > /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
       // NOTE: The scrape-uri path should match the path in the nginx.conf file where the 'stub_status' configuration is 'on'
-      "/usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1/nginx_status &> /dev/null &",
+      // "systemctl start nginx-prometheus-exporter",
       "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
       // Wait for cloudwatch agent and prometheus exporter to start
       "sleep 5",
       // Check if the nginx prometheus exporter is running, process names are truncated
-      `if ! pgrep nginx-prometheu >/dev/null; then exit 1; fi`,
+      // `if ! pgrep nginx-prometheu >/dev/null; then exit 1; fi`,
       // Check if the cloudwatch agent is running
-      `if [[ $(/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status | jq .status) != '"running"' ]]; then exit 1; fi`,
+      // `if [[ $(/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status | jq .status) != '"running"' ]]; then exit 1; fi`,
     );
 
     instanceUserData.addSignalOnExitCommand(autoScalingGroup);
@@ -133,6 +154,10 @@ export class NginxClusterStack extends cdk.Stack {
     // sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a stop
     // sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status
     // less /opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log
+    // /etc/systemd/system/nginx-prometheus-exporter.service
+    // systemctl daemon-reload
+    // systemctl enable nginx-prometheus-exporter
+    // systemctl start nginx-prometheus-exporter
 
     // The security group used for the cloudfront vpc origin must allow incoming traffic
     // from the AWS managed region specific Cloudfront origin facing prefix list,
@@ -174,7 +199,7 @@ export class NginxClusterStack extends cdk.Stack {
     });
 
     // Create target group for the Auto Scaling Group
-    const targetGroup = new elbv2.NetworkTargetGroup(
+    this.nlbTargetGroup = new elbv2.NetworkTargetGroup(
       this,
       "nginx-cluster-nlb-target-group",
       {
@@ -195,12 +220,12 @@ export class NginxClusterStack extends cdk.Stack {
       },
     );
 
-    autoScalingGroup.attachToNetworkTargetGroup(targetGroup);
+    autoScalingGroup.attachToNetworkTargetGroup(this.nlbTargetGroup);
 
     this.nlb.addListener("nginx-cluster-nlb-listener", {
       port: 80,
       protocol: elbv2.Protocol.TCP,
-      defaultTargetGroups: [targetGroup],
+      defaultTargetGroups: [this.nlbTargetGroup],
     });
 
     new cdk.CfnOutput(

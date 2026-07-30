@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib/core";
 import { ImageBuilderStack } from "../lib/ImageBuilderStack";
+import { MonitoringStack } from "../lib/MonitoringStack";
 import { NginxClusterStack } from "../lib/NginxClusterStack";
 import { VpcStack } from "../lib/VpcStack";
 import { config } from "dotenv";
@@ -58,3 +59,10 @@ const cloudfrontTenantStack = new CloudfrontTenantStack(
     connectionGroup: cloudfrontStack.connectionGroup,
   },
 );
+
+new MonitoringStack(app, "monitoring-stack", {
+  env: env,
+  nlb: nginxClusterStack.nlb,
+  nlbTargetGroup: nginxClusterStack.nlbTargetGroup,
+  autoScalingGroup: nginxClusterStack.autoScalingGroup,
+});

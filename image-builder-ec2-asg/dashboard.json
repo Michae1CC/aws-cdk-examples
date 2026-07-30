@@ -1,0 +1,431 @@
+{
+    "widgets": [
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 51,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "Service/NginxStatus", "nginx_up", "AutoScalingGroupName", "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "ap-southeast-2",
+                "period": 10,
+                "title": "Nginx Up",
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 6,
+            "y": 51,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "Service/NginxStatus", "nginx_connections_active", "AutoScalingGroupName", "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "ap-southeast-2",
+                "period": 10,
+                "stat": "Average",
+                "title": "Nginx Active Connections"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 20,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/NetworkELB", "TCP_ELB_Reset_Count", "LoadBalancer", "net/nginx--nginx-oTNFWsVw6Ftp/4416a7d9cbffa99a", { "region": "ap-southeast-2" } ],
+                    [ ".", "TCP_Target_Reset_Count", ".", ".", { "region": "ap-southeast-2" } ],
+                    [ ".", "TCP_Client_Reset_Count", ".", ".", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "ap-southeast-2",
+                "period": 60,
+                "title": "TCP Resets",
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 33,
+            "width": 24,
+            "height": 2,
+            "properties": {
+                "markdown": "# Auto-Scaling Group",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 20,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/NetworkELB", "HealthyHostCount", "TargetGroup", "targetgroup/nginx-nginx-AIXLO4WU1E6T/f22b94f28de88f7e", "LoadBalancer", "net/nginx--nginx-oTNFWsVw6Ftp/4416a7d9cbffa99a" ]
+                ],
+                "region": "ap-southeast-2"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 6,
+            "y": 20,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/NetworkELB", "UnHealthyHostCount", "TargetGroup", "targetgroup/nginx-nginx-AIXLO4WU1E6T/f22b94f28de88f7e", "LoadBalancer", "net/nginx--nginx-oTNFWsVw6Ftp/4416a7d9cbffa99a" ]
+                ],
+                "region": "ap-southeast-2"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 27,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/NetworkELB", "ActiveFlowCount", "LoadBalancer", "net/nginx--nginx-oTNFWsVw6Ftp/4416a7d9cbffa99a", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "ap-southeast-2",
+                "period": 60,
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 6,
+            "y": 27,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/NetworkELB", "ProcessedBytes", "LoadBalancer", "net/nginx--nginx-oTNFWsVw6Ftp/4416a7d9cbffa99a" ]
+                ],
+                "region": "ap-southeast-2"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 26,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "### Core Metrics",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 49,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "# Nginx Status",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 35,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "### Alarmed",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 43,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/AutoScaling", "GroupMaxSize", "AutoScalingGroupName", "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ", { "region": "ap-southeast-2" } ],
+                    [ ".", "GroupMinSize", ".", ".", { "region": "ap-southeast-2" } ],
+                    [ ".", "GroupTotalCapacity", ".", ".", { "region": "ap-southeast-2" } ],
+                    [ ".", "GroupDesiredCapacity", ".", ".", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "ap-southeast-2",
+                "title": "ASG Capacity",
+                "period": 60,
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 36,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "AWS/AutoScaling", "GroupPendingInstances", "AutoScalingGroupName", "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ", { "region": "ap-southeast-2" } ],
+                    [ ".", "GroupTerminatingInstances", ".", ".", { "region": "ap-southeast-2" } ],
+                    [ ".", "GroupInServiceInstances", ".", ".", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "ap-southeast-2",
+                "title": "ASG Instances",
+                "period": 60,
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 50,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "### Alarmed",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 57,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "### Core Metrics",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 42,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "### Core Metrics",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 6,
+            "y": 36,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "Service/NginxCluster", "cpu_usage_active", "AutoScalingGroupName", "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "title": "CPU Usage",
+                "region": "ap-southeast-2",
+                "period": 10,
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 12,
+            "y": 36,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "Service/NginxCluster", "mem_used_percent", "AutoScalingGroupName", "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "ap-southeast-2",
+                "title": "Memory Usage",
+                "period": 10,
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 18,
+            "y": 36,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "metrics": [
+                    [ "Service/NginxCluster", "net_drop_out", "AutoScalingGroupName", "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ", { "region": "ap-southeast-2" } ],
+                    [ ".", "net_drop_in", ".", ".", { "region": "ap-southeast-2" } ],
+                    [ ".", "net_err_out", ".", ".", { "region": "ap-southeast-2" } ],
+                    [ ".", "net_err_in", ".", ".", { "region": "ap-southeast-2" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "ap-southeast-2",
+                "title": "Network Errors",
+                "period": 10,
+                "stat": "Average"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 6,
+            "y": 43,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "Service/NginxCluster", "net_bytes_sent", "AutoScalingGroupName", "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ" ],
+                    [ ".", "net_bytes_recv", ".", "." ]
+                ],
+                "region": "ap-southeast-2",
+                "title": "Network Throughput"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 0,
+            "width": 24,
+            "height": 2,
+            "properties": {
+                "markdown": "# WAF\n\nDescription",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/CloudFront", "Requests", "Region", "Global", "DistributionId", "E2JQHDV8JV4OTX", { "region": "us-east-1" } ]
+                ],
+                "region": "ap-southeast-2"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 4,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "### Alarmed",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 11,
+            "width": 24,
+            "height": 1,
+            "properties": {
+                "markdown": "### Core Metrics",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 6,
+            "y": 12,
+            "width": 5,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/CloudFront", "BytesDownloaded", "Region", "Global", "DistributionId", "E2JQHDV8JV4OTX", { "region": "us-east-1" } ],
+                    [ ".", "BytesUploaded", ".", ".", ".", ".", { "region": "us-east-1" } ]
+                ],
+                "region": "ap-southeast-2",
+                "title": "Bytes Throughput"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 6,
+            "y": 5,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/CloudFront", "5xxErrorRate", "Region", "Global", "DistributionId", "E2JQHDV8JV4OTX", { "region": "us-east-1" } ]
+                ],
+                "region": "ap-southeast-2"
+            }
+        },
+        {
+            "type": "metric",
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 6,
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/CloudFront", "OriginLatency", "Region", "Global", "DistributionId", "E2JQHDV8JV4OTX", { "region": "us-east-1" } ]
+                ],
+                "region": "ap-southeast-2"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 18,
+            "width": 24,
+            "height": 2,
+            "properties": {
+                "markdown": "# Network Load Balancer\n\nDescription",
+                "background": "transparent"
+            }
+        },
+        {
+            "type": "text",
+            "x": 0,
+            "y": 2,
+            "width": 24,
+            "height": 2,
+            "properties": {
+                "markdown": "# Cloudfront\n\nDescription",
+                "background": "transparent"
+            }
+        }
+    ]
+}

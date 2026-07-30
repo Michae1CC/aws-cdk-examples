@@ -8,13 +8,13 @@
     "use_dualstack_endpoint": false
   },
   "metrics": {
-    "namespace": "Service/NginxCluster",
+    "namespace": "Service/NginxAutoScalingGroupInstance",
     "append_dimensions": {
       "InstanceId": "${aws:InstanceId}",
       "InstanceType": "${aws:InstanceType}",
       "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
     },
-    "aggregation_dimensions": [["AutoScalingGroupName"], ["InstanceId"]],
+    "aggregation_dimensions": [["AutoScalingGroupName", "InstanceId", "InstanceType"]],
     "force_flush_interval": 30,
     "metrics_collected": {
       "cpu": {
@@ -66,7 +66,7 @@
   "logs": {
     "metrics_collected": {
       "prometheus": {
-        "log_group_name": "nginx",
+        "log_group_name": "service/nginx-prometheus-exporter",
         "prometheus_config_path": "/opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
         "emf_processor": {
           "metric_declaration_dedup": true,
@@ -77,9 +77,9 @@
               "metric_selectors": [
                 "nginx_up",
                 "nginx_http_requests_total",
-                "nginx_connections*"
+                "nginx_connections_.*"
               ],
-              "dimensions": [["AutoScalingGroupName"], ["InstanceId"]]
+              "dimensions": [["AutoScalingGroupName", "InstanceId", "InstanceType"]]
             }
           ]
         }

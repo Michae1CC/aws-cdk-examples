@@ -26,6 +26,19 @@ export class ImageBuilderStack extends Stack {
       path: path.join(__dirname, "..", "node", "nginx.conf"),
     });
 
+    const nginxPrometheusExporterServiceAsset = new s3_assets.Asset(
+      this,
+      "nginx-prometheus-exporter-service-asset",
+      {
+        path: path.join(
+          __dirname,
+          "..",
+          "node",
+          "nginx-prometheus-exporter.service",
+        ),
+      },
+    );
+
     const prometheusConfTemplateAsset = new s3_assets.Asset(
       this,
       "prometheus-conf-template-asset",
@@ -134,7 +147,7 @@ export class ImageBuilderStack extends Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.15",
+        version: "1.3.20",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -159,6 +172,10 @@ export class ImageBuilderStack extends Stack {
                           // Install the nginx-prometheus-exporter
                           "cd /tmp",
                           "wget https://github.com/nginx/nginx-prometheus-exporter/releases/download/v1.5.1/nginx-prometheus-exporter_1.5.1_linux_arm64.tar.gz",
+                          // Verify the download against the published SHA-256 checksum before extracting.
+                          // Checksum from: https://github.com/nginx/nginx-prometheus-exporter/releases/download/v1.5.1/nginx-prometheus-exporter_1.5.1_checksums.txt
+                          // `set -euo pipefail` above ensures a mismatch aborts the build.
+                          "echo '8bea88fe912c63791de1fd35c8829f89c2e18b87fdb001c9b65fc371b2ebef3c  nginx-prometheus-exporter_1.5.1_linux_arm64.tar.gz' | sha256sum -c -",
                           "tar -xzvf nginx-prometheus-exporter_1.5.1_linux_arm64.tar.gz",
                           "cp nginx-prometheus-exporter /usr/local/bin/",
                           "rm -f /tmp/nginx-prometheus-exporter*",
@@ -178,6 +195,18 @@ export class ImageBuilderStack extends Stack {
                         source: cloudwatchAgentConfAsset.s3ObjectUrl,
                         destination:
                           "/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+                        overwrite: true,
+                      },
+                    ],
+                  },
+                  {
+                    name: "DownloadNginxPrometheusExporterService",
+                    action: "S3Download",
+                    inputs: [
+                      {
+                        source: nginxPrometheusExporterServiceAsset.s3ObjectUrl,
+                        destination:
+                          "/etc/systemd/system/nginx-prometheus-exporter.service",
                         overwrite: true,
                       },
                     ],
@@ -218,7 +247,10 @@ export class ImageBuilderStack extends Stack {
                           // Validate the nginx config file
                           "nginx -t -c /etc/nginx/nginx.conf",
                           "echo 'Hi' > /etc/nginx/index.html",
+                          // Restart systemctl to discover the nginx prometheus exporter
+                          "systemctl daemon-reload",
                           "systemctl enable nginx",
+                          "systemctl enable nginx-prometheus-exporter",
                           // This is relying on Amazon linux AMIS to have AWS SSM agent pre-installed.
                           // SSM agents are generally enabled by default on Amazon Linux AMIs.
                           //  see: https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-al2.html
@@ -246,7 +278,7 @@ export class ImageBuilderStack extends Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.15",
+        version: "1.3.20",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent
