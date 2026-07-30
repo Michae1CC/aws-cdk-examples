@@ -14,7 +14,9 @@
       "InstanceType": "${aws:InstanceType}",
       "AutoScalingGroupName": "${aws:AutoScalingGroupName}"
     },
-    "aggregation_dimensions": [["AutoScalingGroupName", "InstanceId", "InstanceType"]],
+    "aggregation_dimensions": [
+      ["AutoScalingGroupName", "InstanceId", "InstanceType"]
+    ],
     "force_flush_interval": 30,
     "metrics_collected": {
       "cpu": {
@@ -79,7 +81,9 @@
                 "nginx_http_requests_total",
                 "nginx_connections_.*"
               ],
-              "dimensions": [["AutoScalingGroupName", "InstanceId", "InstanceType"]]
+              "dimensions": [
+                ["AutoScalingGroupName", "InstanceId", "InstanceType"]
+              ]
             }
           ]
         }

@@ -809,14 +809,8 @@ export class MonitoringStack extends Stack {
       period: Duration.minutes(1),
     });
 
-    const asgNetBytesRecvMetric = new cloudwatch.MathExpression({
-      expression: `SELECT SUM(net_bytes_recv) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", InstanceId, AutoScalingGroupName, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
-      label: "ASG Net Bytes Recv",
-      period: Duration.minutes(1),
-    });
-
-    const asgNetBytesGraphWidget = new cloudwatch.GraphWidget({
-      title: "ASG Network Bytes",
+    const asgNetBytesSentGraphWidget = new cloudwatch.GraphWidget({
+      title: "ASG Network Bytes Sent",
       width: GRAPH_WIDGET_WIDTH,
       height: GRAPH_WIDGET_HEIGHT,
       stacked: false,
@@ -826,7 +820,28 @@ export class MonitoringStack extends Stack {
         min: 0,
         showUnits: true,
       },
-      left: [asgNetBytesSentMetric, asgNetBytesRecvMetric],
+      left: [asgNetBytesSentMetric],
+      period: Duration.minutes(1),
+    });
+
+    const asgNetBytesRecvMetric = new cloudwatch.MathExpression({
+      expression: `SELECT SUM(net_bytes_recv) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", InstanceId, AutoScalingGroupName, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      label: "ASG Net Bytes Recv",
+      period: Duration.minutes(1),
+    });
+
+    const asgNetBytesRecvGraphWidget = new cloudwatch.GraphWidget({
+      title: "ASG Network Bytes Recv",
+      width: GRAPH_WIDGET_WIDTH,
+      height: GRAPH_WIDGET_HEIGHT,
+      stacked: false,
+      view: cloudwatch.GraphWidgetView.TIME_SERIES,
+      legendPosition: cloudwatch.LegendPosition.BOTTOM,
+      leftYAxis: {
+        min: 0,
+        showUnits: true,
+      },
+      left: [asgNetBytesRecvMetric],
       period: Duration.minutes(1),
     });
 
@@ -852,7 +867,7 @@ export class MonitoringStack extends Stack {
     // status metric, summed across instances via a Metrics Insights query)
 
     const nginxUpMetric = new cloudwatch.MathExpression({
-      expression: `SELECT SUM(nginx_up) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SELECT SUM(nginx_up) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
       label: "Nginx Servers Up (Total)",
       period: Duration.minutes(1),
     });
@@ -898,7 +913,7 @@ export class MonitoringStack extends Stack {
     // status metric, averaged across instances via a Metrics Insights query)
 
     const nginxConnectionsActiveMetric = new cloudwatch.MathExpression({
-      expression: `SELECT AVG(nginx_connections_active) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SELECT AVG(nginx_connections_active) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
       label: "Nginx Active Connections (Avg)",
       period: Duration.minutes(1),
     });
@@ -982,7 +997,11 @@ export class MonitoringStack extends Stack {
           asgNetDropErrGraphWidget,
         ],
         [asgCoreMetricsHeader],
-        [asgCapacityGraphWidget, asgNetBytesGraphWidget],
+        [
+          asgCapacityGraphWidget,
+          asgNetBytesSentGraphWidget,
+          asgNetBytesRecvGraphWidget,
+        ],
         [new cloudwatch.Spacer({ height: 2 })],
         // Nginx Status Widgets
         [nginxStatusMainHeader],
