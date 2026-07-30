@@ -41,7 +41,7 @@ export class MonitoringStack extends Stack {
 
     const nlbTcpTargetResetCountMetric = new cloudwatch.Metric({
       namespace: "AWS/NetworkELB",
-      metricName: "TcpTargetResetCount",
+      metricName: "TCP_Target_Reset_Count",
       statistic: "Sum",
       period: Duration.minutes(1),
       dimensionsMap: {
@@ -53,7 +53,7 @@ export class MonitoringStack extends Stack {
 
     const nlbTcpClientResetCountMetric = new cloudwatch.Metric({
       namespace: "AWS/NetworkELB",
-      metricName: "TcpTargetClientCount",
+      metricName: "TCP_Client_Reset_Count",
       statistic: "Sum",
       period: Duration.minutes(1),
       dimensionsMap: {
@@ -65,7 +65,7 @@ export class MonitoringStack extends Stack {
 
     const nlbTcpResetCountMetric = new cloudwatch.Metric({
       namespace: "AWS/NetworkELB",
-      metricName: "TcpElbResetCount",
+      metricName: "TCP_ELB_Reset_Count",
       statistic: "Sum",
       period: Duration.minutes(1),
       dimensionsMap: {
@@ -473,6 +473,7 @@ export class MonitoringStack extends Stack {
 
     const asgInstanceStateAlarmWidget = new cloudwatch.AlarmStatusWidget({
       // Leave the title undefined to show the alarm widget
+      title: "Instance State",
       width: ALARM_WIDGET_WIDTH,
       height: ALARM_WIDGET_HEIGHT,
       alarms: [asgInstanceStateAlarm],
@@ -698,6 +699,7 @@ export class MonitoringStack extends Stack {
 
     const asgNetDropErrAlarmWidget = new cloudwatch.AlarmStatusWidget({
       // Leave the title undefined to show the alarm widget
+      title: "Net Drop Err",
       width: ALARM_WIDGET_WIDTH,
       height: ALARM_WIDGET_HEIGHT,
       alarms: [asgNetDropErrAlarm],
@@ -819,6 +821,7 @@ export class MonitoringStack extends Stack {
       leftYAxis: {
         min: 0,
         showUnits: true,
+        label: "Bytes",
       },
       left: [asgNetBytesSentMetric],
       period: Duration.minutes(1),
@@ -840,6 +843,7 @@ export class MonitoringStack extends Stack {
       leftYAxis: {
         min: 0,
         showUnits: true,
+        label: "Bytes",
       },
       left: [asgNetBytesRecvMetric],
       period: Duration.minutes(1),
