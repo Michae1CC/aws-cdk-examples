@@ -20,7 +20,10 @@ const SECONDARY_HEADER_HEIGHT: number = 1;
 const SECONDARY_HEADER_WIDTH: number = 24;
 const GRAPH_WIDGET_HEIGHT: number = 6;
 const GRAPH_WIDGET_WIDTH: number = 4;
-const ALARM_WIDGET_HEIGHT: number = 1;
+const ALARM_STATUS_WIDGET_HEIGHT: number = 2;
+const ALARM_STATUS_WIDGET_WIDTH: number = GRAPH_WIDGET_WIDTH;
+const ALARM_WIDGET_HEIGHT: number =
+  ALARM_STATUS_WIDGET_HEIGHT + GRAPH_WIDGET_HEIGHT;
 const ALARM_WIDGET_WIDTH: number = GRAPH_WIDGET_WIDTH;
 
 export class MonitoringStack extends Stack {
@@ -111,25 +114,6 @@ export class MonitoringStack extends Stack {
       alarm: nlbTcpRstCountHighAlarm,
     });
 
-    const nlbTcpRstCountGraphWidget = new cloudwatch.GraphWidget({
-      title: "NLB TCP Reset Counts",
-      width: GRAPH_WIDGET_WIDTH,
-      height: GRAPH_WIDGET_HEIGHT,
-      stacked: false,
-      view: cloudwatch.GraphWidgetView.TIME_SERIES,
-      legendPosition: cloudwatch.LegendPosition.BOTTOM,
-      leftYAxis: {
-        min: 0,
-        showUnits: true,
-      },
-      left: [
-        nlbTcpClientResetCountMetric,
-        nlbTcpTargetResetCountMetric,
-        nlbTcpResetCountMetric,
-      ],
-      period: Duration.minutes(1),
-    });
-
     // NLB Port Allocation Error monitoring
 
     const nlbPortAllocationErrorCountMetric = new cloudwatch.Metric({
@@ -167,21 +151,6 @@ export class MonitoringStack extends Stack {
         alarm: nlbPortAllocationErrorCountHighAlarm,
       });
 
-    const nlbPortAllocationErrorCountGraphWidget = new cloudwatch.GraphWidget({
-      title: "NLB Port Allocation Error Count",
-      width: GRAPH_WIDGET_WIDTH,
-      height: GRAPH_WIDGET_HEIGHT,
-      stacked: false,
-      view: cloudwatch.GraphWidgetView.TIME_SERIES,
-      legendPosition: cloudwatch.LegendPosition.BOTTOM,
-      leftYAxis: {
-        min: 0,
-        showUnits: true,
-      },
-      left: [nlbPortAllocationErrorCountMetric],
-      period: Duration.minutes(1),
-    });
-
     // NLB Healthy Host Count monitoring
 
     const nlbHealthyHostCountMetric = new cloudwatch.Metric({
@@ -217,21 +186,6 @@ export class MonitoringStack extends Stack {
       height: ALARM_WIDGET_HEIGHT,
       title: "NLB Healthy Host Count",
       alarm: nlbHealthyHostCountLowAlarm,
-    });
-
-    const nlbHealthyHostCountGraphWidget = new cloudwatch.GraphWidget({
-      title: "NLB Healthly Host Count",
-      width: GRAPH_WIDGET_WIDTH,
-      height: GRAPH_WIDGET_HEIGHT,
-      stacked: false,
-      view: cloudwatch.GraphWidgetView.TIME_SERIES,
-      legendPosition: cloudwatch.LegendPosition.BOTTOM,
-      leftYAxis: {
-        min: 0,
-        showUnits: true,
-      },
-      left: [nlbHealthyHostCountMetric],
-      period: Duration.minutes(1),
     });
 
     const nlbCoreMetricsHeader = new cloudwatch.TextWidget({
@@ -276,21 +230,6 @@ export class MonitoringStack extends Stack {
       height: ALARM_WIDGET_HEIGHT,
       title: "NLB UnHealthy Host Count",
       alarm: nlbUnHealthyHostCountHighAlarm,
-    });
-
-    const nlbUnHealthyHostCountGraphWidget = new cloudwatch.GraphWidget({
-      title: "NLB UnHealthly Host Count",
-      width: GRAPH_WIDGET_WIDTH,
-      height: GRAPH_WIDGET_HEIGHT,
-      stacked: false,
-      view: cloudwatch.GraphWidgetView.TIME_SERIES,
-      legendPosition: cloudwatch.LegendPosition.BOTTOM,
-      leftYAxis: {
-        min: 0,
-        showUnits: true,
-      },
-      left: [nlbUnHealthyHostCountMetric],
-      period: Duration.minutes(1),
     });
 
     // NLB active flow count metrics
@@ -458,25 +397,16 @@ export class MonitoringStack extends Stack {
       },
     );
 
-    const asgInstanceStateAlarm = new cloudwatch.CompositeAlarm(
-      this,
-      "asg-instance-state-alarm",
-      {
-        compositeAlarmName: "ASG-Instance-State",
-        alarmRule: cloudwatch.AlarmRule.anyOf(
-          asgPendingInstancesHighAlarm,
-          asgTerminatingInstancesHighAlarm,
-          asgInServiceInstancesLowAlarm,
-        ),
-      },
-    );
-
     const asgInstanceStateAlarmWidget = new cloudwatch.AlarmStatusWidget({
       // Leave the title undefined to show the alarm widget
       title: "Instance State",
-      width: ALARM_WIDGET_WIDTH,
-      height: ALARM_WIDGET_HEIGHT,
-      alarms: [asgInstanceStateAlarm],
+      width: ALARM_STATUS_WIDGET_WIDTH,
+      height: ALARM_STATUS_WIDGET_HEIGHT,
+      alarms: [
+        asgPendingInstancesHighAlarm,
+        asgTerminatingInstancesHighAlarm,
+        asgInServiceInstancesLowAlarm,
+      ],
     });
 
     const asgInstanceStateGraphWidget = new cloudwatch.GraphWidget({
@@ -504,7 +434,7 @@ export class MonitoringStack extends Stack {
     // agent's [AutoScalingGroupName, InstanceId] rollup is not double-counted.)
 
     const asgCpuUsageActiveMetric = new cloudwatch.MathExpression({
-      expression: `SELECT AVG(cpu_usage_active) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SELECT AVG(cpu_usage_active) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}' GROUP BY InstanceId ORDER BY AVG() DESC`,
       label: "ASG CPU Usage Active %",
       period: Duration.minutes(1),
     });
@@ -531,27 +461,12 @@ export class MonitoringStack extends Stack {
       alarm: asgCpuUsageHighAlarm,
     });
 
-    const asgCpuUsageGraphWidget = new cloudwatch.GraphWidget({
-      title: "ASG CPU Usage Active %",
-      width: GRAPH_WIDGET_WIDTH,
-      height: GRAPH_WIDGET_HEIGHT,
-      stacked: false,
-      view: cloudwatch.GraphWidgetView.TIME_SERIES,
-      legendPosition: cloudwatch.LegendPosition.BOTTOM,
-      leftYAxis: {
-        min: 0,
-        max: 100,
-        showUnits: true,
-      },
-      left: [asgCpuUsageActiveMetric],
-      period: Duration.minutes(1),
-    });
-
     // ASG memory usage monitoring (custom per-instance metric, averaged across
     // the ASG via a Metrics Insights query)
 
     const asgMemUsedPercentMetric = new cloudwatch.MathExpression({
-      expression: `SELECT AVG(mem_used_percent) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      // The ORDER BY clause ensures deterministic ordering so CloudWatch knows which time series to prioritize when evaluating alarm conditions.
+      expression: `SELECT AVG(mem_used_percent) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}' GROUP BY InstanceId ORDER BY AVG() DESC`,
       label: "ASG Memory Usage %",
       period: Duration.minutes(1),
     });
@@ -575,23 +490,12 @@ export class MonitoringStack extends Stack {
       width: ALARM_WIDGET_WIDTH,
       height: ALARM_WIDGET_HEIGHT,
       title: "ASG Memory Usage %",
-      alarm: asgMemUsageHighAlarm,
-    });
-
-    const asgMemUsageGraphWidget = new cloudwatch.GraphWidget({
-      title: "ASG Memory Usage %",
-      width: GRAPH_WIDGET_WIDTH,
-      height: GRAPH_WIDGET_HEIGHT,
-      stacked: false,
-      view: cloudwatch.GraphWidgetView.TIME_SERIES,
-      legendPosition: cloudwatch.LegendPosition.BOTTOM,
       leftYAxis: {
         min: 0,
         max: 100,
         showUnits: true,
       },
-      left: [asgMemUsedPercentMetric],
-      period: Duration.minutes(1),
+      alarm: asgMemUsageHighAlarm,
     });
 
     // ASG network drops / errors monitoring (custom per-instance metrics,
@@ -683,26 +587,17 @@ export class MonitoringStack extends Stack {
       },
     );
 
-    const asgNetDropErrAlarm = new cloudwatch.CompositeAlarm(
-      this,
-      "asg-net-drop-err-alarm",
-      {
-        compositeAlarmName: "ASG-Net-Drop-Err",
-        alarmRule: cloudwatch.AlarmRule.anyOf(
-          asgNetDropInHighAlarm,
-          asgNetDropOutHighAlarm,
-          asgNetErrInHighAlarm,
-          asgNetErrOutHighAlarm,
-        ),
-      },
-    );
-
     const asgNetDropErrAlarmWidget = new cloudwatch.AlarmStatusWidget({
       // Leave the title undefined to show the alarm widget
       title: "Net Drop Err",
-      width: ALARM_WIDGET_WIDTH,
-      height: ALARM_WIDGET_HEIGHT,
-      alarms: [asgNetDropErrAlarm],
+      width: ALARM_STATUS_WIDGET_WIDTH,
+      height: ALARM_STATUS_WIDGET_HEIGHT,
+      alarms: [
+        asgNetDropInHighAlarm,
+        asgNetDropOutHighAlarm,
+        asgNetErrInHighAlarm,
+        asgNetErrOutHighAlarm,
+      ],
     });
 
     const asgNetDropErrGraphWidget = new cloudwatch.GraphWidget({
@@ -717,10 +612,10 @@ export class MonitoringStack extends Stack {
         showUnits: true,
       },
       left: [
-        // asgNetDropOutMetric,
+        asgNetDropOutMetric,
         asgNetDropInMetric,
-        // asgNetErrOutMetric,
-        // asgNetErrInMetric,
+        asgNetErrOutMetric,
+        asgNetErrInMetric,
       ],
       period: Duration.minutes(1),
     });
@@ -895,29 +790,18 @@ export class MonitoringStack extends Stack {
       width: ALARM_WIDGET_WIDTH,
       height: ALARM_WIDGET_HEIGHT,
       title: "Nginx Servers Up",
-      alarm: nginxServersUpLowAlarm,
-    });
-
-    const nginxServersUpGraphWidget = new cloudwatch.GraphWidget({
-      title: "Nginx Servers Up",
-      width: GRAPH_WIDGET_WIDTH,
-      height: GRAPH_WIDGET_HEIGHT,
-      stacked: false,
-      view: cloudwatch.GraphWidgetView.TIME_SERIES,
-      legendPosition: cloudwatch.LegendPosition.BOTTOM,
       leftYAxis: {
         min: 0,
         showUnits: true,
       },
-      left: [nginxUpMetric],
-      period: Duration.minutes(1),
+      alarm: nginxServersUpLowAlarm,
     });
 
     // Average number of active nginx connections across the ASG (custom nginx
     // status metric, averaged across instances via a Metrics Insights query)
 
     const nginxConnectionsActiveMetric = new cloudwatch.MathExpression({
-      expression: `SELECT AVG(nginx_connections_active) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SELECT AVG(nginx_connections_active) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}' GROUP BY InstanceId ORDER BY AVG() DESC`,
       label: "Nginx Active Connections (Avg)",
       period: Duration.minutes(1),
     });
@@ -941,22 +825,11 @@ export class MonitoringStack extends Stack {
       width: ALARM_WIDGET_WIDTH,
       height: ALARM_WIDGET_HEIGHT,
       title: "Nginx Active Connections",
-      alarm: nginxActiveConnectionsHighAlarm,
-    });
-
-    const nginxActiveConnectionsGraphWidget = new cloudwatch.GraphWidget({
-      title: "Nginx Active Connections",
-      width: GRAPH_WIDGET_WIDTH,
-      height: GRAPH_WIDGET_HEIGHT,
-      stacked: false,
-      view: cloudwatch.GraphWidgetView.TIME_SERIES,
-      legendPosition: cloudwatch.LegendPosition.BOTTOM,
       leftYAxis: {
         min: 0,
         showUnits: true,
       },
-      left: [nginxConnectionsActiveMetric],
-      period: Duration.minutes(1),
+      alarm: nginxActiveConnectionsHighAlarm,
     });
 
     // *********************************************************
@@ -976,12 +849,6 @@ export class MonitoringStack extends Stack {
           nlbHealthyHostCountLowAlarmWidget,
           nlbUnHealthyHostCountHighAlarmWidget,
         ],
-        [
-          nlbTcpRstCountGraphWidget,
-          nlbPortAllocationErrorCountGraphWidget,
-          nlbHealthyHostCountGraphWidget,
-          nlbUnHealthyHostCountGraphWidget,
-        ],
         [nlbCoreMetricsHeader],
         [nlbActiveFlowCountGraphWidget, nlbProcessedBytesGraphWidget],
         [new cloudwatch.Spacer({ height: 2 })],
@@ -990,16 +857,11 @@ export class MonitoringStack extends Stack {
         [autoScalingGroupAlarmHeader],
         [
           asgInstanceStateAlarmWidget,
+          asgNetDropErrAlarmWidget,
           asgCpuUsageHighAlarmWidget,
           asgMemUsageHighAlarmWidget,
-          asgNetDropErrAlarmWidget,
         ],
-        [
-          asgInstanceStateGraphWidget,
-          asgCpuUsageGraphWidget,
-          asgMemUsageGraphWidget,
-          asgNetDropErrGraphWidget,
-        ],
+        [asgInstanceStateGraphWidget, asgNetDropErrGraphWidget],
         [asgCoreMetricsHeader],
         [
           asgCapacityGraphWidget,
@@ -1011,7 +873,6 @@ export class MonitoringStack extends Stack {
         [nginxStatusMainHeader],
         [nginxStatusAlarmHeader],
         [nginxServersUpLowAlarmWidget, nginxActiveConnectionsHighAlarmWidget],
-        [nginxServersUpGraphWidget, nginxActiveConnectionsGraphWidget],
         [new cloudwatch.Spacer({ height: 2 })],
       ],
     });
