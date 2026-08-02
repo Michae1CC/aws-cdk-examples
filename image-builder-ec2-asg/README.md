@@ -40,3 +40,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/prerequisites.html>
 * <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/metrics-collected-by-CloudWatch-agent.html>
 * <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Solution-NGINX-On-EC2.html>
+* <https://www.youtube.com/watch?v=ScDv02ff8oc>
