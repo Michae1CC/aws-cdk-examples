@@ -39,6 +39,16 @@ export class NginxClusterStack extends cdk.Stack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    /**
+     * Creates the log group used by the cloudwatch agent to provide a log
+     * group for the agent itself.
+     */
+    new logs.LogGroup(this, "cloudwatch-agent-logs", {
+      logGroupName: "service/amazon-cloudwatch-agent",
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
     const instanceSecurityGroup = new ec2.SecurityGroup(
       this,
       "monitor-instance-sg",

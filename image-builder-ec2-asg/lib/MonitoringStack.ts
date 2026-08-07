@@ -188,15 +188,6 @@ export class MonitoringStack extends Stack {
       alarm: nlbHealthyHostCountLowAlarm,
     });
 
-    const nlbCoreMetricsHeader = new cloudwatch.TextWidget({
-      height: SECONDARY_HEADER_HEIGHT,
-      width: SECONDARY_HEADER_WIDTH,
-      markdown: `## Core Metrics`,
-      background: cloudwatch.TextWidgetBackground.TRANSPARENT,
-    });
-
-    // NLB Healthy Host Count monitoring
-
     const nlbUnHealthyHostCountMetric = new cloudwatch.Metric({
       namespace: "AWS/NetworkELB",
       metricName: "UnHealthyHostCount",
@@ -232,7 +223,14 @@ export class MonitoringStack extends Stack {
       alarm: nlbUnHealthyHostCountHighAlarm,
     });
 
-    // NLB active flow count metrics
+    // NLB Healthy Host Count monitoring
+
+    const nlbCoreMetricsHeader = new cloudwatch.TextWidget({
+      height: SECONDARY_HEADER_HEIGHT,
+      width: SECONDARY_HEADER_WIDTH,
+      markdown: `## Core Metrics`,
+      background: cloudwatch.TextWidgetBackground.TRANSPARENT,
+    });
 
     const nlbActiveFlowCountMetric = new cloudwatch.Metric({
       namespace: "AWS/NetworkELB",
@@ -502,104 +500,30 @@ export class MonitoringStack extends Stack {
     // summed across the ASG via Metrics Insights queries)
 
     const asgNetDropInMetric = new cloudwatch.MathExpression({
-      expression: `SELECT SUM(net_drop_in) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SUM(SEARCH('Namespace="Service/NginxAutoScalingGroupInstance" AutoScalingGroupName="${asgName}" MetricName="net_drop_in"', 'Sum'))`,
       label: "ASG Net Drop In",
       period: Duration.minutes(1),
     });
 
     const asgNetDropOutMetric = new cloudwatch.MathExpression({
-      expression: `SELECT SUM(net_drop_out) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SUM(SEARCH('Namespace="Service/NginxAutoScalingGroupInstance" AutoScalingGroupName="${asgName}" MetricName="net_drop_out"', 'Sum'))`,
       label: "ASG Net Drop Out",
       period: Duration.minutes(1),
     });
 
     const asgNetErrInMetric = new cloudwatch.MathExpression({
-      expression: `SELECT SUM(net_err_in) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SUM(SEARCH('Namespace="Service/NginxAutoScalingGroupInstance" AutoScalingGroupName="${asgName}" MetricName="net_err_in"', 'Sum'))`,
       label: "ASG Net Err In",
       period: Duration.minutes(1),
     });
 
     const asgNetErrOutMetric = new cloudwatch.MathExpression({
-      expression: `SELECT SUM(net_err_out) FROM SCHEMA("Service/NginxAutoScalingGroupInstance", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SUM(SEARCH('Namespace="Service/NginxAutoScalingGroupInstance" AutoScalingGroupName="${asgName}" MetricName="net_err_out"', 'Sum'))`,
       label: "ASG Net Err Out",
       period: Duration.minutes(1),
     });
 
-    // Sustained packet drops / errors on any direction are worth flagging;
-    // thresholds are tunable defaults.
-    const asgNetDropInHighAlarm = new cloudwatch.Alarm(
-      this,
-      "asg-net-drop-in-high-alarm",
-      {
-        metric: asgNetDropInMetric,
-        threshold: 0,
-        evaluationPeriods: 3,
-        datapointsToAlarm: 2,
-        comparisonOperator:
-          cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        alarmName: "ASG-Net-Drop-In-High",
-      },
-    );
-
-    const asgNetDropOutHighAlarm = new cloudwatch.Alarm(
-      this,
-      "asg-net-drop-out-high-alarm",
-      {
-        metric: asgNetDropOutMetric,
-        threshold: 0,
-        evaluationPeriods: 3,
-        datapointsToAlarm: 2,
-        comparisonOperator:
-          cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        alarmName: "ASG-Net-Drop-Out-High",
-      },
-    );
-
-    const asgNetErrInHighAlarm = new cloudwatch.Alarm(
-      this,
-      "asg-net-err-in-high-alarm",
-      {
-        metric: asgNetErrInMetric,
-        threshold: 0,
-        evaluationPeriods: 3,
-        datapointsToAlarm: 2,
-        comparisonOperator:
-          cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        alarmName: "ASG-Net-Err-In-High",
-      },
-    );
-
-    const asgNetErrOutHighAlarm = new cloudwatch.Alarm(
-      this,
-      "asg-net-err-out-high-alarm",
-      {
-        metric: asgNetErrOutMetric,
-        threshold: 0,
-        evaluationPeriods: 3,
-        datapointsToAlarm: 2,
-        comparisonOperator:
-          cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        alarmName: "ASG-Net-Err-Out-High",
-      },
-    );
-
-    const asgNetDropErrAlarmWidget = new cloudwatch.AlarmStatusWidget({
-      // Leave the title undefined to show the alarm widget
-      title: "Net Drop Err",
-      width: ALARM_STATUS_WIDGET_WIDTH,
-      height: ALARM_STATUS_WIDGET_HEIGHT,
-      alarms: [
-        asgNetDropInHighAlarm,
-        asgNetDropOutHighAlarm,
-        asgNetErrInHighAlarm,
-        asgNetErrOutHighAlarm,
-      ],
-    });
-
+    // NOTE: Alarming metrics that use the SEARCH function is not supported, but it allows multiple aggregated metrics to be displayed on the one graph
     const asgNetDropErrGraphWidget = new cloudwatch.GraphWidget({
       title: "ASG Net Drops / Errors",
       width: GRAPH_WIDGET_WIDTH,
@@ -766,7 +690,7 @@ export class MonitoringStack extends Stack {
     // status metric, summed across instances via a Metrics Insights query)
 
     const nginxUpMetric = new cloudwatch.MathExpression({
-      expression: `SELECT SUM(nginx_up) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}'`,
+      expression: `SELECT AVG(nginx_up) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${asgName}' GROUP BY InstanceId ORDER BY AVG() DESC`,
       label: "Nginx Servers Up (Total)",
       period: Duration.minutes(1),
     });
@@ -857,16 +781,16 @@ export class MonitoringStack extends Stack {
         [autoScalingGroupAlarmHeader],
         [
           asgInstanceStateAlarmWidget,
-          asgNetDropErrAlarmWidget,
           asgCpuUsageHighAlarmWidget,
           asgMemUsageHighAlarmWidget,
         ],
-        [asgInstanceStateGraphWidget, asgNetDropErrGraphWidget],
+        [asgInstanceStateGraphWidget],
         [asgCoreMetricsHeader],
         [
           asgCapacityGraphWidget,
           asgNetBytesSentGraphWidget,
           asgNetBytesRecvGraphWidget,
+          asgNetDropErrGraphWidget,
         ],
         [new cloudwatch.Spacer({ height: 2 })],
         // Nginx Status Widgets

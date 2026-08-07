@@ -66,6 +66,18 @@
     }
   },
   "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "service.name": "amazon-cloudwatch-agent",
+            "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log",
+            "log_group_name": "service/amazon-cloudwatch-agent",
+            "log_stream_name": "{hostname}"
+          }
+        ]
+      }
+    },
     "metrics_collected": {
       "prometheus": {
         "log_group_name": "service/nginx-prometheus-exporter",

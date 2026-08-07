@@ -147,7 +147,7 @@ export class ImageBuilderStack extends Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.21",
+        version: "1.3.22",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -278,7 +278,7 @@ export class ImageBuilderStack extends Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.21",
+        version: "1.3.22",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent
