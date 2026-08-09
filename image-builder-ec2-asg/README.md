@@ -42,4 +42,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Solution-NGINX-On-EC2.html>
 * <https://www.youtube.com/watch?v=ScDv02ff8oc>
 * <https://www.youtube.com/watch?v=yaijcGJnFQY&t=35s>
-* <https://github.com/awslabs/mountpoint-s3/blob/main/doc/SEMANTICS.md>
+* <https://aws.amazon.com/blogs/aws/launching-s3-files-making-s3-buckets-accessible-as-file-systems/>
