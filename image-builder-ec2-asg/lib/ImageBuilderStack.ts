@@ -176,7 +176,7 @@ export class ImageBuilderStack extends Stack {
                           // Upgrading could introduce changes unexpectedly
                           // Upgrade by changing the base image to a newer one, which is a tracked change
                           "dnf update",
-                          "dnf install -y cowsay nginx jq",
+                          "dnf install -y cowsay nginx jq stress python",
                           // Install the nginx-prometheus-exporter
                           "cd /tmp",
                           "wget https://github.com/nginx/nginx-prometheus-exporter/releases/download/v1.5.1/nginx-prometheus-exporter_1.5.1_linux_arm64.tar.gz",
@@ -289,6 +289,8 @@ export class ImageBuilderStack extends Stack {
                           // Validate the nginx logrotate file
                           "logrotate -d /etc/logrotate.d/nginx",
                           "echo 'Hi' > /etc/nginx/index.html",
+                          // Create a file with 1Mb of data to perf test
+                          "head -c 1M </dev/urandom | tr -dc 'A-Za-z0-9' | head -c 1M > /etc/nginx/random.txt",
                           // Restart systemctl to discover the nginx prometheus exporter
                           "systemctl daemon-reload",
                           "systemctl enable nginx",

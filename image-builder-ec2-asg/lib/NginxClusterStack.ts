@@ -116,6 +116,9 @@ export class NginxClusterStack extends cdk.Stack {
       userData: instanceUserData,
       role: instanceRole,
       securityGroup: instanceSecurityGroup,
+      // Enable detailed monitoring so instance metrics are collected at a
+      // 1-minute interval instead of the default 5-minute interval.
+      detailedMonitoring: true,
       // Enable access to instance tags via IMDS, this is required to query the
       // the ASG name in the user data using the instance metadata service
       instanceMetadataTags: true,
@@ -132,7 +135,6 @@ export class NginxClusterStack extends cdk.Stack {
         vpc: props.vpc,
         launchTemplate: launchTemplate,
         allowAllOutbound: false,
-        desiredCapacity: 2,
         maxCapacity: 5,
         minCapacity: 2,
         deletionProtection: autoscaling.DeletionProtection.NONE,
@@ -149,14 +151,40 @@ export class NginxClusterStack extends cdk.Stack {
         }),
         // TODO: Investigate ELB health checks
         // Try to get cfn init working
-        healthChecks: autoscaling.HealthChecks.ec2({
+        healthChecks: autoscaling.HealthChecks.withAdditionalChecks({
           gracePeriod: Duration.seconds(300),
+          additionalTypes: [autoscaling.AdditionalHealthCheckType.ELB]
         }),
         groupMetrics: [autoscaling.GroupMetrics.all()],
       },
     );
 
     this.autoScalingGroup = autoScalingGroup;
+
+    /**
+     * Target tracking scaling policy that keeps the average CPU utilization
+     * across the ASG at 40%.
+     */
+    autoScalingGroup.scaleOnCpuUtilization("cpu-target-tracking", {
+      targetUtilizationPercent: 40,
+    });
+
+    /**
+     * Target tracking scaling policies that keep the ASG-average network
+     * throughput at 1 gigabit per minute for both ingress and egress.
+     *
+     * NOTE: The `ASGAverageNetworkIn`/`ASGAverageNetworkOut` predefined
+     * metrics are reported as total bytes over the collection interval
+     * (1 minute), so the target value is expressed as bytes-per-minute:
+     * 1 Gb/min = 1,000,000,000 bits / 8 = 125,000,000 bytes.
+     */
+    autoScalingGroup.scaleOnIncomingBytes("network-in-target-tracking", {
+      targetBytesPerSecond: 125_000_000,
+    });
+
+    autoScalingGroup.scaleOnOutgoingBytes("network-out-target-tracking", {
+      targetBytesPerSecond: 125_000_000,
+    });
 
     // Injects a call to cfn-signal on exit
     instanceUserData.addCommands(
@@ -240,13 +268,18 @@ export class NginxClusterStack extends cdk.Stack {
         protocol: elbv2.Protocol.TCP,
         vpc: props.vpc,
         targetType: elbv2.TargetType.INSTANCE,
+        deregistrationDelay: Duration.minutes(1),
+        targetGroupHealth: {
+          dnsMinimumHealthyTargetCount: 1,
+          routingMinimumHealthyTargetCount: 1,
+        },
         healthCheck: {
           enabled: true,
           protocol: elbv2.Protocol.HTTP,
           port: "80",
           healthyThresholdCount: 2,
           unhealthyThresholdCount: 3,
-          interval: cdk.Duration.seconds(30),
+          interval: cdk.Duration.seconds(10),
           path: "/healthcheck",
           healthyHttpCodes: "200,202",
         },
