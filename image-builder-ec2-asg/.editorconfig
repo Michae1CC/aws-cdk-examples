@@ -1,0 +1,20 @@
+# EditorConfig helps keep line endings consistent across editors.
+# https://editorconfig.org
+#
+# Files under node/ are shipped to Linux build instances via Image Builder,
+# where strict parsers (e.g. logrotate) reject Windows CRLF line endings.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{ts,js,json,yaml,yml}]
+indent_style = space
+indent_size = 2
+
+# Config assets deployed to the Linux AMI must always use LF.
+[node/**]
+end_of_line = lf

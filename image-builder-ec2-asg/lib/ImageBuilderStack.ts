@@ -55,6 +55,14 @@ export class ImageBuilderStack extends Stack {
       },
     );
 
+    const logrotateAsset = new s3_assets.Asset(
+      this,
+      "logrotate-asset",
+      {
+        path: path.join(__dirname, "..", "node", "logrotate.d"),
+      },
+    );
+
     /**
      * A role used Image builder to build instances
      * See: https://docs.aws.amazon.com/imagebuilder/latest/userguide/set-up-ib-env.html
@@ -147,7 +155,7 @@ export class ImageBuilderStack extends Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.22",
+        version: "1.3.27",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -235,6 +243,38 @@ export class ImageBuilderStack extends Stack {
                     ],
                   },
                   {
+                    name: "DownloadLogrotate",
+                    action: "S3Download",
+                    inputs: [
+                      {
+                        source: logrotateAsset.s3ObjectUrl,
+                        destination: "/etc/logrotate.d/nginx",
+                        overwrite: true,
+                      },
+                    ],
+                  },
+                  {
+                    name: "NormalizeConfigLineEndings",
+                    action: "ExecuteBash",
+                    inputs: {
+                      commands: [
+                        [
+                          "set -euxo pipefail",
+                          // Config assets are authored on Windows and can carry
+                          // CRLF line endings. Strict parsers (notably logrotate)
+                          // reject the trailing carriage return with errors like
+                          // "lines must begin with a keyword or a filename".
+                          // Strip any trailing CR; this is a no-op on LF files.
+                          "sed -i 's/\\r$//' /etc/logrotate.d/nginx",
+                          "sed -i 's/\\r$//' /etc/nginx/nginx.conf",
+                          "sed -i 's/\\r$//' /opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
+                          "sed -i 's/\\r$//' /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml.template",
+                          "sed -i 's/\\r$//' /etc/systemd/system/nginx-prometheus-exporter.service",
+                        ].join("\n"),
+                      ],
+                    },
+                  },
+                  {
                     name: "ConfigureNginx",
                     action: "ExecuteBash",
                     inputs: {
@@ -246,6 +286,8 @@ export class ImageBuilderStack extends Stack {
                           "jq empty /opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
                           // Validate the nginx config file
                           "nginx -t -c /etc/nginx/nginx.conf",
+                          // Validate the nginx logrotate file
+                          "logrotate -d /etc/logrotate.d/nginx",
                           "echo 'Hi' > /etc/nginx/index.html",
                           // Restart systemctl to discover the nginx prometheus exporter
                           "systemctl daemon-reload",
@@ -278,7 +320,7 @@ export class ImageBuilderStack extends Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.22",
+        version: "1.3.27",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent

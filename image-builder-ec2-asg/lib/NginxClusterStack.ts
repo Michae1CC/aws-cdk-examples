@@ -49,6 +49,26 @@ export class NginxClusterStack extends cdk.Stack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    /**
+     * Creates the log group used by the cloudwatch agent to provide a log
+     * group nginx access logs
+     */
+    new logs.LogGroup(this, "nginx-access-logs", {
+      logGroupName: "service/nginx/access",
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    /**
+     * Creates the log group used by the cloudwatch agent to provide a log
+     * group nginx error logs
+     */
+    new logs.LogGroup(this, "nginx-error-logs", {
+      logGroupName: "service/nginx/error",
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
     const instanceSecurityGroup = new ec2.SecurityGroup(
       this,
       "monitor-instance-sg",
@@ -168,6 +188,9 @@ export class NginxClusterStack extends cdk.Stack {
     // systemctl daemon-reload
     // systemctl enable nginx-prometheus-exporter
     // systemctl start nginx-prometheus-exporter
+    // # Validate logrotate without waiting for the timer
+    // sudo logrotate -d /etc/logrotate.d/nginx   # dry-run
+    // sudo logrotate -f /etc/logrotate.d/nginx   # force once
 
     // The security group used for the cloudfront vpc origin must allow incoming traffic
     // from the AWS managed region specific Cloudfront origin facing prefix list,
