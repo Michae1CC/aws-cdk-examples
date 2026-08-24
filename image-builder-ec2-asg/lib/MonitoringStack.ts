@@ -3,6 +3,7 @@ import {
   aws_cloudwatch as cloudwatch,
   aws_elasticloadbalancingv2 as elbv2,
   Duration,
+  CfnOutput,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
@@ -29,6 +30,13 @@ const ALARM_WIDGET_WIDTH: number = GRAPH_WIDGET_WIDTH;
 export class MonitoringStack extends Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
+
+    const unixEpochSeconds = Math.floor(Date.now() / 1000);
+    new CfnOutput(this, "force-refresh-at-output", {
+      description:
+        "DO NOT USE. This is an ephemeral output used to force refresh stack controlled through CDK.",
+      value: unixEpochSeconds.toString(),
+    });
 
     // *********************************************************
     // Network Load Balancer
@@ -802,9 +810,3 @@ export class MonitoringStack extends Stack {
     });
   }
 }
-
-// Changes:
-// - Have specific header names and values
-// - Put Dashboard into construct
-// - Alarm Widget vs Metric Widget vs Text Widget naming
-// - Methods to build headers

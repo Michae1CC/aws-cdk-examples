@@ -55,13 +55,9 @@ export class ImageBuilderStack extends Stack {
       },
     );
 
-    const logrotateAsset = new s3_assets.Asset(
-      this,
-      "logrotate-asset",
-      {
-        path: path.join(__dirname, "..", "node", "logrotate.d"),
-      },
-    );
+    const logrotateAsset = new s3_assets.Asset(this, "logrotate-asset", {
+      path: path.join(__dirname, "..", "node", "logrotate.d"),
+    });
 
     /**
      * A role used Image builder to build instances
@@ -155,7 +151,7 @@ export class ImageBuilderStack extends Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.27",
+        version: "1.3.28",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -322,7 +318,7 @@ export class ImageBuilderStack extends Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.27",
+        version: "1.3.28",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent

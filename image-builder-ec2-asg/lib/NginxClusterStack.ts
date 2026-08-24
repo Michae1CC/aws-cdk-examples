@@ -1,5 +1,6 @@
 import {
   aws_autoscaling as autoscaling,
+  aws_cloudwatch as cloudwatch,
   aws_ec2 as ec2,
   aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
@@ -153,7 +154,7 @@ export class NginxClusterStack extends cdk.Stack {
         // Try to get cfn init working
         healthChecks: autoscaling.HealthChecks.withAdditionalChecks({
           gracePeriod: Duration.seconds(300),
-          additionalTypes: [autoscaling.AdditionalHealthCheckType.ELB]
+          additionalTypes: [autoscaling.AdditionalHealthCheckType.ELB],
         }),
         groupMetrics: [autoscaling.GroupMetrics.all()],
       },
@@ -183,7 +184,58 @@ export class NginxClusterStack extends cdk.Stack {
     });
 
     autoScalingGroup.scaleOnOutgoingBytes("network-out-target-tracking", {
-      targetBytesPerSecond: 125_000_000,
+      targetBytesPerSecond: 1_000_000,
+    });
+
+    const autoScalingGroupDimensionValue = cdk.Fn.select(
+      1,
+      cdk.Fn.split(
+        ":autoScalingGroupName/",
+        autoScalingGroup.autoScalingGroupArn,
+      ),
+    );
+
+    // const nginxConnectionsActiveMetric = new cloudwatch.Metric({
+    //   namespace: "Service/NginxStatus",
+    //   metricName: "nginx_connections_active",
+    //   statistic: "Average",
+    //   period: Duration.minutes(1),
+    //   dimensionsMap: {
+    //     AutoScalingGroupName: autoScalingGroupDimensionValue,
+    //   },
+    //   label: "Nginx Connection Active Average",
+    // });
+
+    const nginxConnectionsActiveMetric = new cloudwatch.MathExpression({
+      expression: `SELECT AVG(nginx_up) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${autoScalingGroupDimensionValue}'`,
+      label: "Nginx Up",
+      period: Duration.minutes(1),
+    });
+
+    autoScalingGroup.scaleOnMetric("nginx-connections-active-scale-policy", {
+      metric: nginxConnectionsActiveMetric,
+      adjustmentType: autoscaling.AdjustmentType.PERCENT_CHANGE_IN_CAPACITY,
+      scalingSteps: [
+        {
+          lower: 0,
+          upper: 20,
+          change: -25,
+        },
+        {
+          lower: 21,
+          upper: 35,
+          change: 0,
+        },
+        {
+          lower: 36,
+          upper: 70,
+          change: 25,
+        },
+        {
+          lower: 71,
+          change: 50,
+        },
+      ],
     });
 
     // Injects a call to cfn-signal on exit
@@ -242,6 +294,8 @@ export class NginxClusterStack extends cdk.Stack {
       ec2.Peer.prefixList(cloudfrontOriginFacingPrefixList.prefixListId),
       ec2.Port.HTTP,
     );
+
+    nlbSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTP);
 
     nlbSg.addIngressRule(
       ec2.Peer.anyIpv4(),
