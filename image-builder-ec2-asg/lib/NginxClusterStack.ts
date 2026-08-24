@@ -222,17 +222,17 @@ export class NginxClusterStack extends cdk.Stack {
           change: -25,
         },
         {
-          lower: 21,
+          lower: 20,
           upper: 35,
           change: 0,
         },
         {
-          lower: 36,
+          lower: 35,
           upper: 70,
           change: 25,
         },
         {
-          lower: 71,
+          lower: 70,
           change: 50,
         },
       ],
