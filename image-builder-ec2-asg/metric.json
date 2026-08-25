@@ -1,0 +1,13 @@
+[
+  {
+    "MetricName": "nginx_connections_active",
+    "Timestamp": "2026-08-25T05:26:37Z",
+    "Value": 40,
+    "Unit": "Count",
+    "Dimensions": [
+      { "Name": "InstanceId", "Value": "i-0603e1e36a6129262" },
+      { "Name": "AutoScalingGroupName", "Value": "nginx-cluster-stack-nginxclusterasgASG2E4CDAB7-MHALBMgGajBJ" },
+      { "Name": "InstanceType", "Value": "c8gn.medium" }
+    ]
+  }
+]

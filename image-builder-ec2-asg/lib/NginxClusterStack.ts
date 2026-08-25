@@ -207,14 +207,18 @@ export class NginxClusterStack extends cdk.Stack {
     // });
 
     const nginxConnectionsActiveMetric = new cloudwatch.MathExpression({
-      expression: `SELECT AVG(nginx_up) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${autoScalingGroupDimensionValue}'`,
-      label: "Nginx Up",
+      expression: `SELECT MAX(nginx_connections_active) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${autoScalingGroupDimensionValue}'`,
+      label: "Nginx Connections Active",
       period: Duration.minutes(1),
     });
 
     autoScalingGroup.scaleOnMetric("nginx-connections-active-scale-policy", {
       metric: nginxConnectionsActiveMetric,
       adjustmentType: autoscaling.AdjustmentType.PERCENT_CHANGE_IN_CAPACITY,
+      evaluationPeriods: 3,
+      datapointsToAlarm: 3,
+      cooldown: cdk.Duration.minutes(3),
+      minAdjustmentMagnitude: 1,
       scalingSteps: [
         {
           lower: 0,
