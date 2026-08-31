@@ -5,6 +5,8 @@ import {
   aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_logs as logs,
+  aws_s3 as s3,
+  aws_s3files as s3files,
   aws_ssm as ssm,
   Duration,
   StackProps,
@@ -70,6 +72,136 @@ export class NginxClusterStack extends cdk.Stack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    /**
+     * A bucket to place web files
+     */
+    const webFileBucket = new s3.Bucket(this, "web-file-bucket", {
+      removalPolicy: RemovalPolicy.RETAIN,
+      autoDeleteObjects: false,
+      // S3Files requires versioning
+      versioned: true,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      transferAcceleration: false,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
+      enforceSSL: true,
+    });
+
+    /**
+     * Service role used by S3Files to access the task bucket.
+     * https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-files-prereq-policies.html#s3-files-prereq-iam-creation-role
+     */
+    const s3FilesIamRole = new iam.Role(this, "s3files-role", {
+      assumedBy: new iam.ServicePrincipal("elasticfilesystem.amazonaws.com", {
+        conditions: {
+          StringEquals: {
+            "aws:SourceAccount": this.account,
+          },
+          ArnLike: {
+            "aws:SourceArn": this.formatArn({
+              service: "s3files",
+              resource: "file-system",
+              resourceName: "*",
+            }),
+          },
+        },
+      }),
+      inlinePolicies: {
+        s3files: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              sid: "S3BucketPermissions",
+              effect: iam.Effect.ALLOW,
+              actions: ["s3:ListBucket", "s3:ListBucketVersions"],
+              resources: [webFileBucket.bucketArn],
+              conditions: {
+                StringEquals: {
+                  "aws:ResourceAccount": this.account,
+                },
+              },
+            }),
+            new iam.PolicyStatement({
+              sid: "S3ObjectPermissions",
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "s3:AbortMultipartUpload",
+                "s3:DeleteObject*",
+                "s3:GetObject*",
+                "s3:List*",
+                "s3:PutObject*",
+              ],
+              resources: [webFileBucket.arnForObjects("*")],
+              conditions: {
+                StringEquals: {
+                  "aws:ResourceAccount": this.account,
+                },
+              },
+            }),
+            new iam.PolicyStatement({
+              sid: "UseKmsKeyWithS3Files",
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "kms:GenerateDataKey",
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncryptFrom",
+                "kms:ReEncryptTo",
+              ],
+              resources: [this.formatArn({ service: "kms", resource: "*" })],
+              conditions: {
+                StringLike: {
+                  "kms:ViaService": `s3.${this.region}.amazonaws.com`,
+                  "kms:EncryptionContext:aws:s3:arn": [
+                    webFileBucket.bucketArn,
+                    webFileBucket.arnForObjects("*"),
+                  ],
+                },
+              },
+            }),
+            new iam.PolicyStatement({
+              sid: "EventBridgeManage",
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "events:DeleteRule",
+                "events:DisableRule",
+                "events:EnableRule",
+                "events:PutRule",
+                "events:PutTargets",
+                "events:RemoveTargets",
+              ],
+              resources: ["arn:aws:events:*:*:rule/DO-NOT-DELETE-S3-Files*"],
+              conditions: {
+                StringEquals: {
+                  "events:ManagedBy": "elasticfilesystem.amazonaws.com",
+                },
+              },
+            }),
+            new iam.PolicyStatement({
+              sid: "EventBridgeRead",
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "events:DescribeRule",
+                "events:ListRuleNamesByTarget",
+                "events:ListRules",
+                "events:ListTargetsByRule",
+              ],
+              resources: ["arn:aws:events:*:*:rule/*"],
+            }),
+          ],
+        }),
+      },
+    });
+
+    const s3FilesystemSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "s3-filesystem-sg",
+      {
+        vpc: props.vpc,
+        allowAllOutbound: false,
+        description: "Allow access to S3 Files filesystem",
+      },
+    );
+
     const instanceSecurityGroup = new ec2.SecurityGroup(
       this,
       "monitor-instance-sg",
@@ -86,6 +218,48 @@ export class NginxClusterStack extends cdk.Stack {
     );
     instanceSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTP);
     instanceSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTPS);
+    s3FilesystemSecurityGroup.addIngressRule(
+      instanceSecurityGroup,
+      ec2.Port.NFS,
+      "Allow NFS",
+    );
+
+    /**
+     * S3 Files Filesystem for the bucket.
+     */
+    const webFileBucketFilesystem = new s3files.CfnFileSystem(
+      this,
+      "s3-files-filesystem",
+      {
+        bucket: webFileBucket.bucketArn,
+        roleArn: s3FilesIamRole.roleArn,
+        synchronizationConfiguration: {
+          expirationDataRules: [
+            {
+              daysAfterLastAccess: 1,
+            },
+          ],
+          importDataRules: [
+            {
+              prefix: "", // All
+              trigger: "ON_DIRECTORY_FIRST_ACCESS",
+              sizeLessThan: 131072, // 128KB
+            },
+          ],
+        },
+      },
+    );
+
+    /*
+     * Attach the Filesystem to the VPC
+     */
+    props.vpc.privateSubnets.forEach((subnet, index) => {
+      new s3files.CfnMountTarget(this, `s3-files-mount-target-${index}`, {
+        fileSystemId: webFileBucketFilesystem.attrFileSystemId,
+        securityGroups: [s3FilesystemSecurityGroup.securityGroupId],
+        subnetId: subnet.subnetId,
+      });
+    });
 
     /**
      * Role for the ec2 instances in the ASG
@@ -101,6 +275,32 @@ export class NginxClusterStack extends cdk.Stack {
           "CloudWatchAgentServerPolicy",
         ),
       ],
+      inlinePolicies: {
+        s3files: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["s3:GetObject", "s3:GetObjectVersion"],
+              resources: [webFileBucket.arnForObjects("*")],
+            }),
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ["s3:ListBucket"],
+              resources: [webFileBucket.bucketArn],
+            }),
+            // Allow client read and write access to a file system
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "s3files:ClientMount",
+                "s3files:ClientWrite",
+                "s3files:ClientRootAccess",
+              ],
+              resources: [webFileBucketFilesystem.attrFileSystemArn],
+            }),
+          ],
+        }),
+      },
     });
 
     const instanceUserData = ec2.UserData.forLinux();
