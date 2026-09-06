@@ -6,6 +6,7 @@ import {
   aws_iam as iam,
   aws_logs as logs,
   aws_s3 as s3,
+  aws_s3_deployment as s3_deployment,
   aws_s3files as s3files,
   aws_ssm as ssm,
   Duration,
@@ -85,6 +86,11 @@ export class NginxClusterStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
       enforceSSL: true,
+    });
+
+    new s3_deployment.BucketDeployment(this, "web-file-bucket-s3-deployment", {
+      sources: [s3_deployment.Source.asset("./web")],
+      destinationBucket: webFileBucket,
     });
 
     /**
@@ -452,6 +458,10 @@ export class NginxClusterStack extends cdk.Stack {
       'export INSTANCE_TYPE=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type`',
       'export AUTO_SCALING_GROUP_NAME=`curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance/aws:autoscaling:groupName`',
       "envsubst '$INSTANCE_ID $INSTANCE_TYPE $AUTO_SCALING_GROUP_NAME' < /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml.template > /opt/aws/amazon-cloudwatch-agent/etc/prometheus.yaml",
+      // Mount the s3 file system
+      `mount -t s3files ${webFileBucketFilesystem.attrFileSystemId}:/ /mnt/web`,
+      // Confirm the file system is mounted
+      "df -h /mnt/web",
       // NOTE: The scrape-uri path should match the path in the nginx.conf file where the 'stub_status' configuration is 'on'
       // "systemctl start nginx-prometheus-exporter",
       "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",

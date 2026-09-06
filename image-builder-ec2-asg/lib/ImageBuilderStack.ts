@@ -151,7 +151,7 @@ export class ImageBuilderStack extends Stack {
       {
         name: "NginxClusterNodeDependencies",
         platform: "Linux",
-        version: "1.3.28",
+        version: "1.3.30",
         data: yaml.stringify(
           {
             name: "Dependencies",
@@ -176,6 +176,8 @@ export class ImageBuilderStack extends Stack {
                           // Install the nginx-prometheus-exporter
                           "cd /tmp",
                           "wget https://github.com/nginx/nginx-prometheus-exporter/releases/download/v1.5.1/nginx-prometheus-exporter_1.5.1_linux_arm64.tar.gz",
+                          // Install AWS EFS Utils for S3 Files
+                          "curl https://amazon-efs-utils.aws.com/efs-utils-installer.sh | sh -s -- --install",
                           // Verify the download against the published SHA-256 checksum before extracting.
                           // Checksum from: https://github.com/nginx/nginx-prometheus-exporter/releases/download/v1.5.1/nginx-prometheus-exporter_1.5.1_checksums.txt
                           // `set -euo pipefail` above ensures a mismatch aborts the build.
@@ -184,9 +186,11 @@ export class ImageBuilderStack extends Stack {
                           "cp nginx-prometheus-exporter /usr/local/bin/",
                           "rm -f /tmp/nginx-prometheus-exporter*",
                           "cd -",
-                          // Create the directories required for the S3 downloads
+                          // Create the directories required for the S3 assets
                           "mkdir -p /etc/nginx",
                           "mkdir -p /opt/aws/amazon-cloudwatch-agent/etc",
+                          // Make a directory to mount the s3 file system
+                          "mkdir -p /mnt/web",
                         ].join("\n"),
                       ],
                     },
@@ -318,7 +322,7 @@ export class ImageBuilderStack extends Stack {
       "node-image-recipe",
       {
         name: "NginxClusterNode",
-        version: "1.3.28",
+        version: "1.3.30",
         parentImage: `arn:aws:imagebuilder:${this.region}:aws:image/amazon-linux-2023-arm64/x.x.x`,
         components: [
           // Cloudwatch agent

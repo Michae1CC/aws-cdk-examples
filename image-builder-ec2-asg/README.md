@@ -45,3 +45,4 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * <https://aws.amazon.com/blogs/aws/launching-s3-files-making-s3-buckets-accessible-as-file-systems/>
 * <https://www.youtube.com/watch?v=2DrjQBL5FMU&t=1271s>
 * <https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-files-prereq-policies.html>
+* <https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-files-mounting.html>
