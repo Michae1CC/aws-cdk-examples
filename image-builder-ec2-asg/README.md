@@ -1,26 +1,25 @@
-# Welcome to your CDK TypeScript project
+# Cloudfront to ASG using S3 Files
 
-This is a blank project for CDK development with TypeScript.
+## Test
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+Ensure you have created a `.env` in the top level directory with the following
+variables.
 
-## Useful commands
+```env
+DOMAIN=<YOUR-R53-HZ-PUBLIC-DOMAIN>
+ACCOUNT=<YOUR-OPTIONAL-ACCOUNT-ID>
+REGION=<YOUR-OPTIONAL-REGION>
+```
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+Cloudformation stacks may be deployed with
 
-## Chores
+```bash
+cdk bootstrap && cdk deploy --require-approval=never --all
+```
 
-* [ ] Set up nginx to serve files
-* [ ] Get cfn init working
-* [ ] Export logs and metrics from ec2
-* [ ] Metric dashboards
-* [ ] Access log querying
-* [ ] Request metrics from access logs
+Once deployed, you will need to run the `NginxClusterNode` and then refresh the
+cluster instances. After, you should be able to access the S3 deployed website
+from `files.<YOUR-R53-HZ-PUBLIC-DOMAIN>`.
 
 ## References
 

@@ -390,7 +390,7 @@ export class NginxClusterStack extends cdk.Stack {
     });
 
     autoScalingGroup.scaleOnOutgoingBytes("network-out-target-tracking", {
-      targetBytesPerSecond: 1_000_000,
+      targetBytesPerSecond: 125_000_000,
     });
 
     const autoScalingGroupDimensionValue = cdk.Fn.select(
@@ -400,17 +400,6 @@ export class NginxClusterStack extends cdk.Stack {
         autoScalingGroup.autoScalingGroupArn,
       ),
     );
-
-    // const nginxConnectionsActiveMetric = new cloudwatch.Metric({
-    //   namespace: "Service/NginxStatus",
-    //   metricName: "nginx_connections_active",
-    //   statistic: "Average",
-    //   period: Duration.minutes(1),
-    //   dimensionsMap: {
-    //     AutoScalingGroupName: autoScalingGroupDimensionValue,
-    //   },
-    //   label: "Nginx Connection Active Average",
-    // });
 
     const nginxConnectionsActiveMetric = new cloudwatch.MathExpression({
       expression: `SELECT MAX(nginx_connections_active) FROM SCHEMA("Service/NginxStatus", AutoScalingGroupName, InstanceId, InstanceType) WHERE AutoScalingGroupName = '${autoScalingGroupDimensionValue}'`,
@@ -467,10 +456,6 @@ export class NginxClusterStack extends cdk.Stack {
       "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json",
       // Wait for cloudwatch agent and prometheus exporter to start
       "sleep 5",
-      // Check if the nginx prometheus exporter is running, process names are truncated
-      // `if ! pgrep nginx-prometheu >/dev/null; then exit 1; fi`,
-      // Check if the cloudwatch agent is running
-      // `if [[ $(/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status | jq .status) != '"running"' ]]; then exit 1; fi`,
     );
 
     instanceUserData.addSignalOnExitCommand(autoScalingGroup);
@@ -508,8 +493,6 @@ export class NginxClusterStack extends cdk.Stack {
       ec2.Peer.prefixList(cloudfrontOriginFacingPrefixList.prefixListId),
       ec2.Port.HTTP,
     );
-
-    nlbSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.HTTP);
 
     nlbSg.addIngressRule(
       ec2.Peer.anyIpv4(),
