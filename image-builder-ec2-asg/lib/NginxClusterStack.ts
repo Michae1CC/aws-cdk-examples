@@ -79,6 +79,7 @@ export class NginxClusterStack extends cdk.Stack {
     const webFileBucket = new s3.Bucket(this, "web-file-bucket", {
       removalPolicy: RemovalPolicy.RETAIN,
       autoDeleteObjects: false,
+      accessControl: s3.BucketAccessControl.PRIVATE,
       // S3Files requires versioning
       versioned: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
