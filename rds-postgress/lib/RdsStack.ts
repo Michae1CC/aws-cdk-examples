@@ -44,11 +44,15 @@ export class RdsStack extends Stack {
         allowMajorVersionUpgrade: false,
         autoMinorVersionUpgrade: true,
         credentials: {
-          username: templatedSecret.secretValueFromJson("username").toString(),
+          username: templatedSecret
+            .secretValueFromJson("username")
+            .unsafeUnwrap(),
           password: templatedSecret.secretValueFromJson("password"),
         },
+        storageEncrypted: true,
         // Research
         cloudwatchLogsExports: [],
+        performanceInsightRetention: rds.PerformanceInsightRetention.MONTHS_15,
         databaseInsightsMode: rds.DatabaseInsightsMode.ADVANCED,
         deleteAutomatedBackups: true,
         monitoringInterval: Duration.minutes(1),

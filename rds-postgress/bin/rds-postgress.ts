@@ -16,3 +16,8 @@ const app = new cdk.App();
 const vpcStack = new VpcStack(app, "vpc-stack", {
   env: env,
 });
+
+const rdsStack = new RdsStack(app, "rds-stack", {
+  env: env,
+  vpc: vpcStack.vpc,
+});
