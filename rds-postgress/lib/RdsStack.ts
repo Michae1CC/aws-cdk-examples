@@ -2,6 +2,7 @@ import {
   aws_ec2 as ec2,
   aws_rds as rds,
   aws_secretsmanager as secretsmanager,
+  Duration,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
@@ -24,6 +25,15 @@ export class RdsStack extends Stack {
       },
     });
 
+    const rdsDatabaseInstanceSg = new ec2.SecurityGroup(
+      this,
+      "rds-database-instance-sg",
+      {
+        vpc: props.vpc,
+        allowAllOutbound: true,
+      },
+    );
+
     const databaseInstance = new rds.DatabaseInstance(
       this,
       "database-instance",
@@ -41,6 +51,9 @@ export class RdsStack extends Stack {
         cloudwatchLogsExports: [],
         databaseInsightsMode: rds.DatabaseInsightsMode.ADVANCED,
         deleteAutomatedBackups: true,
+        monitoringInterval: Duration.minutes(1),
+        networkType: rds.NetworkType.IPV4,
+        securityGroups: [rdsDatabaseInstanceSg],
       },
     );
   }
