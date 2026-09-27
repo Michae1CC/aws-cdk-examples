@@ -1,5 +1,6 @@
 import {
   aws_ec2 as ec2,
+  aws_iam as iam,
   aws_rds as rds,
   aws_secretsmanager as secretsmanager,
   Duration,
@@ -60,5 +61,44 @@ export class RdsStack extends Stack {
         securityGroups: [rdsDatabaseInstanceSg],
       },
     );
+
+    // No inbound rules needed — SSM connects outbound over HTTPS (443).
+    const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
+      vpc: props.vpc,
+      allowAllOutbound: true, // required for SSM agent to reach SSM endpoints
+    });
+
+    // AmazonSSMManagedInstanceCore grants the SSM agent the permissions it needs.
+    const role = new iam.Role(this, "instance-role", {
+      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "AmazonSSMManagedInstanceCore",
+        ),
+      ],
+    });
+
+    const userData = ec2.UserData.forLinux({});
+    userData.addCommands("dnf update -y", "dnf install postgresql18");
+
+    const instance = new ec2.Instance(this, "instance", {
+      vpc: props.vpc,
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.MICRO,
+      ),
+      // Amazon Linux 2023 ships with SSM Agent pre-installed.
+      machineImage: ec2.MachineImage.latestAmazonLinux2023(),
+      securityGroup: instanceSg,
+      role,
+      // Grants Session Manager permissions and wires up the instance profile.
+      ssmSessionPermissions: true,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      // Require IMDSv2 (security best practice).
+      requireImdsv2: true,
+    });
+
+    // Allow the instance security group to connect to the database
+    rdsDatabaseInstanceSg.addIngressRule(instanceSg, ec2.Port.tcp(5432));
   }
 }

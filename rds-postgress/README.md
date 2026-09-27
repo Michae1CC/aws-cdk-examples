@@ -13,6 +13,11 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * `npx cdk diff`    compare deployed stack with current state
 * `npx cdk synth`   emits the synthesized CloudFormation template
 
+## Check list
+
+- Backup
+- Metrics
+
 ## References
 
 * <https://github.com/aws-samples/amazon-rds-init-cdk/blob/main/demos/rds-init-example.ts>
