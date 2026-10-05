@@ -1,5 +1,6 @@
 import {
   aws_ec2 as ec2,
+  aws_ecs as ecs,
   aws_iam as iam,
   aws_rds as rds,
   aws_secretsmanager as secretsmanager,
@@ -100,5 +101,20 @@ export class RdsStack extends Stack {
 
     // Allow the instance security group to connect to the database
     rdsDatabaseInstanceSg.addIngressRule(instanceSg, ec2.Port.tcp(5432));
+
+    // Create resource for running pgAdmin
+    const ecsCluster = new ecs.Cluster(this, "pgadmin-ecs-cluster", {
+      vpc: props.vpc,
+      containerInsightsV2: ecs.ContainerInsights.ENHANCED,
+    });
+
+    const instanceUserData = ec2.UserData.forLinux();
+    instanceUserData.addCommands(
+      // ECS config https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-config.html
+      `echo ECS_CLUSTER=${ecsCluster.clusterName} >> /etc/ecs/ecs.config;`,
+      "echo ECS_BACKEND_HOST= >> /etc/ecs/ecs.config;",
+      `echo ECS_RESERVED_MEMORY=1024 >> /etc/ecs/ecs.config;`,
+      "yum install -y amazon-cloudwatch-agent",
+    );
   }
 }
