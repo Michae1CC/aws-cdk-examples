@@ -111,9 +111,11 @@ export class RdsStack extends Stack {
     const instanceUserData = ec2.UserData.forLinux();
     instanceUserData.addCommands(
       // ECS config https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-config.html
+      // https://github.com/aws/amazon-ecs-agent/blob/master/README.md
       `echo ECS_CLUSTER=${ecsCluster.clusterName} >> /etc/ecs/ecs.config;`,
       "echo ECS_BACKEND_HOST= >> /etc/ecs/ecs.config;",
-      `echo ECS_RESERVED_MEMORY=1024 >> /etc/ecs/ecs.config;`,
+      "echo ECS_RESERVED_MEMORY=1024 >> /etc/ecs/ecs.config;",
+      "echo ECS_IMAGE_PULL_BEHAVIOR=always >> /etc/ecs/ecs.config",
       "yum install -y amazon-cloudwatch-agent",
     );
   }
