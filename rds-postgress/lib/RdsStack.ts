@@ -87,26 +87,6 @@ export class RdsStack extends Stack {
       ],
     });
 
-    const userData = ec2.UserData.forLinux({});
-    userData.addCommands("dnf update -y", "dnf install postgresql18");
-
-    const instance = new ec2.Instance(this, "instance", {
-      vpc: props.vpc,
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.T3,
-        ec2.InstanceSize.MICRO,
-      ),
-      // Amazon Linux 2023 ships with SSM Agent pre-installed.
-      machineImage: ec2.MachineImage.latestAmazonLinux2023(),
-      securityGroup: instanceSg,
-      role,
-      // Grants Session Manager permissions and wires up the instance profile.
-      ssmSessionPermissions: true,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-      // Require IMDSv2 (security best practice).
-      requireImdsv2: true,
-    });
-
     // Allow the instance security group to connect to the database
     rdsDatabaseInstanceSg.addIngressRule(instanceSg, ec2.Port.tcp(5432));
 
@@ -147,7 +127,9 @@ export class RdsStack extends Stack {
       detailedMonitoring: true,
       instanceMetadataTags: true,
       requireImdsv2: true,
-      machineImage: ec2.MachineImage.latestAmazonLinux2023(),
+      machineImage: ec2.MachineImage.latestAmazonLinux2023({
+        cpuType: ec2.AmazonLinuxCpuType.ARM_64,
+      }),
     });
 
     const pgAdminAsg = new autoscaling.AutoScalingGroup(this, "pgadmin-asg", {
@@ -176,6 +158,14 @@ export class RdsStack extends Stack {
     });
 
     instanceUserData.addSignalOnExitCommand(pgAdminAsg);
+    const asgCapacityProvider = new ecs.AsgCapacityProvider(
+      this,
+      "asg-capacity-provider",
+      {
+        autoScalingGroup: pgAdminAsg,
+      },
+    );
+    ecsCluster.addAsgCapacityProvider(asgCapacityProvider);
 
     const pgadminLogGroup = new logs.LogGroup(this, "pgadmin", {
       logGroupName: "pgadmin",
@@ -188,7 +178,6 @@ export class RdsStack extends Stack {
       "pgadmin-task-definition",
       {
         networkMode: ecs.NetworkMode.BRIDGE,
-        placementConstraints: [ecs.PlacementConstraint.distinctInstances()],
       },
     );
 
