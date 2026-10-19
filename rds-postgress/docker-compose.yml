@@ -1,0 +1,41 @@
+networks:
+    local_postgres_network:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 192.168.66.0/24
+
+services:
+    postgres:
+        image: postgres:14
+        restart: always
+        environment:
+            POSTGRES_PASSWORD: webapp
+            POSTGRES_USER: webapp
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        ports:
+            - 5432:5432
+        networks:
+            local_postgres_network: null
+        command:
+            - "postgres"
+            - "-c"
+            - "max_locks_per_transaction=1024"
+    pgadmin:
+        image: "dpage/pgadmin4:6"
+        restart: always
+        user: root
+        ports:
+            - "9050:80"
+        volumes:
+            - ./pg_admin:/var/lib/pgadmin
+        environment:
+            - PGADMIN_DEFAULT_EMAIL=pgadmin@tropofy.com
+            - PGADMIN_DEFAULT_PASSWORD=webapp
+            - PGADMIN_CONFIG_SERVER_MODE=False
+            - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+        networks:
+            local_postgres_network: null
+volumes:
+    pgdata:
