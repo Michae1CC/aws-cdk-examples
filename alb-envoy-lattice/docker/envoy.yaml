@@ -1,0 +1,202 @@
+admin:
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 9901
+
+static_resources:
+  listeners:
+    - name: ingress_listener
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 10000
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    # Do not log healthchecks from the ALB listener
+                    filter:
+                      header_filter:
+                        header:
+                          name: ":path"
+                          string_match: { exact: /healthcheck }
+                          invert_match: true
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                # Use the real remote address of the client connection when determining internal versus external origin
+                use_remote_address: true
+                # One trusted proxy (the ALB) in front: take the client address from X-Forwarded-For
+                xff_num_trusted_hops: 1
+                # Downstream keep-alive, i.e. the period in which there are no active connections
+                common_http_protocol_options: { idle_timeout: 65s }
+                route_config:
+                  name: local
+                  request_headers_to_add:
+                    - header: { key: x-custom-forwarded-proto, value: https }
+                      append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                    - header:
+                        {
+                          key: x-real-ip,
+                          value: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%",
+                        }
+                      append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                  virtual_hosts:
+                    - name: all
+                      domains: ["*"]
+                      routes:
+                        - match: { path: /healthcheck }
+                          direct_response: { status: 200 }
+                        - match:
+                            prefix: /
+                            headers:
+                              - name: x-custom-servicehost
+                                string_match:
+                                  {
+                                    safe_regex:
+                                      {
+                                        regex: '^[a-z0-9-]+\.[a-z0-9]+\.vpc-lattice-svcs\.[a-z0-9-]+\.on\.aws$',
+                                      },
+                                  }
+                          route: { cluster: lattice_dfp, timeout: 65s }
+                          typed_per_filter_config:
+                            envoy.filters.http.dynamic_forward_proxy:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_forward_proxy.v3.PerRouteConfig
+                              host_rewrite_header: x-custom-servicehost
+                        # Not a Lattice name in this region
+                        - match: { prefix: / }
+                          direct_response: { status: 503 }
+                http_filters:
+                  - name: envoy.filters.http.lua
+                    # keep the viewer's Host before it is rewritten
+                    # runs first in the chain, before dynamic_forward_proxy's host_rewrite_header
+                    # below overwrites :authority with the Lattice FQDN
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+                      default_source_code:
+                        inline_string: |
+                          function envoy_on_request(h)
+                            -- snapshot the original viewer Host into x-custom-forwarded-host
+                            -- before host_rewrite_header clobbers :authority with the Lattice FQDN
+                            h:headers():replace("x-custom-forwarded-host", h:headers():get(":authority"))
+                          end
+                  - name: envoy.filters.http.dynamic_forward_proxy
+                    # HTTP-filter half of DFP: per request, resolves the
+                    # (rewritten) :authority via the dns_cache_config below
+                    # and pauses the request until resolution completes.
+                    # For each request, it looks up the target host in the DNS cache.
+                    # If the host isn't resolved yet, it starts the lookup
+                    # and pauses the request until it finishes.
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_forward_proxy.v3.FilterConfig
+                      dns_cache_config:
+                        # Same cache name as the lattice_dfp cluster below -
+                        # this is what ties the filter's resolution to the
+                        # cluster's per-host connection pools
+                        name: lattice_dns
+                        dns_lookup_family: V4_ONLY
+                        dns_refresh_rate: 60s
+                        dns_min_refresh_rate: 5s
+                        host_ttl: 600s
+                        # Bump the maximum number of hosts that the cache will hold from
+                        # the default value of 1024,
+                        # see: https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/common/dynamic_forward_proxy/v3/dns_cache.proto#envoy-v3-api-field-extensions-common-dynamic-forward-proxy-v3-dnscacheconfig-disable-dns-refresh-on-failure
+                        max_hosts: 8192
+                        dns_query_timeout: 5s
+                        typed_dns_resolver_config:
+                          name: envoy.network.dns_resolver.cares
+                          typed_config:
+                            "@type": type.googleapis.com/envoy.extensions.network.dns_resolver.cares.v3.CaresDnsResolverConfig
+                            dns_resolver_options:
+                              { use_tcp_for_dns_lookups: true }
+                            resolvers: [{ socket_address: {
+                                      # Lattice service host are resolvable through Route53
+                                      address: 169.254.169.253,
+                                      port_value: 53,
+                                    } }]
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    # cluster half of DFP: provides a connection pool
+    # per resolved Lattice hostname (no static host list)
+    - name: lattice_dfp
+      # Turn off load balancing, the cluster does not have a list
+      # of static hosts to load balance requests between
+      lb_policy: CLUSTER_PROVIDED
+      cluster_type:
+        name: envoy.clusters.dynamic_forward_proxy
+        # For each hostname the HTTP filter resolves above.
+        # It reads the same cache to create hosts and per-host connection
+        # pools, and its load balancer picks the host.
+        # The cache is a single object per name, held by Envoy's DNS cache manager.
+        # The name: lattice_dns is the only link between the two. Whichever
+        # extension initializes first creates the cache from its own config.
+        typed_config:
+          "@type":
+            type.googleapis.com/envoy.extensions.clusters.dynamic_forward_proxy.v3.ClusterConfig
+            # shared with the http_filters entry above; max_hosts
+            # caps how many concurrent per-host pools can exist,
+            # host_ttl controls eviction of idle entries/pools
+          dns_cache_config:
+            name: lattice_dns
+            dns_lookup_family: V4_ONLY
+            dns_refresh_rate: 60s
+            dns_min_refresh_rate: 5s
+            # Eviction (idle host_ttl expiry or LRU past max_hosts)
+            # removes the cache entry and stops routing new
+            # requests to it, but in-flight streams on its pool's
+            # existing connections are allowed to drain, same as
+            # a host leaving a STRICT_DNS cluster's membership
+            host_ttl: 600s
+            max_hosts: 8192
+            dns_query_timeout: 5s
+            typed_dns_resolver_config:
+              name: envoy.network.dns_resolver.cares
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.network.dns_resolver.cares.v3.CaresDnsResolverConfig
+                dns_resolver_options: { use_tcp_for_dns_lookups: true }
+                resolvers:
+                  [
+                    {
+                      socket_address:
+                        { address: 169.254.169.253, port_value: 53 },
+                    },
+                  ]
+      # Raised well above Envoy's defaults (1024) since this cluster
+      # can be managing many small per-host pools at once, not one cluster
+      # with a few large pools
+      circuit_breakers:
+        thresholds: [
+            {
+              # 65535 represents the maximum number of available network ports in the TCP/IP stack
+              max_connections: 65535,
+              max_pending_requests: 100000,
+              max_requests: 100000,
+            },
+          ]
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          common_http_protocol_options:
+            idle_timeout: 65s
+            # < Lattice 10 min max lifetime
+            max_connection_duration: 540s
+            # Cap reuse per connection (HTTP/1.1 pool below has no multiplexing, so each
+            # in-flight request needs its own connection in the pool)
+            max_requests_per_connection: 1000
+          explicit_http_config:
+            # Controls the actual protocol to be used upstream
+            # Lattice service are using HTTP listeners which only support HTTP/1.1
+            { http_protocol_options: { accept_http_10: false } }
+          upstream_http_protocol_options:
+            # required for DFP clusters (used if HTTPS to Lattice);
+            # currently inert since this cluster has no TLS
+            # transport_socket configured - traffic to Lattice
+            # is plain HTTP/1.1 for now
+            { auto_sni: true, auto_san_validation: true }
