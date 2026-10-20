@@ -3,6 +3,7 @@ import { config } from "dotenv";
 import * as cdk from "aws-cdk-lib/core";
 import { VpcStack } from "../lib/VpcStack";
 import { RdsStack } from "../lib/RdsStack";
+import { PgAdminStack } from "../lib/PgAdminStack";
 
 config();
 
@@ -20,4 +21,10 @@ const vpcStack = new VpcStack(app, "vpc-stack", {
 const rdsStack = new RdsStack(app, "rds-stack", {
   env: env,
   vpc: vpcStack.vpc,
+});
+
+const pgAdminStack = new PgAdminStack(app, "pg-admin-stack", {
+  env: env,
+  vpc: vpcStack.vpc,
+  rdsDatabaseInstanceSg: rdsStack.rdsDatabaseInstanceSg,
 });

@@ -18,6 +18,8 @@ interface Props extends StackProps {
 }
 
 export class RdsStack extends Stack {
+  public readonly rdsDatabaseInstanceSg: ec2.SecurityGroup;
+
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
@@ -30,7 +32,7 @@ export class RdsStack extends Stack {
       },
     });
 
-    const rdsDatabaseInstanceSg = new ec2.SecurityGroup(
+    this.rdsDatabaseInstanceSg = new ec2.SecurityGroup(
       this,
       "rds-database-instance-sg",
       {
@@ -62,142 +64,7 @@ export class RdsStack extends Stack {
         deleteAutomatedBackups: true,
         monitoringInterval: Duration.minutes(1),
         networkType: rds.NetworkType.IPV4,
-        securityGroups: [rdsDatabaseInstanceSg],
-      },
-    );
-
-    // No inbound rules needed — SSM connects outbound over HTTPS (443).
-    const instanceSg = new ec2.SecurityGroup(this, "instance-sg", {
-      vpc: props.vpc,
-      allowAllOutbound: true, // required for SSM agent to reach SSM endpoints
-    });
-
-    /**
-     * Role for the ec2 instances in the ASG
-     */
-    const instanceRole = new iam.Role(this, "ec2-instance-iam-role", {
-      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "AmazonSSMManagedInstanceCore",
-        ),
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "CloudWatchAgentServerPolicy",
-        ),
-      ],
-    });
-
-    // Allow the instance security group to connect to the database
-    rdsDatabaseInstanceSg.addIngressRule(instanceSg, ec2.Port.tcp(5432));
-
-    // Create resource for running pgAdmin
-    const ecsCluster = new ecs.Cluster(this, "pgadmin-ecs-cluster", {
-      vpc: props.vpc,
-      containerInsightsV2: ecs.ContainerInsights.ENHANCED,
-    });
-
-    const instanceUserData = ec2.UserData.forLinux();
-    instanceUserData.addCommands(
-      // ECS config https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-config.html
-      // https://github.com/aws/amazon-ecs-agent/blob/master/README.md
-      "dnf update -y",
-      `echo ECS_CLUSTER=${ecsCluster.clusterName} >> /etc/ecs/ecs.config;`,
-      "echo ECS_BACKEND_HOST= >> /etc/ecs/ecs.config;",
-      // Reserves that memory for critical system processes
-      // https://docs.aws.amazon.com/AmazonECS/latest/developerguide/memory-management.html
-      "echo ECS_RESERVED_MEMORY=1024 >> /etc/ecs/ecs.config;",
-      "echo ECS_IMAGE_PULL_BEHAVIOR=always >> /etc/ecs/ecs.config",
-      "dnf install -y amazon-cloudwatch-agent postgresql18",
-    );
-
-    /**
-     * Create a launch template that is updated by image builder every time
-     * a new AMI is created.
-     */
-    const launchTemplate = new ec2.LaunchTemplate(this, "launch-template", {
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.M6G,
-        ec2.InstanceSize.MEDIUM,
-      ),
-      userData: instanceUserData,
-      role: instanceRole,
-      securityGroup: instanceSg,
-      // Enable detailed monitoring so instance metrics are collected at a
-      // 1-minute interval instead of the default 5-minute interval.
-      detailedMonitoring: true,
-      instanceMetadataTags: true,
-      requireImdsv2: true,
-      machineImage: ec2.MachineImage.latestAmazonLinux2023({
-        cpuType: ec2.AmazonLinuxCpuType.ARM_64,
-      }),
-    });
-
-    const pgAdminAsg = new autoscaling.AutoScalingGroup(this, "pgadmin-asg", {
-      vpc: props.vpc,
-      launchTemplate: launchTemplate,
-      allowAllOutbound: false,
-      minCapacity: 2,
-      maxCapacity: 2,
-      deletionProtection: autoscaling.DeletionProtection.NONE,
-      updatePolicy: autoscaling.UpdatePolicy.rollingUpdate({
-        maxBatchSize: 1,
-        minInstancesInService: 2,
-        waitOnResourceSignals: true,
-      }),
-      vpcSubnets: props.vpc.selectSubnets({
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-      }),
-      signals: autoscaling.Signals.waitForMinCapacity({
-        timeout: Duration.minutes(2),
-      }),
-      healthChecks: autoscaling.HealthChecks.withAdditionalChecks({
-        gracePeriod: Duration.seconds(300),
-        additionalTypes: [autoscaling.AdditionalHealthCheckType.ELB],
-      }),
-      groupMetrics: [autoscaling.GroupMetrics.all()],
-    });
-
-    instanceUserData.addSignalOnExitCommand(pgAdminAsg);
-    const asgCapacityProvider = new ecs.AsgCapacityProvider(
-      this,
-      "asg-capacity-provider",
-      {
-        autoScalingGroup: pgAdminAsg,
-      },
-    );
-    ecsCluster.addAsgCapacityProvider(asgCapacityProvider);
-
-    const pgadminLogGroup = new logs.LogGroup(this, "pgadmin", {
-      logGroupName: "pgadmin",
-      removalPolicy: RemovalPolicy.DESTROY,
-      retention: logs.RetentionDays.ONE_WEEK,
-    });
-
-    const pgAdminTaskDefinition = new ecs.Ec2TaskDefinition(
-      this,
-      "pgadmin-task-definition",
-      {
-        networkMode: ecs.NetworkMode.BRIDGE,
-      },
-    );
-
-    const pgAdminContainer = pgAdminTaskDefinition.addContainer(
-      "pgadmin-container",
-      {
-        containerName: "pgadmin",
-        portMappings: [{ containerPort: 80 }],
-        image: ecs.ContainerImage.fromRegistry("dpage/pgadmin4"),
-        essential: true,
-        // Containers can burst above this limit
-        memoryReservationMiB: 512,
-        // A hard memory limit imposed on tasks
-        memoryLimitMiB: 1024,
-        cpu: 256,
-        logging: new ecs.AwsLogDriver({
-          logGroup: pgadminLogGroup,
-          streamPrefix: "ecs",
-          mode: ecs.AwsLogDriverMode.NON_BLOCKING,
-        }),
+        securityGroups: [this.rdsDatabaseInstanceSg],
       },
     );
   }
