@@ -4,6 +4,7 @@ Examples of small services I've put together using AWS CDK v2 (in typescript) to
 
 | Example                                                       | Description                                                                                                    | Tags                                                    |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [alb-envoy-lattice](./alb-envoy-lattice/)                     | ![alb-envoy-lattice](./alb-envoy-lattice/img/alb-envoy-lattice-architecture.png)                               | alb, ecs, lattice                                       |
 | [alb-ssl-bridging](./alb-ssl-bridging/)                       | ![alb-ssl-bridging](./alb-ssl-bridging/img/alb-ssl-bridging-architecture.png)                                  | route 53, fargate, certificate manager, cloudwatch, sns |
 | [apigw-to-dynamodb](./apigw-to-dynamodb/)                     | ![apigw-to-dynamodb](./apigw-to-dynamodb/img/apigw-to-dynamodb-architecture.png)                               | apigw, dynamodb, lambda, sns                            |
 | [apigw-ws](./apigw-ws/)                                       | ![apigw-ws](./apigw-ws/img/apigw-ws-architecture.png)                                                          | apigw, dynamodb, lambda                                 |

@@ -28,6 +28,29 @@ static_resources:
                           invert_match: true
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                      log_format:
+                        omit_empty_values: false
+                        json_format:
+                          status: "%RESPONSE_CODE%"
+                          message: "%LOCAL_REPLY_BODY%"
+                          start_time: "%START_TIME%"
+                          method: "%REQ(:METHOD)%"
+                          path: "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%"
+                          protocol: "%PROTOCOL%"
+                          response_code: "%RESPONSE_CODE%"
+                          response_code_details: "%RESPONSE_CODE_DETAILS%"
+                          response_flags: "%RESPONSE_FLAGS%"
+                          bytes_received: "%BYTES_RECEIVED%"
+                          bytes_sent: "%BYTES_SENT%"
+                          duration_ms: "%DURATION%"
+                          upstream_cluster: "%UPSTREAM_CLUSTER%"
+                          upstream_host: "%UPSTREAM_HOST%"
+                          client_ip: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
+                          x_forwarded_for: "%REQ(X-FORWARDED-FOR)%"
+                          user_agent: "%REQ(USER-AGENT)%"
+                          request_id: "%REQ(X-REQUEST-ID)%"
+                          lattice_host: "%REQ(X-CUSTOM-SERVICEHOST)%"
+                          viewer_host: "%REQ(X-CUSTOM-FORWARDED-HOST)%"
                 # Use the real remote address of the client connection when determining internal versus external origin
                 use_remote_address: true
                 # One trusted proxy (the ALB) in front: take the client address from X-Forwarded-For

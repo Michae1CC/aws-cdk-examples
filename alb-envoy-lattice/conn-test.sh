@@ -1,1 +1,0 @@
-seq 0 1000 | xargs -P 50 -I {} curl -v -H "X-Custom-Servicehost: service-1-vpc-lattice-service-0b4a01dc137db0304.7d67968.vpc-lattice-svcs.eu-west-2.on.aws" http://alb-en-publi-QVoktZ9MmLsV-333322270.eu-west-2.elb.amazonaws.com &>/dev/null
