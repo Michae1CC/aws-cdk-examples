@@ -14,6 +14,13 @@ const env: cdk.Environment = {
 
 const app = new cdk.App();
 
+cdk.Tags.of(app).add("Customer", "Internal");
+cdk.Tags.of(app).add("Environment", "Non-Production");
+cdk.Tags.of(app).add("Product", "null");
+cdk.Tags.of(app).add("Owner", "Michael Ciccotostocamp");
+cdk.Tags.of(app).add("Project", "null");
+cdk.Tags.of(app).add("map-migrated", "MAP 1");
+
 const vpcStack = new VpcStack(app, "vpc-stack", {
   env: env,
 });

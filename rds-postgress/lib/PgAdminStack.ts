@@ -117,7 +117,7 @@ export class PgAdminStack extends Stack {
       new ecs.AsgCapacityProvider(this, "asg-capacity-provider", {
         autoScalingGroup: pgAdminAsg,
         enableManagedScaling: false,
-        enableManagedTerminationProtection: true,
+        enableManagedTerminationProtection: false,
         enableManagedDraining: true,
       }),
     );
