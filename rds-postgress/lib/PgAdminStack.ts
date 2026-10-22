@@ -4,6 +4,7 @@ import {
   aws_ecs as ecs,
   aws_iam as iam,
   aws_logs as logs,
+  aws_secretsmanager as secretsmanager,
   Duration,
   Stack,
   StackProps,
@@ -14,6 +15,7 @@ import { Construct } from "constructs";
 interface Props extends StackProps {
   vpc: ec2.Vpc;
   rdsDatabaseInstanceSg: ec2.SecurityGroup;
+  templatedSecret: secretsmanager.Secret;
 }
 
 export class PgAdminStack extends Stack {
@@ -122,38 +124,48 @@ export class PgAdminStack extends Stack {
       }),
     );
 
-    // const pgadminLogGroup = new logs.LogGroup(this, "pgadmin", {
-    //   logGroupName: "pgadmin",
-    //   removalPolicy: RemovalPolicy.DESTROY,
-    //   retention: logs.RetentionDays.ONE_WEEK,
-    // });
+    const pgadminLogGroup = new logs.LogGroup(this, "pgadmin", {
+      logGroupName: "pgadmin",
+      removalPolicy: RemovalPolicy.DESTROY,
+      retention: logs.RetentionDays.ONE_WEEK,
+    });
 
-    // const pgAdminTaskDefinition = new ecs.Ec2TaskDefinition(
-    //   this,
-    //   "pgadmin-task-definition",
-    //   {
-    //     networkMode: ecs.NetworkMode.BRIDGE,
-    //   },
-    // );
+    const pgAdminTaskDefinition = new ecs.Ec2TaskDefinition(
+      this,
+      "pgadmin-task-definition",
+      {
+        networkMode: ecs.NetworkMode.BRIDGE,
+      },
+    );
 
-    // const pgAdminContainer = pgAdminTaskDefinition.addContainer(
-    //   "pgadmin-container",
-    //   {
-    //     containerName: "pgadmin",
-    //     portMappings: [{ containerPort: 80 }],
-    //     image: ecs.ContainerImage.fromRegistry("dpage/pgadmin4"),
-    //     essential: true,
-    //     // Containers can burst above this limit
-    //     memoryReservationMiB: 512,
-    //     // A hard memory limit imposed on tasks
-    //     memoryLimitMiB: 1024,
-    //     cpu: 256,
-    //     logging: new ecs.AwsLogDriver({
-    //       logGroup: pgadminLogGroup,
-    //       streamPrefix: "ecs",
-    //       mode: ecs.AwsLogDriverMode.NON_BLOCKING,
-    //     }),
-    //   },
-    // );
+    const pgAdminContainer = pgAdminTaskDefinition.addContainer(
+      "pgadmin-container",
+      {
+        containerName: "pgadmin",
+        portMappings: [{ containerPort: 80 }],
+        image: ecs.ContainerImage.fromRegistry("dpage/pgadmin4"),
+        essential: true,
+        // Containers can burst above this limit
+        memoryReservationMiB: 512,
+        // A hard memory limit imposed on tasks
+        memoryLimitMiB: 1024,
+        cpu: 256,
+        logging: new ecs.AwsLogDriver({
+          logGroup: pgadminLogGroup,
+          streamPrefix: "ecs",
+          mode: ecs.AwsLogDriverMode.NON_BLOCKING,
+        }),
+        environment: {
+          // See: https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html
+          PGADMIN_DEFAULT_PASSWORD: props.templatedSecret
+            .secretValueFromJson("password")
+            .unsafeUnwrap(),
+          PGADMIN_CONFIG_SERVER_MODE: "False",
+          PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False",
+          PGADMIN_LISTEN_ADDRESS: "0.0.0.0",
+          PGADMIN_LISTEN_PORT: "80",
+        },
+      },
+    );
   }
 }
