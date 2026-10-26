@@ -19,6 +19,8 @@ interface Props extends StackProps {
 
 export class RdsStack extends Stack {
   public readonly rdsDatabaseInstanceSg: ec2.SecurityGroup;
+  public readonly databaseInstance: rds.DatabaseInstance;
+  public readonly templatedSecret: secretsmanager.Secret;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
@@ -41,7 +43,9 @@ export class RdsStack extends Stack {
       },
     );
 
-    const databaseInstance = new rds.DatabaseInstance(
+    this.templatedSecret = templatedSecret;
+
+    this.databaseInstance = new rds.DatabaseInstance(
       this,
       "database-instance",
       {

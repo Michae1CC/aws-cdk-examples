@@ -2,19 +2,24 @@ import {
   aws_autoscaling as autoscaling,
   aws_ec2 as ec2,
   aws_ecs as ecs,
+  aws_elasticloadbalancingv2 as elbv2,
   aws_iam as iam,
   aws_logs as logs,
+  aws_rds as rds,
   aws_secretsmanager as secretsmanager,
   Duration,
   Stack,
   StackProps,
   RemovalPolicy,
+  Token,
 } from "aws-cdk-lib";
+import cluster from "cluster";
 import { Construct } from "constructs";
 
 interface Props extends StackProps {
   vpc: ec2.Vpc;
   rdsDatabaseInstanceSg: ec2.SecurityGroup;
+  databaseInstance: rds.DatabaseInstance;
   templatedSecret: secretsmanager.Secret;
 }
 
@@ -52,7 +57,15 @@ export class PgAdminStack extends Stack {
     });
 
     // Allow the instance security group to connect to the database
-    props.rdsDatabaseInstanceSg.addIngressRule(instanceSg, ec2.Port.tcp(5432));
+    // Defined here (not via addIngressRule) so the rule lives in this stack
+    // and rds-stack doesn't depend on pg-admin-stack.
+    new ec2.CfnSecurityGroupIngress(this, "rds-ingress-from-instance-sg", {
+      groupId: props.rdsDatabaseInstanceSg.securityGroupId,
+      sourceSecurityGroupId: instanceSg.securityGroupId,
+      ipProtocol: "tcp",
+      fromPort: 5432,
+      toPort: 5432,
+    });
 
     const instanceUserData = ec2.UserData.forLinux();
     instanceUserData.addCommands(
@@ -138,6 +151,32 @@ export class PgAdminStack extends Stack {
       },
     );
 
+    // Server definition that pgAdmin imports on first start
+    const serversJson = this.toJsonString({
+      Servers: {
+        "1": {
+          Name: "rds-postgres",
+          Group: "Servers",
+          Host: props.databaseInstance.dbInstanceEndpointAddress,
+          Port: Token.asNumber(props.databaseInstance.dbInstanceEndpointPort),
+          MaintenanceDB: "postgres",
+          Username: "postgres",
+          SSLMode: "prefer",
+          PassFile: "/tmp/pgpass",
+        },
+      },
+    });
+
+    // Write servers.json and a pgpass file (escaping \ and : in the password)
+    // before handing off to the stock pgAdmin entrypoint.
+    const startupScript = [
+      `printf '%s' "$PGADMIN_SERVERS_JSON" > /tmp/servers.json`,
+      `ESCAPED_PASSWORD=$(printf '%s' "$DB_PASSWORD" | sed 's/[\\\\:]/\\\\&/g')`,
+      `printf '%s:%s:*:%s:%s\\n' "$DB_HOST" "$DB_PORT" "$DB_USER" "$ESCAPED_PASSWORD" > /tmp/pgpass`,
+      `chmod 600 /tmp/pgpass`,
+      `exec /entrypoint.sh`,
+    ].join(" && ");
+
     const pgAdminContainer = pgAdminTaskDefinition.addContainer(
       "pgadmin-container",
       {
@@ -160,12 +199,129 @@ export class PgAdminStack extends Stack {
           PGADMIN_DEFAULT_PASSWORD: props.templatedSecret
             .secretValueFromJson("password")
             .unsafeUnwrap(),
+          PGADMIN_DEFAULT_EMAIL: "email@example.com",
           PGADMIN_CONFIG_SERVER_MODE: "False",
           PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False",
           PGADMIN_LISTEN_ADDRESS: "0.0.0.0",
           PGADMIN_LISTEN_PORT: "80",
+          PGADMIN_SERVER_JSON_FILE: "/tmp/servers.json",
+          PGADMIN_SERVERS_JSON: serversJson,
+          DB_HOST: props.databaseInstance.dbInstanceEndpointAddress,
+          DB_PORT: props.databaseInstance.dbInstanceEndpointPort,
+        },
+        secrets: {
+          DB_USER: ecs.Secret.fromSecretsManager(
+            props.templatedSecret,
+            "username",
+          ),
+          DB_PASSWORD: ecs.Secret.fromSecretsManager(
+            props.templatedSecret,
+            "password",
+          ),
+        },
+        entryPoint: ["/bin/sh", "-c"],
+        command: [startupScript],
+      },
+    );
+
+    const pgadminService = new ecs.Ec2Service(this, "pgadmin-service", {
+      cluster: ecsCluster,
+      taskDefinition: pgAdminTaskDefinition,
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
+      availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.ENABLED,
+      desiredCount: 2,
+      placementStrategies: [
+        ecs.PlacementStrategy.spreadAcross("attribute:ecs.availability-zone"),
+      ],
+      placementConstraints: [ecs.PlacementConstraint.distinctInstances()],
+    });
+
+    const albSecurityGroup = new ec2.SecurityGroup(this, "alb-sg", {
+      vpc: props.vpc,
+      allowAllOutbound: true,
+      allowAllIpv6Outbound: true,
+    });
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv4",
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.icmpPing(),
+      "Allow Pings from Ipv6",
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.HTTP,
+      "Allow HTTP traffic from Ipv4",
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.HTTP,
+      "Allow HTTP from Ipv6",
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.HTTPS,
+      "Allow HTTPS traffic from Ipv4",
+    );
+
+    albSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv6(),
+      ec2.Port.HTTPS,
+      "Allow HTTPS from Ipv6",
+    );
+
+    albSecurityGroup.addEgressRule(
+      instanceSg,
+      ec2.Port.tcpRange(32768, 60999),
+      "Out to webapp EC2",
+    );
+    instanceSg.addIngressRule(
+      albSecurityGroup,
+      ec2.Port.tcpRange(32768, 60999),
+      "Requests from ALB",
+    );
+
+    const loadBalancer = new elbv2.ApplicationLoadBalancer(
+      this,
+      "service-alb",
+      {
+        vpc: props.vpc,
+        internetFacing: true,
+        ipAddressType: elbv2.IpAddressType.DUAL_STACK,
+        securityGroup: albSecurityGroup,
+        http2Enabled: true,
+      },
+    );
+
+    const pgadminTargetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      "webapp-tg",
+      {
+        vpc: props.vpc,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        port: 80,
+        // Need a delay long enough to finish requests. We support up to 60 seconds for a single request
+        deregistrationDelay: Duration.seconds(60),
+        healthCheck: {
+          protocol: elbv2.Protocol.HTTP,
+          path: "/misc/ping",
         },
       },
     );
+
+    const publicAlbHttpListener = loadBalancer.addListener("http-listener", {
+      port: 443,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      defaultAction: elbv2.ListenerAction.forward([pgadminTargetGroup]),
+    });
   }
 }

@@ -34,4 +34,6 @@ const pgAdminStack = new PgAdminStack(app, "pg-admin-stack", {
   env: env,
   vpc: vpcStack.vpc,
   rdsDatabaseInstanceSg: rdsStack.rdsDatabaseInstanceSg,
+  databaseInstance: rdsStack.databaseInstance,
+  templatedSecret: rdsStack.templatedSecret,
 });
