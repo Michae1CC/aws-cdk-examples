@@ -319,6 +319,8 @@ export class PgAdminStack extends Stack {
         port: 80,
         // Need a delay long enough to finish requests. We support up to 60 seconds for a single request
         deregistrationDelay: Duration.seconds(60),
+        // pgAdmin keeps session/connection state per container, so pin each client to one task
+        stickinessCookieDuration: Duration.hours(1),
         healthCheck: {
           protocol: elbv2.Protocol.HTTP,
           path: "/misc/ping",
