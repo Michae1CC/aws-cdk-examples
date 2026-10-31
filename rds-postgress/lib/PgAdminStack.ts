@@ -106,8 +106,8 @@ export class PgAdminStack extends Stack {
       vpc: props.vpc,
       launchTemplate: launchTemplate,
       allowAllOutbound: true,
-      minCapacity: 3,
-      maxCapacity: 3,
+      minCapacity: 4,
+      maxCapacity: 4,
       deletionProtection: autoscaling.DeletionProtection.NONE,
       healthChecks: autoscaling.HealthChecks.ec2({
         gracePeriod: Duration.seconds(120),
