@@ -106,8 +106,8 @@ export class PgAdminStack extends Stack {
       vpc: props.vpc,
       launchTemplate: launchTemplate,
       allowAllOutbound: true,
-      minCapacity: 2,
-      maxCapacity: 2,
+      minCapacity: 3,
+      maxCapacity: 3,
       deletionProtection: autoscaling.DeletionProtection.NONE,
       healthChecks: autoscaling.HealthChecks.ec2({
         gracePeriod: Duration.seconds(120),
@@ -182,7 +182,8 @@ export class PgAdminStack extends Stack {
       {
         containerName: "pgadmin",
         portMappings: [{ containerPort: 80 }],
-        image: ecs.ContainerImage.fromRegistry("dpage/pgadmin4"),
+        // Use a pgadmin image version which has pg v18 compatibility
+        image: ecs.ContainerImage.fromRegistry("dpage/pgadmin4:latest"),
         essential: true,
         // Containers can burst above this limit
         memoryReservationMiB: 512,
@@ -199,6 +200,8 @@ export class PgAdminStack extends Stack {
           PGADMIN_DEFAULT_PASSWORD: props.templatedSecret
             .secretValueFromJson("password")
             .unsafeUnwrap(),
+          PGADMIN_CONFIG_WTF_CSRF_CHECK_DEFAULT: "False",
+          PGADMIN_CONFIG_WTF_CSRF_ENABLED: "False",
           PGADMIN_DEFAULT_EMAIL: "email@example.com",
           PGADMIN_CONFIG_SERVER_MODE: "False",
           PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False",
@@ -234,7 +237,6 @@ export class PgAdminStack extends Stack {
       placementStrategies: [
         ecs.PlacementStrategy.spreadAcross("attribute:ecs.availability-zone"),
       ],
-      placementConstraints: [ecs.PlacementConstraint.distinctInstances()],
     });
 
     const albSecurityGroup = new ec2.SecurityGroup(this, "alb-sg", {
@@ -284,6 +286,7 @@ export class PgAdminStack extends Stack {
       ec2.Port.tcpRange(32768, 60999),
       "Out to webapp EC2",
     );
+
     instanceSg.addIngressRule(
       albSecurityGroup,
       ec2.Port.tcpRange(32768, 60999),
@@ -295,10 +298,15 @@ export class PgAdminStack extends Stack {
       "service-alb",
       {
         vpc: props.vpc,
+        vpcSubnets: {
+          subnetType: ec2.SubnetType.PUBLIC,
+        },
         internetFacing: true,
-        ipAddressType: elbv2.IpAddressType.DUAL_STACK,
+        ipAddressType: elbv2.IpAddressType.IPV4,
         securityGroup: albSecurityGroup,
         http2Enabled: true,
+        preserveHostHeader: true,
+        dropInvalidHeaderFields: true,
       },
     );
 
@@ -318,9 +326,11 @@ export class PgAdminStack extends Stack {
       },
     );
 
+    pgadminTargetGroup.addTarget(pgadminService);
+
     const publicAlbHttpListener = loadBalancer.addListener("http-listener", {
-      port: 443,
-      protocol: elbv2.ApplicationProtocol.HTTPS,
+      port: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
       defaultAction: elbv2.ListenerAction.forward([pgadminTargetGroup]),
     });
   }
