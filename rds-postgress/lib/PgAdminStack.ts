@@ -107,7 +107,7 @@ export class PgAdminStack extends Stack {
       launchTemplate: launchTemplate,
       allowAllOutbound: true,
       minCapacity: 4,
-      maxCapacity: 4,
+      maxCapacity: 6,
       deletionProtection: autoscaling.DeletionProtection.NONE,
       healthChecks: autoscaling.HealthChecks.ec2({
         gracePeriod: Duration.seconds(120),
@@ -197,9 +197,6 @@ export class PgAdminStack extends Stack {
         }),
         environment: {
           // See: https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html
-          PGADMIN_DEFAULT_PASSWORD: props.templatedSecret
-            .secretValueFromJson("password")
-            .unsafeUnwrap(),
           PGADMIN_CONFIG_WTF_CSRF_CHECK_DEFAULT: "False",
           PGADMIN_CONFIG_WTF_CSRF_ENABLED: "False",
           PGADMIN_DEFAULT_EMAIL: "email@example.com",
@@ -221,6 +218,10 @@ export class PgAdminStack extends Stack {
             props.templatedSecret,
             "password",
           ),
+          PGADMIN_DEFAULT_PASSWORD: ecs.Secret.fromSecretsManager(
+            props.templatedSecret,
+            "password",
+          ),
         },
         entryPoint: ["/bin/sh", "-c"],
         command: [startupScript],
@@ -232,11 +233,16 @@ export class PgAdminStack extends Stack {
       taskDefinition: pgAdminTaskDefinition,
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
+      healthCheckGracePeriod: Duration.minutes(3),
       availabilityZoneRebalancing: ecs.AvailabilityZoneRebalancing.ENABLED,
       desiredCount: 2,
       placementStrategies: [
         ecs.PlacementStrategy.spreadAcross("attribute:ecs.availability-zone"),
       ],
+      circuitBreaker: {
+        enable: true,
+        rollback: true,
+      },
     });
 
     const albSecurityGroup = new ec2.SecurityGroup(this, "alb-sg", {
