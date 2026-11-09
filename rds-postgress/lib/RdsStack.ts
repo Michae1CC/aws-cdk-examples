@@ -14,6 +14,8 @@ interface Props extends StackProps {
   vpc: ec2.Vpc;
 }
 
+const RDS_DATABASE_INSTANCE_PORT: number = 5432;
+
 export class RdsStack extends Stack {
   public readonly rdsDatabaseInstanceSg: ec2.SecurityGroup;
   public readonly databaseInstance: rds.DatabaseInstance;
@@ -52,7 +54,12 @@ export class RdsStack extends Stack {
           version: postgresEngineVersion,
         }),
         parameters: {
+          port: `${RDS_DATABASE_INSTANCE_PORT}`,
+          ssl: "off",
           max_connections: "100",
+          // Max prepared transaction should be as least as large as max connections,
+          //  see: https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAX-PREPARED-TRANSACTIONS
+          max_prepared_transactions: "100",
           // Specifies the maximum number of simultaneous autovacuum worker
           // processes that can run at any one time
           autovacuum_max_workers: "1",
@@ -78,6 +85,7 @@ export class RdsStack extends Stack {
       {
         engine: rds.DatabaseInstanceEngine.POSTGRES,
         vpc: props.vpc,
+        port: RDS_DATABASE_INSTANCE_PORT,
         allocatedStorage: 10, // GiB
         allowMajorVersionUpgrade: false,
         autoMinorVersionUpgrade: true,
