@@ -1,9 +1,6 @@
 import {
   aws_autoscaling as autoscaling,
   aws_ec2 as ec2,
-  aws_ecs as ecs,
-  aws_iam as iam,
-  aws_logs as logs,
   aws_rds as rds,
   aws_secretsmanager as secretsmanager,
   Duration,
@@ -45,6 +42,36 @@ export class RdsStack extends Stack {
 
     this.templatedSecret = templatedSecret;
 
+    const postgresEngineVersion = rds.PostgresEngineVersion.VER_18_3;
+
+    const pgParameterGroup = new rds.ParameterGroup(
+      this,
+      "pg-parameter-group",
+      {
+        engine: rds.DatabaseInstanceEngine.postgres({
+          version: postgresEngineVersion,
+        }),
+        parameters: {
+          max_connections: "100",
+          // Specifies the maximum number of simultaneous autovacuum worker
+          // processes that can run at any one time
+          autovacuum_max_workers: "1",
+          max_locks_per_transaction: "1024",
+          // Recorded in minutes
+          log_rotation_age: "60",
+          log_min_duration_statement: "0",
+          log_connections: "all",
+          log_disconnections: "on",
+          log_lock_waits: "on",
+          log_temp_files: "0",
+          log_autovacuum_min_duration: "0",
+          log_error_verbosity: "default",
+          // In ms, timeout after 24hrs
+          statement_timeout: "86400000",
+        },
+      },
+    );
+
     this.databaseInstance = new rds.DatabaseInstance(
       this,
       "database-instance",
@@ -61,6 +88,10 @@ export class RdsStack extends Stack {
           password: templatedSecret.secretValueFromJson("password"),
         },
         storageEncrypted: true,
+        deletionProtection: false,
+        enablePerformanceInsights: true,
+        removalPolicy: RemovalPolicy.DESTROY,
+        parameterGroup: pgParameterGroup,
         // Research
         cloudwatchLogsExports: [],
         performanceInsightRetention: rds.PerformanceInsightRetention.MONTHS_15,

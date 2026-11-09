@@ -7,6 +7,7 @@ import {
   aws_logs as logs,
   aws_rds as rds,
   aws_secretsmanager as secretsmanager,
+  CfnOutput,
   Duration,
   Stack,
   StackProps,
@@ -340,6 +341,10 @@ export class PgAdminStack extends Stack {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
       defaultAction: elbv2.ListenerAction.forward([pgadminTargetGroup]),
+    });
+
+    new CfnOutput(this, "alb-domain-output", {
+      value: loadBalancer.loadBalancerDnsName,
     });
   }
 }
