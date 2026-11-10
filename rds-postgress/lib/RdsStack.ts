@@ -66,7 +66,13 @@ export class RdsStack extends Stack {
           max_locks_per_transaction: "1024",
           // Recorded in minutes
           log_rotation_age: "60",
+          // Format accepted by chmod and umask
+          // Only have the server owner read and write to log files
+          log_file_mode: "0600",
+          // Causes the duration of each completed statement to be logged if the statement ran for at least the specified
+          // amount of time. Setting to "0" should log all statements.
           log_min_duration_statement: "0",
+          log_min_error_statement: "INFO",
           log_connections: "all",
           log_disconnections: "on",
           log_lock_waits: "on",
