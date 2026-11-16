@@ -48,15 +48,15 @@ export class RdsStack extends Stack {
 
     this.templatedSecret = templatedSecret;
 
-    const postgresEngineVersion = rds.PostgresEngineVersion.VER_18_3;
+    const postgresEngine = rds.DatabaseInstanceEngine.postgres({
+      version: rds.PostgresEngineVersion.VER_18_3,
+    });
 
     const pgParameterGroup = new rds.ParameterGroup(
       this,
       "pg-parameter-group",
       {
-        engine: rds.DatabaseInstanceEngine.postgres({
-          version: postgresEngineVersion,
-        }),
+        engine: postgresEngine,
         parameters: {
           // RDS controls SSL via rds.force_ssl (default 1 on PG15+); 0 allows non-SSL connections
           "rds.force_ssl": "0",
@@ -112,7 +112,7 @@ export class RdsStack extends Stack {
       "database-instance",
       {
         instanceIdentifier: RDS_DATABASE_INSTANCE_IDENTIFIER,
-        engine: rds.DatabaseInstanceEngine.POSTGRES,
+        engine: postgresEngine,
         vpc: props.vpc,
         port: RDS_DATABASE_INSTANCE_PORT,
         allocatedStorage: 10, // GiB
